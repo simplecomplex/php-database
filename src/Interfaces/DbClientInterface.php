@@ -16,5 +16,61 @@ namespace SimpleComplex\Database\Interfaces;
  */
 interface DbClientInterface
 {
+    /**
+     * Attempts to re-connect if previous connection lost.
+     *
+     * @param bool $checkOnly
+     *      Check if connected.
+     *
+     * @return mixed|bool
+     *      Bool: if arg $checkOnly.
+     *
+     * throws \SimpleComplex\Database\Exception\DbConnectionException
+     */
+    public function getConnection(bool $checkOnly = false);
 
+    /**
+     * Close database server connection.
+     */
+    public function disConnect();
+
+    /**
+     * @param bool $emptyOnNone
+     *      False: on no error returns message indication just that.
+     *      True: on no error return empty string.
+     *
+     * @return string
+     */
+    public function getNativeError(bool $emptyOnNone = false) : string;
+
+    /**
+     * @param string $name
+     *
+     * @return DbQueryInterface
+     */
+    public function query(string $name = '') : DbQueryInterface;
+
+    /**
+     * @return void
+     *      Throws exception on failure.
+     */
+    public function transactionStart();
+
+    /**
+     * @return void
+     *      Throws exception on failure.
+     *
+     * @throws \SimpleComplex\Database\Exception\DbInterruptionException
+     *      Connection lost.
+     */
+    public function transactionCommit();
+
+    /**
+     * @return void
+     *      Throws exception on failure.
+     *
+     * @throws \SimpleComplex\Database\Exception\DbInterruptionException
+     *      Connection lost.
+     */
+    public function transactionRollback();
 }
