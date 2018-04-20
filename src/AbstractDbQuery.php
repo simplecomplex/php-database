@@ -66,6 +66,11 @@ abstract class AbstractDbQuery extends Explorable implements DbQueryInterface
     protected $nParameters = 0;
 
     /**
+     * @var array
+     */
+    protected $preparedStatementArgs;
+
+    /**
      * @param DbClientInterface $client
      *      Reference to parent client.
      * @param string $query
@@ -105,6 +110,7 @@ abstract class AbstractDbQuery extends Explorable implements DbQueryInterface
      *      Empty: uses string for all.
      * @param array $arguments
      *      Values to substitute query ?-parameters with.
+     *      Arguments are consumed once, not referred.
      *
      * @return $this|DbQueryInterface
      *
@@ -118,7 +124,7 @@ abstract class AbstractDbQuery extends Explorable implements DbQueryInterface
     {
         if ($this->isPreparedStatement) {
             throw new DbLogicalException(
-                'Database query won\'t pass parameters to prepared statement.'
+                'Passing parameters to prepared statement is illegal except via (one) call to prepareStatement().'
             );
         }
 
@@ -222,7 +228,8 @@ abstract class AbstractDbQuery extends Explorable implements DbQueryInterface
      *      d: float (double).
      *      s: string.
      *      b: blob.
-     * @param array $arguments
+     * @param array &$arguments
+     *      By reference.
      *
      * @return $this|DbQueryInterface
      *
@@ -230,7 +237,7 @@ abstract class AbstractDbQuery extends Explorable implements DbQueryInterface
      *      Propagated.
      * @throws \SimpleComplex\Database\Exception\DbRuntimeException
      */
-    abstract public function prepare(string $types, array $arguments) : DbQueryInterface;
+    abstract public function prepareStatement(string $types, array &$arguments) : DbQueryInterface;
 
     /**
      * @var string

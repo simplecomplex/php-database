@@ -76,20 +76,25 @@ class MsSqlClient extends AbstractDbClient
     protected $connection;
 
     /**
-     * @param bool $checkOnly
-     *      Check if connected.
+     * Attempts to re-connect if connection lost and arg $reConnect.
+     *
+     * Always sets connection timeout and connection character set.
+     *
+     * @param bool $reConnect
      *
      * @return resource|bool
-     *      Bool: if arg $checkOnly.
+     *      False: no connection and not arg $reConnect.
+     *      Resource: connection (re-)established.
      *
      * @throws DbConnectionException
      */
-    public function getConnection(bool $checkOnly = false)
+    public function getConnection(bool $reConnect = false)
     {
-        if ($checkOnly) {
-            return !!$this->connection;
-        }
         if (!$this->connection) {
+            if (!$reConnect) {
+                return false;
+            }
+
             if (!$this->optionsChecked) {
                 // Secure connection timeout.
                 if (!empty($this->options['connect_timeout'])) {
@@ -145,6 +150,14 @@ class MsSqlClient extends AbstractDbClient
         return $this->connection;
     }
 
+    /**
+     * @return bool
+     */
+    public function isConnected() : bool
+    {
+        return !!$this->connection;
+    }
+
     public function disConnect()
     {
         if ($this->connection) {
@@ -192,7 +205,7 @@ class MsSqlClient extends AbstractDbClient
      */
     public function transactionStart()
     {
-        // Allow new connection.
+        // Allow re-connection.
         $this->getConnection(true);
 
         if (!@sqlsrv_begin_transaction($this->connection)) {
@@ -215,7 +228,7 @@ class MsSqlClient extends AbstractDbClient
     public function transactionCommit()
     {
         // Require unbroken connection.
-        if (!$this->getConnection(true)) {
+        if (!$this->isConnected()) {
             throw new DbInterruptionException('Database can\'t commit, connection lost.');
         }
 
@@ -239,7 +252,7 @@ class MsSqlClient extends AbstractDbClient
     public function transactionRollback()
     {
         // Require unbroken connection.
-        if (!$this->getConnection(true)) {
+        if (!$this->isConnected()) {
             throw new DbInterruptionException('Database can\'t commit, connection lost.');
         }
 

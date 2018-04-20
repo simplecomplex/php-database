@@ -1,0 +1,9 @@
+SimpleComplex/Database 1.x, 2018-04-20
+--------------------------------------
+- Client getConnection() shan't default to re-connect.
+- Refer prepared statements arguments.
+- Close prepared statement on query object destruction.
+
+SimpleComplex/Database 1.x, 2018-04-19
+--------------------------------------
+- Initial.

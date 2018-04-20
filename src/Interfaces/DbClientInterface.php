@@ -23,17 +23,22 @@ interface DbClientInterface
     public function __construct(string $name, array $databaseInfo);
 
     /**
-     * Attempts to re-connect if previous connection lost.
+     * Attempts to re-connect if connection lost and arg $reConnect.
      *
-     * @param bool $checkOnly
-     *      Check if connected.
+     * @param bool $reConnect.
      *
      * @return mixed|bool
-     *      Bool: if arg $checkOnly.
+     *      False: no connection and not arg $reConnect.
+     *      Mixed: connection (re-)established.
      *
      * throws \SimpleComplex\Database\Exception\DbConnectionException
      */
-    public function getConnection(bool $checkOnly = false);
+    public function getConnection(bool $reConnect = false);
+
+    /**
+     * @return bool
+     */
+    public function isConnected() : bool;
 
     /**
      * Close database server connection.

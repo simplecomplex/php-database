@@ -20,6 +20,8 @@ use SimpleComplex\Database\Exception\DbInterruptionException;
  *
  * Suppresses PHP errors with @ to prevent dupe messages in logs.
  *
+ * Unless using the mysqlnd driver PHP ini mysqli.reconnect must be falsy.
+ *
  * Native options (examples):
  * - MYSQLI_OPT_CONNECT_TIMEOUT
  * - MYSQLI_SERVER_PUBLIC_KEY
@@ -88,26 +90,29 @@ class MariaDbClient extends AbstractDbClient
     protected $mySqlI;
 
     /**
-     * Attempts to re-connect if previous connection lost.
+     * Attempts to re-connect if connection lost and arg $reConnect.
      *
-     * Always sets connection timeout (MYSQLI_OPT_CONNECT_TIMEOUT).
+     * Always sets connection timeout and connection character set.
      *
-     * @param bool $checkOnly
-     *      Check if connected.
+     * @param bool $reConnect
      *
      * @return \MySQLi|bool
-     *      Bool: if arg $checkOnly.
+     *      False: no connection and not arg $reConnect.
+     *      \MySQLi: connection (re-)established.
      *
      * @throws DbOptionException
      *      Failure to set option.
      * @throws DbConnectionException
      */
-    public function getConnection(bool $checkOnly = false)
+    public function getConnection(bool $reConnect = false)
     {
-        if ($checkOnly) {
-            return $this->mySqlI && $this->mySqlI->ping();
-        }
+        // Unless using the mysqlnd driver PHP ini mysqli.reconnect
+        // must be falsy. Otherwise MySQLi::ping() may re-connect.
         if (!$this->mySqlI || !$this->mySqlI->ping()) {
+            if (!$reConnect) {
+                return false;
+            }
+
             $mysqli = mysqli_init();
 
             if (!$this->optionsChecked) {
@@ -213,6 +218,16 @@ class MariaDbClient extends AbstractDbClient
         return $this->mySqlI;
     }
 
+    /**
+     * @return bool
+     */
+    public function isConnected() : bool
+    {
+        // Unless using the mysqlnd driver PHP ini mysqli.reconnect
+        // must be falsy. Otherwise MySQLi::ping() may re-connect.
+        return $this->mySqlI && $this->mySqlI->ping();
+    }
+
     public function disConnect()
     {
         if ($this->mySqlI) {
@@ -246,7 +261,7 @@ class MariaDbClient extends AbstractDbClient
      */
     public function transactionStart()
     {
-        // Allow new connection.
+        // Allow re-connection.
         $this->getConnection(true);
 
         if (!@$this->mySqlI->begin_transaction()) {
@@ -269,7 +284,7 @@ class MariaDbClient extends AbstractDbClient
     public function transactionCommit()
     {
         // Require unbroken connection.
-        if (!$this->getConnection(true)) {
+        if (!$this->isConnected()) {
             throw new DbInterruptionException('Database can\'t commit, connection lost.');
         }
 
@@ -293,7 +308,7 @@ class MariaDbClient extends AbstractDbClient
     public function transactionRollback()
     {
         // Require unbroken connection.
-        if (!$this->getConnection(true)) {
+        if (!$this->isConnected()) {
             throw new DbInterruptionException('Database can\'t commit, connection lost.');
         }
 

@@ -50,7 +50,8 @@ interface DbQueryInterface
      *      d: float (double).
      *      s: string.
      *      b: blob.
-     * @param array $arguments
+     * @param array &$arguments
+     *      By reference.
      *
      * @return $this|DbQueryInterface
      *
@@ -58,5 +59,10 @@ interface DbQueryInterface
      *      Propagated.
      * @throws \SimpleComplex\Database\Exception\DbRuntimeException
      */
-    public function prepare(string $types, array $arguments) : DbQueryInterface;
+    public function prepareStatement(string $types, array &$arguments) : DbQueryInterface;
+
+    /**
+     * @return void
+     */
+    public function closePreparedStatement();
 }

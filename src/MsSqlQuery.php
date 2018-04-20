@@ -66,6 +66,13 @@ class MsSqlQuery extends AbstractDbQuery
         $this->query = rtrim($query, ';');
     }
 
+    public function __destruct()
+    {
+        if ($this->preparedStatement) {
+            @sqlsrv_free_stmt($this->preparedStatement);
+        }
+    }
+
     /**
      * Not supported by this type of database client.
      *
@@ -87,7 +94,8 @@ class MsSqlQuery extends AbstractDbQuery
      *
      * @param string $types
      *      Ignored; Sqlsrv parameter binding too weird.
-     * @param array $arguments
+     * @param array &$arguments
+     *      By reference.
      *
      * @return $this|DbQueryInterface
      *
@@ -95,13 +103,21 @@ class MsSqlQuery extends AbstractDbQuery
      *      Propagated.
      * @throws DbRuntimeException
      */
-    public function prepare(string $types, array $arguments) : DbQueryInterface
+    public function prepareStatement(string $types, array &$arguments) : DbQueryInterface
     {
-        $connection = $this->client->getConnection();
+        if ($this->isPreparedStatement) {
+            throw new DbLogicalException('Database query cannot prepare statement more than once.');
+        }
+
+        // Allow re-connection.
+        $connection = $this->client->getConnection(true);
+
+        $this->preparedStatementArgs =& $arguments;
 
         /** @var resource $statement */
         $statement = sqlsrv_prepare($connection, $this->query, $arguments);
         if (!$statement) {
+            unset($this->preparedStatementArgs);
             throw new DbRuntimeException(
                 'Database query failed to prepare statement and bind parameters, with error: '
                 . $this->client->getNativeError() . '.'
@@ -111,5 +127,19 @@ class MsSqlQuery extends AbstractDbQuery
         $this->isPreparedStatement = true;
 
         return $this;
+    }
+
+    /**
+     * @return void
+     */
+    public function closePreparedStatement()
+    {
+        if (!$this->isPreparedStatement) {
+            throw new DbLogicalException('Database query isn\'t a prepared statement.');
+        }
+        if ($this->client->isConnected() && $this->preparedStatement) {
+            @sqlsrv_free_stmt($this->preparedStatement);
+            unset($this->preparedStatement, $this->preparedStatementArgs);
+        }
     }
 }

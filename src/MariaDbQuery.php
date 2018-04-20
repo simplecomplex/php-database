@@ -11,6 +11,7 @@ namespace SimpleComplex\Database;
 
 use SimpleComplex\Database\Interfaces\DbClientInterface;
 use SimpleComplex\Database\Interfaces\DbQueryInterface;
+use SimpleComplex\Database\Exception\DbLogicalException;
 use SimpleComplex\Database\Exception\DbRuntimeException;
 
 /**
@@ -65,6 +66,13 @@ class MariaDbQuery extends AbstractDbQuery
         $this->query = rtrim($query, ';');
     }
 
+    public function __destruct()
+    {
+        if ($this->preparedStatement) {
+            @$this->preparedStatement->close();
+        }
+    }
+
     /**
      * Turn query into prepared statement and bind parameters.
      *
@@ -73,17 +81,26 @@ class MariaDbQuery extends AbstractDbQuery
      *      d: float (double).
      *      s: string.
      *      b: blob.
-     * @param array $arguments
+     * @param array &$arguments
+     *      By reference.
      *
      * @return $this|DbQueryInterface
      *
      * @throws \SimpleComplex\Database\Exception\DbConnectionException
      *      Propagated.
+     * @throws DbLogicalException
+     *      Method called more than once for this query.
      * @throws DbRuntimeException
+     *      Failure to bind $arguments to native layer.
      */
-    public function prepare(string $types, array $arguments) : DbQueryInterface
+    public function prepareStatement(string $types, array &$arguments) : DbQueryInterface
     {
-        $mysqli = $this->client->getConnection();
+        if ($this->isPreparedStatement) {
+            throw new DbLogicalException('Database query cannot prepare statement more than once.');
+        }
+
+        // Allow re-connection.
+        $mysqli = $this->client->getConnection(true);
 
         /** @var \mysqli_stmt $mysqli_stmt */
         $mysqli_stmt = @$mysqli->prepare($this->query);
@@ -92,7 +109,11 @@ class MariaDbQuery extends AbstractDbQuery
                 'Database query failed to prepare statement, with error: ' . $this->client->getNativeError() . '.'
             );
         }
-        if (!$mysqli_stmt->bind_param($types, ...$arguments)) {
+
+        $this->preparedStatementArgs =& $arguments;
+
+        if (!$mysqli_stmt->bind_param($types, ...$this->preparedStatementArgs)) {
+            unset($this->preparedStatementArgs);
             throw new DbRuntimeException(
                 'Database query failed to bind parameters prepare statement, with error: '
                 . $this->client->getNativeError() . '.'
@@ -102,6 +123,20 @@ class MariaDbQuery extends AbstractDbQuery
         $this->isPreparedStatement = true;
 
         return $this;
+    }
+
+    /**
+     * @return void
+     */
+    public function closePreparedStatement()
+    {
+        if (!$this->isPreparedStatement) {
+            throw new DbLogicalException('Database query isn\'t a prepared statement.');
+        }
+        if ($this->client->isConnected() && $this->preparedStatement) {
+            @$this->preparedStatement->close();
+            unset($this->preparedStatement, $this->preparedStatementArgs);
+        }
     }
 
     /**
@@ -122,7 +157,9 @@ class MariaDbQuery extends AbstractDbQuery
             $s = str_replace(';', ',', $s);
         }
 
-        $s = $this->client->getConnection()->real_escape_string($s);
+        // Allow re-connection.
+        $s = $this->client->getConnection(true)
+            ->real_escape_string($s);
 
         return $this->hasLikeClause ? $s : addcslashes($s, '%_');
     }
