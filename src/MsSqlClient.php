@@ -23,7 +23,7 @@ use SimpleComplex\Database\Exception\DbInterruptionException;
  *
  * @package SimpleComplex\Database
  */
-class MsSqlClient extends AbstractDatabase
+class MsSqlClient extends AbstractDbClient
 {
     /**
      * Class name of \SimpleComplex\Database\MsSqlQuery or extending class.

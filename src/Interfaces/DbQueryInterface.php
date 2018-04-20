@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace SimpleComplex\Database\Interfaces;
 
+use SimpleComplex\Database\Interfaces\DbClientInterface;
+
 /**
  * Database query interface.
  *
@@ -16,5 +18,45 @@ namespace SimpleComplex\Database\Interfaces;
  */
 interface DbQueryInterface
 {
+    /**
+     * @param \SimpleComplex\Database\Interfaces\DbClientInterface $client
+     *      Reference to parent client.
+     * @param string $query
+     *
+     * @throws \InvalidArgumentException
+     *      Arg query empty.
+     */
+    public function __construct(DbClientInterface $client, string $query);
 
+    /**
+     * Pass parameters to simple (non-prepared statement) query.
+     *
+     * @param string $types
+     *      i: integer.
+     *      d: float (double).
+     *      s: string.
+     *      b: blob.
+     * @param array $arguments
+     *
+     * @return $this|DbQueryInterface
+     */
+    public function parameters(string $types, array $arguments) : DbQueryInterface;
+
+    /**
+     * Turn query into prepared statement and bind parameters.
+     *
+     * @param string $types
+     *      i: integer.
+     *      d: float (double).
+     *      s: string.
+     *      b: blob.
+     * @param array $arguments
+     *
+     * @return $this|DbQueryInterface
+     *
+     * @throws \SimpleComplex\Database\Exception\DbConnectionException
+     *      Propagated.
+     * @throws \SimpleComplex\Database\Exception\DbRuntimeException
+     */
+    public function prepare(string $types, array $arguments) : DbQueryInterface;
 }

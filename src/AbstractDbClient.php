@@ -25,7 +25,7 @@ use SimpleComplex\Database\Interfaces\DbQueryInterface;
  *
  * @package SimpleComplex\Database
  */
-abstract class AbstractDatabase extends Explorable implements DbClientInterface
+abstract class AbstractDbClient extends Explorable implements DbClientInterface
 {
     /**
      * Class name of DbQueryInterface class.
@@ -168,32 +168,28 @@ abstract class AbstractDatabase extends Explorable implements DbClientInterface
     }
 
     /**
-     * @param string $name
+     * @param string $query
+     *      Leave empty when intending to use prepared statement.
      *
      * @return DbQueryInterface
      */
-    public function query(string $name = '') : DbQueryInterface
+    public function query(string $query = '') : DbQueryInterface
     {
         $class_query = static::CLASS_QUERY;
         /** @var DbQueryInterface|MariaDbQuery|MsSqlQuery */
         return new $class_query(
             $this,
-            $name
+            $query
         );
     }
 
     /**
-     * @see AbstractDatabase::disConnect()
+     * @see AbstractDbClient::disConnect()
      */
     public function __destruct()
     {
         $this->disConnect();
     }
-
-    /**
-     * Close database server connection.
-     */
-    abstract public function disConnect();
 
 
     // Explorable.--------------------------------------------------------------
@@ -204,7 +200,7 @@ abstract class AbstractDatabase extends Explorable implements DbClientInterface
      *
      * Private/protected members are also be readable via 'magic' __get().
      *
-     * @see AbstractDatabase::__get()
+     * @see AbstractDbClient::__get()
      *
      * @internal
      *

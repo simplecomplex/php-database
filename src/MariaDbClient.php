@@ -33,7 +33,7 @@ use SimpleComplex\Database\Exception\DbInterruptionException;
  *
  * @package SimpleComplex\Database
  */
-class MariaDbClient extends AbstractDatabase
+class MariaDbClient extends AbstractDbClient
 {
     /**
      * Class name of \SimpleComplex\Database\MariaDbQuery or extending class.
@@ -108,7 +108,7 @@ class MariaDbClient extends AbstractDatabase
             return $this->mySqlI && $this->mySqlI->ping();
         }
         if (!$this->mySqlI || !$this->mySqlI->ping()) {
-            $my_sql_i = mysqli_init();
+            $mysqli = mysqli_init();
 
             if (!$this->optionsChecked) {
                 // Secure connection timeout.
@@ -152,7 +152,7 @@ class MariaDbClient extends AbstractDatabase
                         . '], because there is no PHP constant by that name.'
                     );
                 }
-                if (!$my_sql_i->options($constant, $value)) {
+                if (!$mysqli->options($constant, $value)) {
                     throw new DbOptionException(
                         'Database failed to set ' . $this->type . ' option[' . $name . '] value[' . $value . '].'
                     );
@@ -182,7 +182,7 @@ class MariaDbClient extends AbstractDatabase
             }
 
             if (
-                !@$my_sql_i->real_connect(
+                !@$mysqli->real_connect(
                     $this->host,
                     $this->user,
                     $this->pass,
@@ -191,14 +191,14 @@ class MariaDbClient extends AbstractDatabase
                     null,
                     $flags
                 )
-                || $my_sql_i->connect_errno
+                || $mysqli->connect_errno
             ) {
                 throw new DbConnectionException(
                     'Database type connect to host[' . $this->host . '] port[' . $this->port
-                    . '] failed, with error: (' . $my_sql_i->connect_errno . ') ' . $my_sql_i->connect_error . '.'
+                    . '] failed, with error: (' . $mysqli->connect_errno . ') ' . $mysqli->connect_error . '.'
                 );
             }
-            $this->mySqlI = $my_sql_i;
+            $this->mySqlI = $mysqli;
 
             if (!@$this->mySqlI->set_charset($this->options['character_set'])) {
                 throw new DbOptionException(

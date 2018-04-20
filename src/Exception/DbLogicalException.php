@@ -5,6 +5,6 @@ namespace SimpleComplex\Database\Exception;
 /**
  * @package SimpleComplex\Database
  */
-class DbOptionException extends DbLogicalException
+class DbLogicalException extends \LogicException
 {
 }

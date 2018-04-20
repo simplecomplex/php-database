@@ -17,6 +17,12 @@ namespace SimpleComplex\Database\Interfaces;
 interface DbClientInterface
 {
     /**
+     * @param string $name
+     * @param array $databaseInfo
+     */
+    public function __construct(string $name, array $databaseInfo);
+
+    /**
      * Attempts to re-connect if previous connection lost.
      *
      * @param bool $checkOnly
