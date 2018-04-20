@@ -21,6 +21,11 @@ use SimpleComplex\Database\Exception\DbQueryException;
 /**
  * Maria DB query.
  *
+ * NB: Prepared statement requires the mysqlnd driver.
+ * Because a result set will eventually be handled as \mysqli_result
+ * via mysqli_stmt::get_result(); only available with mysqlnd.
+ * @see http://php.net/manual/en/mysqli-stmt.get-result.php
+ *
  * @property-read string $query
  * @property-read bool $isMultiQuery
  * @property-read bool $isPreparedStatement
@@ -87,6 +92,11 @@ class MariaDbQuery extends AbstractDbQuery
 
     /**
      * Turn query into prepared statement and bind parameters.
+     *
+     * NB: Requires the mysqlnd driver.
+     * Because a result set will eventually be handled as \mysqli_result
+     * via mysqli_stmt::get_result(); only available with mysqlnd.
+     * @see http://php.net/manual/en/mysqli-stmt.get-result.php
      *
      * @param string $types
      *      i: integer.
@@ -191,6 +201,9 @@ class MariaDbQuery extends AbstractDbQuery
             // Allow re-connection.
             /** @var \MySQLi $mysqli */
             $mysqli = $this->client->getConnection(true);
+
+            // @todo: use \MySQLi->query() if change and no result set required.
+
             if (!@$mysqli->real_query($this->queryWithArguments ?? $this->query)) {
                 $this->client->log(
                     'warning',

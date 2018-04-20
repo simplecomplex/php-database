@@ -209,7 +209,9 @@ class MsSqlQuery extends AbstractDbQuery
             $this->simpleStatement = $simple_statement;
         }
 
-        return new MsSqlResult();
+        $class_result = static::CLASS_RESULT;
+        /** @var DbResultInterface|MsSqlResult */
+        return new $class_result();
     }
 
     /**

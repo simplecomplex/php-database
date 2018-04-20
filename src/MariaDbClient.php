@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace SimpleComplex\Database;
 
+use SimpleComplex\Database\Exception\DbLogicalException;
 use SimpleComplex\Database\Exception\DbOptionException;
 use SimpleComplex\Database\Exception\DbRuntimeException;
 use SimpleComplex\Database\Exception\DbConnectionException;
@@ -42,6 +43,7 @@ use SimpleComplex\Database\Exception\DbInterruptionException;
  * @property-read array $options
  * @property-read string[] $flags
  * @property-read string $characterSet
+ * @property-read bool $transactionStarted
  *
  * @package SimpleComplex\Database
  */
@@ -267,27 +269,38 @@ class MariaDbClient extends AbstractDbClient
     }
 
     /**
+     * Errs if previously started transaction isn't committed/rolled-back.
+     *
      * Fails unless InnoDB.
      *
      * @return void
      *      Throws exception on failure.
      *
+     * @throws DbLogicalException
+     *      Previously started transaction isn't committed/rolled-back.
      * @throws DbRuntimeException
      */
     public function transactionStart()
     {
+        if ($this->transactionStarted) {
+            throw new DbLogicalException(
+                $this->errorMessagePreamble() . ' previously started transaction isn\'t committed/rolled-back.'
+            );
+        }
         // Allow re-connection.
         $this->getConnection(true);
-
         if (!@$this->mySqlI->begin_transaction()) {
             throw new DbRuntimeException(
                 $this->errorMessagePreamble()
                 . ' failed to start transaction, with error: ' . $this->getNativeError() . '.'
             );
         }
+        $this->transactionStarted = true;
     }
 
     /**
+     * Ignored if no ongoing transaction.
+     *
      * Fails unless InnoDB.
      *
      * @return void
@@ -299,23 +312,26 @@ class MariaDbClient extends AbstractDbClient
      */
     public function transactionCommit()
     {
-        // Require unbroken connection.
-        if (!$this->isConnected()) {
-            throw new DbInterruptionException(
-                $this->errorMessagePreamble()
-                . ' can\'t commit, connection lost.'
-            );
-        }
-
-        if (!@$this->mySqlI->commit()) {
-            throw new DbRuntimeException(
-                $this->errorMessagePreamble()
-                . ' failed to commit transaction, with error: ' . $this->getNativeError() . '.'
-            );
+        if ($this->transactionStarted) {
+            // Require unbroken connection.
+            if (!$this->isConnected()) {
+                throw new DbInterruptionException(
+                    $this->errorMessagePreamble() . ' can\'t commit, connection lost.'
+                );
+            }
+            if (!@$this->mySqlI->commit()) {
+                throw new DbRuntimeException(
+                    $this->errorMessagePreamble()
+                    . ' failed to commit transaction, with error: ' . $this->getNativeError() . '.'
+                );
+            }
+            $this->transactionStarted = false;
         }
     }
 
     /**
+     * Ignored if no ongoing transaction.
+     *
      * Fails unless InnoDB.
      *
      * @return void
@@ -327,18 +343,20 @@ class MariaDbClient extends AbstractDbClient
      */
     public function transactionRollback()
     {
-        // Require unbroken connection.
-        if (!$this->isConnected()) {
-            throw new DbInterruptionException(
-                $this->errorMessagePreamble() . ' can\'t rollback, connection lost.'
-            );
-        }
-
-        if (!@$this->mySqlI->rollback()) {
-            throw new DbRuntimeException(
-                $this->errorMessagePreamble()
-                . ' failed to rollback transaction, with error: ' . $this->getNativeError() . '.'
-            );
+        if ($this->transactionStarted) {
+            // Require unbroken connection.
+            if (!$this->isConnected()) {
+                throw new DbInterruptionException(
+                    $this->errorMessagePreamble() . ' can\'t rollback, connection lost.'
+                );
+            }
+            if (!@$this->mySqlI->rollback()) {
+                throw new DbRuntimeException(
+                    $this->errorMessagePreamble()
+                    . ' failed to rollback transaction, with error: ' . $this->getNativeError() . '.'
+                );
+            }
+            $this->transactionStarted = false;
         }
     }
 }

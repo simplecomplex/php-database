@@ -5,6 +5,11 @@ SimpleComplex/Database 1.x, 2018-04-20
 - Close prepared statement on query object destruction.
 - Uniform error messages, stating database type and client name.
 - Query execute.
+- Forbid starting transaction when previously ditto isn't terminated yet.
+- Document that MariaDB prepared statement requires the mysqlnd driver.
+  Because a result set will eventually be handled as \mysqli_result
+  via mysqli_stmt::get_result(); only available with mysqlnd.
+
 
 SimpleComplex/Database 1.x, 2018-04-19
 --------------------------------------

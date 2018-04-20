@@ -45,7 +45,7 @@ class MariaDbResult implements DbResultInterface
         $this->isPreparedStatement = $this->query->isPreparedStatement;
     }
 
-    public function next()
+    public function nextRow()
     {
         // @todo
     }

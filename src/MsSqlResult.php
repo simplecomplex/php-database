@@ -38,8 +38,18 @@ class MsSqlResult implements DbResultInterface
         $this->isPreparedStatement = $this->query->isPreparedStatement;
     }
 
-    public function next()
+    public function nextRow()
     {
         // @todo
+    }
+
+    public function numRows()
+    {
+
+    }
+
+    public function rowsAffected()
+    {
+
     }
 }

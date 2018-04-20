@@ -5,6 +5,12 @@
 ### Doh ###
 
 
+MariaDB prepared statement equires the mysqlnd driver.  
+Because a result set will eventually be handled as \mysqli_result
+via mysqli_stmt::get_result(); only available with mysqlnd.
+
+@see http://php.net/manual/en/mysqli-stmt.get-result.php
+
 
 ### Requirements ###
 

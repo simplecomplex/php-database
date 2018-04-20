@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace SimpleComplex\Database;
 
+use SimpleComplex\Database\Exception\DbLogicalException;
 use SimpleComplex\Database\Exception\DbRuntimeException;
 use SimpleComplex\Database\Exception\DbConnectionException;
 use SimpleComplex\Database\Exception\DbInterruptionException;
@@ -30,6 +31,7 @@ use SimpleComplex\Database\Exception\DbInterruptionException;
  * @property-read array $options
  * @property-read string[] $flags
  * @property-read string $characterSet
+ * @property-read bool $transactionStarted
  *
  * @package SimpleComplex\Database
  */
@@ -207,18 +209,24 @@ class MsSqlClient extends AbstractDbClient
     }
 
     /**
-     * Fails unless InnoDB.
+     * Errs if previously started transaction isn't committed/rolled-back.
      *
      * @return void
      *      Throws exception on failure.
      *
+     * @throws DbLogicalException
+     *      Previously started transaction isn't committed/rolled-back.
      * @throws DbRuntimeException
      */
     public function transactionStart()
     {
+        if ($this->transactionStarted) {
+            throw new DbLogicalException(
+                $this->errorMessagePreamble() . ' previously started transaction isn\'t committed/rolled-back.'
+            );
+        }
         // Allow re-connection.
         $this->getConnection(true);
-
         if (!@sqlsrv_begin_transaction($this->connection)) {
             throw new DbRuntimeException(
                 $this->errorMessagePreamble()
@@ -228,7 +236,7 @@ class MsSqlClient extends AbstractDbClient
     }
 
     /**
-     * Fails unless InnoDB.
+     * Ignored if no ongoing transaction.
      *
      * @return void
      *      Throws exception on failure.
@@ -239,23 +247,25 @@ class MsSqlClient extends AbstractDbClient
      */
     public function transactionCommit()
     {
-        // Require unbroken connection.
-        if (!$this->isConnected()) {
-            throw new DbInterruptionException(
-                $this->errorMessagePreamble() . ' can\'t commit, connection lost.'
-            );
-        }
-
-        if (!@sqlsrv_commit($this->connection)) {
-            throw new DbRuntimeException(
-                $this->errorMessagePreamble()
-                . ' failed to commit transaction, with error: ' . $this->getNativeError() . '.'
-            );
+        if ($this->transactionStarted) {
+            // Require unbroken connection.
+            if (!$this->isConnected()) {
+                throw new DbInterruptionException(
+                    $this->errorMessagePreamble() . ' can\'t commit, connection lost.'
+                );
+            }
+            if (!@sqlsrv_commit($this->connection)) {
+                throw new DbRuntimeException(
+                    $this->errorMessagePreamble()
+                    . ' failed to commit transaction, with error: ' . $this->getNativeError() . '.'
+                );
+            }
+            $this->transactionStarted = false;
         }
     }
 
     /**
-     * Fails unless InnoDB.
+     * Ignored if no ongoing transaction.
      *
      * @return void
      *      Throws exception on failure.
@@ -266,18 +276,20 @@ class MsSqlClient extends AbstractDbClient
      */
     public function transactionRollback()
     {
-        // Require unbroken connection.
-        if (!$this->isConnected()) {
-            throw new DbInterruptionException(
-                $this->errorMessagePreamble() . ' can\'t rollback, connection lost.'
-            );
-        }
-
-        if (!@sqlsrv_rollback($this->connection)) {
-            throw new DbRuntimeException(
-                $this->errorMessagePreamble()
-                . ' failed to rollback transaction, with error: ' . $this->getNativeError() . '.'
-            );
+        if ($this->transactionStarted) {
+            // Require unbroken connection.
+            if (!$this->isConnected()) {
+                throw new DbInterruptionException(
+                    $this->errorMessagePreamble() . ' can\'t rollback, connection lost.'
+                );
+            }
+            if (!@sqlsrv_rollback($this->connection)) {
+                throw new DbRuntimeException(
+                    $this->errorMessagePreamble()
+                    . ' failed to rollback transaction, with error: ' . $this->getNativeError() . '.'
+                );
+            }
+            $this->transactionStarted = false;
         }
     }
 }

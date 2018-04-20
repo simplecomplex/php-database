@@ -24,6 +24,7 @@ use SimpleComplex\Database\Interfaces\DbQueryInterface;
  * @property-read array $options
  * @property-read string[] $flags
  * @property-read string $characterSet
+ * @property-read bool $transactionStarted
  *
  * @package SimpleComplex\Database
  */
@@ -134,6 +135,11 @@ abstract class AbstractDbClient extends Explorable implements DbClientInterface
      * @var string
      */
     protected $characterSet;
+
+    /**
+     * @var bool
+     */
+    protected $transactionStarted = false;
 
     /**
      * @param string $name
@@ -269,6 +275,7 @@ abstract class AbstractDbClient extends Explorable implements DbClientInterface
         'characterSet',
         'options',
         'flags',
+        'transactionStarted',
     ];
 
     /**
