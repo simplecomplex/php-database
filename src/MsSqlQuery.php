@@ -11,11 +11,21 @@ namespace SimpleComplex\Database;
 
 use SimpleComplex\Database\Interfaces\DbClientInterface;
 use SimpleComplex\Database\Interfaces\DbQueryInterface;
+use SimpleComplex\Database\Interfaces\DbResultInterface;
+
 use SimpleComplex\Database\Exception\DbLogicalException;
 use SimpleComplex\Database\Exception\DbRuntimeException;
+use SimpleComplex\Database\Exception\DbInterruptionException;
+use SimpleComplex\Database\Exception\DbQueryException;
 
 /**
  * MS SQL query.
+ *
+ * @property-read string $query
+ * @property-read bool $isMultiQuery
+ * @property-read bool $hasLikeClause
+ * @property-read bool $isPreparedStatement
+ * @property-read int $nParameters
  *
  * @package SimpleComplex\Database
  */
@@ -46,7 +56,17 @@ class MsSqlQuery extends AbstractDbQuery
     /**
      * @var resource
      */
+    protected $simpleStatement;
+
+    /**
+     * @var resource
+     */
     protected $preparedStatement;
+
+    /**
+     * @var string
+     */
+    protected $preparedStatementTypes;
 
     /**
      * @param MsSqlClient|DbClientInterface $client
@@ -60,7 +80,9 @@ class MsSqlQuery extends AbstractDbQuery
     {
         $this->client = $client;
         if (!$query) {
-            throw new \InvalidArgumentException('Arg $query cannot be empty');
+            throw new \InvalidArgumentException(
+                $this->client->errorMessagePreamble() . ' arg $query cannot be empty'
+            );
         }
         // Remove trailing semicolon.
         $this->query = rtrim($query, ';');
@@ -86,7 +108,9 @@ class MsSqlQuery extends AbstractDbQuery
      */
     public function multiQueryParameters(string $types, array $arguments) : DbQueryInterface
     {
-        throw new DbLogicalException('Database type ' . $this->client->type . ' doesn\'t support multi-query.');
+        throw new DbLogicalException(
+            $this->client->errorMessagePreamble() . ' doesn\'t support multi-query.'
+        );
     }
 
     /**
@@ -101,12 +125,17 @@ class MsSqlQuery extends AbstractDbQuery
      *
      * @throws \SimpleComplex\Database\Exception\DbConnectionException
      *      Propagated.
+     * @throws DbLogicalException
+     *      Method called more than once for this query.
      * @throws DbRuntimeException
+     *      Failure to bind $arguments to native layer.
      */
     public function prepareStatement(string $types, array &$arguments) : DbQueryInterface
     {
         if ($this->isPreparedStatement) {
-            throw new DbLogicalException('Database query cannot prepare statement more than once.');
+            throw new DbLogicalException(
+                $this->client->errorMessagePreamble() . ' query cannot prepare statement more than once.'
+            );
         }
 
         // Allow re-connection.
@@ -115,11 +144,12 @@ class MsSqlQuery extends AbstractDbQuery
         $this->preparedStatementArgs =& $arguments;
 
         /** @var resource $statement */
-        $statement = sqlsrv_prepare($connection, $this->query, $arguments);
+        $statement = @sqlsrv_prepare($connection, $this->query, $this->preparedStatementArgs);
         if (!$statement) {
             unset($this->preparedStatementArgs);
             throw new DbRuntimeException(
-                'Database query failed to prepare statement and bind parameters, with error: '
+                $this->client->errorMessagePreamble()
+                . ' query failed to prepare statement and bind parameters, with error: '
                 . $this->client->getNativeError() . '.'
             );
         }
@@ -130,12 +160,67 @@ class MsSqlQuery extends AbstractDbQuery
     }
 
     /**
+     * Only
+     *
+     * @return DbResultInterface|MsSqlResult
+     *
+     * @throws DbLogicalException
+     *      Method called without previous call to prepareStatement().
+     * @throws DbQueryException
+     */
+    public function execute(): DbResultInterface
+    {
+        if ($this->isPreparedStatement) {
+            // Require unbroken connection.
+            if (!$this->client->isConnected()) {
+                throw new DbInterruptionException(
+                    $this->client->errorMessagePreamble()
+                    . ' query can\'t execute prepared statement when connection lost.'
+                );
+            }
+            if (!@sqlsrv_execute($this->preparedStatement)) {
+                $this->client->log(
+                    'warning',
+                    $this->client->errorMessagePreamble() . ' failed executing prepared statement, query',
+                    $this->query
+                );
+                throw new DbQueryException(
+                    $this->client->errorMessagePreamble()
+                    . ' failed executing prepared statement, with error: ' . $this->client->getNativeError() . '.'
+                );
+            }
+        }
+        else {
+            // Allow re-connection.
+            /** @var \MySQLi $mysqli */
+            $connection = $this->client->getConnection(true);
+            $simple_statement = @sqlsrv_query($connection, $this->queryWithArguments ?? $this->query);
+            if (!$simple_statement) {
+                $this->client->log(
+                    'warning',
+                    $this->client->errorMessagePreamble() . ' failed executing simple query, query',
+                    $this->queryWithArguments ?? $this->query
+                );
+                throw new DbQueryException(
+                    $this->client->errorMessagePreamble()
+                    . ' failed executing simple query, with error: ' . $this->client->getNativeError() . '.'
+                );
+            }
+            $this->simpleStatement = $simple_statement;
+        }
+
+        return new MsSqlResult();
+    }
+
+    /**
      * @return void
      */
     public function closePreparedStatement()
     {
         if (!$this->isPreparedStatement) {
-            throw new DbLogicalException('Database query isn\'t a prepared statement.');
+            throw new DbLogicalException(
+                $this->client->errorMessagePreamble() . ' query isn\'t a prepared statement.'
+            );
         }
         if ($this->client->isConnected() && $this->preparedStatement) {
             @sqlsrv_free_stmt($this->preparedStatement);

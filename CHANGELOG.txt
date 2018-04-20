@@ -3,6 +3,8 @@ SimpleComplex/Database 1.x, 2018-04-20
 - Client getConnection() shan't default to re-connect.
 - Refer prepared statements arguments.
 - Close prepared statement on query object destruction.
+- Uniform error messages, stating database type and client name.
+- Query execute.
 
 SimpleComplex/Database 1.x, 2018-04-19
 --------------------------------------

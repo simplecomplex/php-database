@@ -11,11 +11,21 @@ namespace SimpleComplex\Database;
 
 use SimpleComplex\Database\Interfaces\DbClientInterface;
 use SimpleComplex\Database\Interfaces\DbQueryInterface;
+use SimpleComplex\Database\Interfaces\DbResultInterface;
+
 use SimpleComplex\Database\Exception\DbLogicalException;
 use SimpleComplex\Database\Exception\DbRuntimeException;
+use SimpleComplex\Database\Exception\DbInterruptionException;
+use SimpleComplex\Database\Exception\DbQueryException;
 
 /**
  * Maria DB query.
+ *
+ * @property-read string $query
+ * @property-read bool $isMultiQuery
+ * @property-read bool $isPreparedStatement
+ * @property-read bool $hasLikeClause
+ * @property-read int $nParameters
  *
  * @package SimpleComplex\Database
  */
@@ -60,7 +70,9 @@ class MariaDbQuery extends AbstractDbQuery
     {
         $this->client = $client;
         if (!$query) {
-            throw new \InvalidArgumentException('Arg $query cannot be empty');
+            throw new \InvalidArgumentException(
+                $this->client->errorMessagePreamble() . ' arg $query cannot be empty'
+            );
         }
         // Remove trailing semicolon; for multi-query.
         $this->query = rtrim($query, ';');
@@ -96,7 +108,10 @@ class MariaDbQuery extends AbstractDbQuery
     public function prepareStatement(string $types, array &$arguments) : DbQueryInterface
     {
         if ($this->isPreparedStatement) {
-            throw new DbLogicalException('Database query cannot prepare statement more than once.');
+            throw new DbLogicalException(
+                $this->client->errorMessagePreamble()
+                . ' query cannot prepare statement more than once.'
+            );
         }
 
         // Allow re-connection.
@@ -106,16 +121,18 @@ class MariaDbQuery extends AbstractDbQuery
         $mysqli_stmt = @$mysqli->prepare($this->query);
         if (!$mysqli_stmt) {
             throw new DbRuntimeException(
-                'Database query failed to prepare statement, with error: ' . $this->client->getNativeError() . '.'
+                $this->client->errorMessagePreamble()
+                . ' query failed to prepare statement, with error: ' . $this->client->getNativeError() . '.'
             );
         }
 
         $this->preparedStatementArgs =& $arguments;
 
-        if (!$mysqli_stmt->bind_param($types, ...$this->preparedStatementArgs)) {
+        if (!@$mysqli_stmt->bind_param($types, ...$this->preparedStatementArgs)) {
             unset($this->preparedStatementArgs);
             throw new DbRuntimeException(
-                'Database query failed to bind parameters prepare statement, with error: '
+                $this->client->errorMessagePreamble()
+                . ' query failed to bind parameters prepare statement, with error: '
                 . $this->client->getNativeError() . '.'
             );
         }
@@ -126,12 +143,81 @@ class MariaDbQuery extends AbstractDbQuery
     }
 
     /**
+     * @return DbResultInterface|MariaDbResult
+     *
+     * @throws DbInterruptionException
+     *      Is prepared statement and connection lost.
+     * @throws DbQueryException
+     */
+    public function execute(): DbResultInterface
+    {
+        if ($this->isPreparedStatement) {
+            // Require unbroken connection.
+            if (!$this->client->isConnected()) {
+                throw new DbInterruptionException(
+                    $this->client->errorMessagePreamble()
+                    . ' query can\'t execute prepared statement when connection lost.'
+                );
+            }
+            if (!@$this->preparedStatement->execute()) {
+                $this->client->log(
+                    'warning',
+                    $this->client->errorMessagePreamble() . ' failed executing prepared statement, query',
+                    $this->query
+                );
+                throw new DbQueryException(
+                    $this->client->errorMessagePreamble()
+                    . ' failed executing prepared statement, with error: ' . $this->client->getNativeError() . '.'
+                );
+            }
+        }
+        elseif ($this->isMultiQuery) {
+            // Allow re-connection.
+            /** @var \MySQLi $mysqli */
+            $mysqli = $this->client->getConnection(true);
+            if (!@$mysqli->multi_query($this->queryWithArguments ?? $this->query)) {
+                $this->client->log(
+                    'warning',
+                    $this->client->errorMessagePreamble() . ' failed executing multi-query, query',
+                    $this->queryWithArguments ?? $this->query
+                );
+                throw new DbQueryException(
+                    $this->client->errorMessagePreamble()
+                    . ' failed executing multi-query, with error: ' . $this->client->getNativeError() . '.'
+                );
+            }
+        }
+        else {
+            // Allow re-connection.
+            /** @var \MySQLi $mysqli */
+            $mysqli = $this->client->getConnection(true);
+            if (!@$mysqli->real_query($this->queryWithArguments ?? $this->query)) {
+                $this->client->log(
+                    'warning',
+                    $this->client->errorMessagePreamble() . ' failed executing simple query, query',
+                    $this->queryWithArguments ?? $this->query
+                );
+                throw new DbQueryException(
+                    $this->client->errorMessagePreamble()
+                    . ' failed executing simple query, with error: ' . $this->client->getNativeError() . '.'
+                );
+            }
+        }
+
+        $class_result = static::CLASS_RESULT;
+        /** @var DbResultInterface|MariaDbResult */
+        return new $class_result();
+    }
+
+    /**
      * @return void
      */
     public function closePreparedStatement()
     {
         if (!$this->isPreparedStatement) {
-            throw new DbLogicalException('Database query isn\'t a prepared statement.');
+            throw new DbLogicalException(
+                $this->client->errorMessagePreamble() . ' query isn\'t a prepared statement.'
+            );
         }
         if ($this->client->isConnected() && $this->preparedStatement) {
             @$this->preparedStatement->close();

@@ -18,5 +18,35 @@ use SimpleComplex\Database\Interfaces\DbResultInterface;
  */
 class MariaDbResult implements DbResultInterface
 {
+    /**
+     * @var MariaDbQuery
+     */
+    protected $query;
 
+    /**
+     * @var bool
+     */
+    protected $isMultiQuery;
+
+    /**
+     * @var bool
+     */
+    protected $isPreparedStatement;
+
+    /**
+     * @param MariaDbQuery $query
+     */
+    public function __construct(MariaDbQuery $query)
+    {
+        $this->query = $query;
+
+        // Don't
+        $this->isMultiQuery = $this->query->isMultiQuery;
+        $this->isPreparedStatement = $this->query->isPreparedStatement;
+    }
+
+    public function next()
+    {
+        // @todo
+    }
 }

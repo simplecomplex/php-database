@@ -21,6 +21,16 @@ use SimpleComplex\Database\Exception\DbInterruptionException;
  * Options:
  * @see https://docs.microsoft.com/en-us/sql/connect/php/connection-option
  *
+ * @property-read string $type
+ * @property-read string $name
+ * @property-read string $host
+ * @property-read int $port
+ * @property-read string $database
+ * @property-read string $user
+ * @property-read array $options
+ * @property-read string[] $flags
+ * @property-read string $characterSet
+ *
  * @package SimpleComplex\Database
  */
 class MsSqlClient extends AbstractDbClient
@@ -139,7 +149,8 @@ class MsSqlClient extends AbstractDbClient
             $connection = @sqlsrv_connect($this->host . ', ' . $this->port, $connection_info + $this->options);
             if (!$connection) {
                 throw new DbConnectionException(
-                    'Database type connect to host[' . $this->host . '] port[' . $this->port
+                    $this->errorMessagePreamble()
+                    . ' connect to host[' . $this->host . '] port[' . $this->port
                     . '] failed, with error: ' . $this->getNativeError() . '.'
                 );
             }
@@ -210,7 +221,8 @@ class MsSqlClient extends AbstractDbClient
 
         if (!@sqlsrv_begin_transaction($this->connection)) {
             throw new DbRuntimeException(
-                'Database failed to start transaction, with error: ' . $this->getNativeError() . '.'
+                $this->errorMessagePreamble()
+                . ' failed to start transaction, with error: ' . $this->getNativeError() . '.'
             );
         }
     }
@@ -229,12 +241,15 @@ class MsSqlClient extends AbstractDbClient
     {
         // Require unbroken connection.
         if (!$this->isConnected()) {
-            throw new DbInterruptionException('Database can\'t commit, connection lost.');
+            throw new DbInterruptionException(
+                $this->errorMessagePreamble() . ' can\'t commit, connection lost.'
+            );
         }
 
         if (!@sqlsrv_commit($this->connection)) {
             throw new DbRuntimeException(
-                'Database failed to commit transaction, with error: ' . $this->getNativeError() . '.'
+                $this->errorMessagePreamble()
+                . ' failed to commit transaction, with error: ' . $this->getNativeError() . '.'
             );
         }
     }
@@ -253,12 +268,15 @@ class MsSqlClient extends AbstractDbClient
     {
         // Require unbroken connection.
         if (!$this->isConnected()) {
-            throw new DbInterruptionException('Database can\'t commit, connection lost.');
+            throw new DbInterruptionException(
+                $this->errorMessagePreamble() . ' can\'t rollback, connection lost.'
+            );
         }
 
         if (!@sqlsrv_rollback($this->connection)) {
             throw new DbRuntimeException(
-                'Database failed to rollback transaction, with error: ' . $this->getNativeError() . '.'
+                $this->errorMessagePreamble()
+                . ' failed to rollback transaction, with error: ' . $this->getNativeError() . '.'
             );
         }
     }

@@ -9,8 +9,6 @@ declare(strict_types=1);
 
 namespace SimpleComplex\Database\Interfaces;
 
-use SimpleComplex\Database\Interfaces\DbClientInterface;
-
 /**
  * Database query interface.
  *
@@ -41,6 +39,13 @@ interface DbQueryInterface
      * @return $this|DbQueryInterface
      */
     public function parameters(string $types, array $arguments) : DbQueryInterface;
+
+    /**
+     * Execute simple query, multi-query or prepared statement.
+     *
+     * @return DbResultInterface
+     */
+    public function execute() : DbResultInterface;
 
     /**
      * Turn query into prepared statement and bind parameters.

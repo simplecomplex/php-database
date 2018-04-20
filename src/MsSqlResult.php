@@ -18,5 +18,28 @@ use SimpleComplex\Database\Interfaces\DbResultInterface;
  */
 class MsSqlResult implements DbResultInterface
 {
+    /**
+     * @var MsSqlQuery
+     */
+    protected $query;
 
+    /**
+     * @var bool
+     */
+    protected $isPreparedStatement;
+
+    /**
+     * @param MsSqlQuery $query
+     */
+    public function __construct(MsSqlQuery $query)
+    {
+        $this->query = $query;
+
+        $this->isPreparedStatement = $this->query->isPreparedStatement;
+    }
+
+    public function next()
+    {
+        // @todo
+    }
 }

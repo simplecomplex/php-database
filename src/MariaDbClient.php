@@ -33,6 +33,16 @@ use SimpleComplex\Database\Exception\DbInterruptionException;
  * - MYSQLI_CLIENT_SSL
  * @see http://php.net/manual/en/mysqli.real-connect.php
  *
+ * @property-read string $type
+ * @property-read string $name
+ * @property-read string $host
+ * @property-read int $port
+ * @property-read string $database
+ * @property-read string $user
+ * @property-read array $options
+ * @property-read string[] $flags
+ * @property-read string $characterSet
+ *
  * @package SimpleComplex\Database
  */
 class MariaDbClient extends AbstractDbClient
@@ -147,19 +157,22 @@ class MariaDbClient extends AbstractDbClient
                 // Name must be (string) name, not constant value.
                 if (ctype_digit('' . $name)) {
                     throw new DbOptionException(
-                        'Database option[' . $name . '] is integer, must be string name of MYSQLI_... PHP constant.'
+                        $this->errorMessagePreamble()
+                        . ' option[' . $name . '] is integer, must be string name of MYSQLI_... PHP constant.'
                     );
                 }
                 $constant = constant($name);
                 if (!$constant) {
                     throw new DbOptionException(
-                        'Database failed setting option[' . $name . '] value[' . $value
+                        $this->errorMessagePreamble()
+                        . ' failed setting option[' . $name . '] value[' . $value
                         . '], because there is no PHP constant by that name.'
                     );
                 }
                 if (!$mysqli->options($constant, $value)) {
                     throw new DbOptionException(
-                        'Database failed to set ' . $this->type . ' option[' . $name . '] value[' . $value . '].'
+                        $this->errorMessagePreamble()
+                        . ' failed to set ' . $this->type . ' option[' . $name . '] value[' . $value . '].'
                     );
                 }
             }
@@ -170,15 +183,15 @@ class MariaDbClient extends AbstractDbClient
                     // Name must be (string) name, not constant value.
                     if (ctype_digit('' . $name)) {
                         throw new DbOptionException(
-                            'Database flag[' . $name
-                            . '] is integer, must be string name of MYSQLI_CLIENT_... PHP constant.'
+                            $this->errorMessagePreamble()
+                            . ' flag[' . $name . '] is integer, must be string name of MYSQLI_CLIENT_... PHP constant.'
                         );
                     }
                     $constant = constant($name);
                     if (!$constant) {
                         throw new DbOptionException(
-                            'Database failed setting flag[' . $name
-                            . '], because there is no PHP constant by that name.'
+                            $this->errorMessagePreamble()
+                            . 'failed setting flag[' . $name . '], because there is no PHP constant by that name.'
                         );
                     }
                     // Set if missing; bitwise Or (inclusive or).
@@ -199,7 +212,8 @@ class MariaDbClient extends AbstractDbClient
                 || $mysqli->connect_errno
             ) {
                 throw new DbConnectionException(
-                    'Database type connect to host[' . $this->host . '] port[' . $this->port
+                    $this->errorMessagePreamble()
+                    . ' connect to host[' . $this->host . '] port[' . $this->port
                     . '] failed, with error: (' . $mysqli->connect_errno . ') ' . $mysqli->connect_error . '.'
                 );
             }
@@ -207,7 +221,8 @@ class MariaDbClient extends AbstractDbClient
 
             if (!@$this->mySqlI->set_charset($this->options['character_set'])) {
                 throw new DbOptionException(
-                    'Database setting connection character set[' . $this->options['character_set']
+                    $this->errorMessagePreamble()
+                    . ' setting connection character set[' . $this->options['character_set']
                     . '] failed, with error: ' . $this->getNativeError() . '.'
                 );
             }
@@ -266,7 +281,8 @@ class MariaDbClient extends AbstractDbClient
 
         if (!@$this->mySqlI->begin_transaction()) {
             throw new DbRuntimeException(
-                'Database failed to start transaction, with error: ' . $this->getNativeError() . '.'
+                $this->errorMessagePreamble()
+                . ' failed to start transaction, with error: ' . $this->getNativeError() . '.'
             );
         }
     }
@@ -285,12 +301,16 @@ class MariaDbClient extends AbstractDbClient
     {
         // Require unbroken connection.
         if (!$this->isConnected()) {
-            throw new DbInterruptionException('Database can\'t commit, connection lost.');
+            throw new DbInterruptionException(
+                $this->errorMessagePreamble()
+                . ' can\'t commit, connection lost.'
+            );
         }
 
         if (!@$this->mySqlI->commit()) {
             throw new DbRuntimeException(
-                'Database failed to commit transaction, with error: ' . $this->getNativeError() . '.'
+                $this->errorMessagePreamble()
+                . ' failed to commit transaction, with error: ' . $this->getNativeError() . '.'
             );
         }
     }
@@ -309,12 +329,15 @@ class MariaDbClient extends AbstractDbClient
     {
         // Require unbroken connection.
         if (!$this->isConnected()) {
-            throw new DbInterruptionException('Database can\'t commit, connection lost.');
+            throw new DbInterruptionException(
+                $this->errorMessagePreamble() . ' can\'t rollback, connection lost.'
+            );
         }
 
         if (!@$this->mySqlI->rollback()) {
             throw new DbRuntimeException(
-                'Database failed to rollback transaction, with error: ' . $this->getNativeError() . '.'
+                $this->errorMessagePreamble()
+                . ' failed to rollback transaction, with error: ' . $this->getNativeError() . '.'
             );
         }
     }

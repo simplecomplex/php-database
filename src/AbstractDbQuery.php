@@ -17,8 +17,8 @@ use SimpleComplex\Database\Exception\DbLogicalException;
 /**
  * @property-read string $query
  * @property-read bool $isMultiQuery
- * @property-read bool $hasLikeClause
  * @property-read bool $isPreparedStatement
+ * @property-read bool $hasLikeClause
  * @property-read int $nParameters
  *
  * @package SimpleComplex\Database
@@ -39,7 +39,9 @@ abstract class AbstractDbQuery extends Explorable implements DbQueryInterface
     protected $query;
 
     /**
-     * @var string
+     * Must be null when empty (not used).
+     *
+     * @var string|null
      */
     protected $queryWithArguments;
 
@@ -51,12 +53,12 @@ abstract class AbstractDbQuery extends Explorable implements DbQueryInterface
     /**
      * @var bool
      */
-    protected $hasLikeClause = false;
+    protected $isPreparedStatement = false;
 
     /**
      * @var bool
      */
-    protected $isPreparedStatement = false;
+    protected $hasLikeClause = false;
 
     /**
      * Number of query parameter ? positions.
@@ -124,19 +126,21 @@ abstract class AbstractDbQuery extends Explorable implements DbQueryInterface
     {
         if ($this->isPreparedStatement) {
             throw new DbLogicalException(
-                'Passing parameters to prepared statement is illegal except via (one) call to prepareStatement().'
+                $this->client->errorMessagePreamble()
+                . ' passing parameters to prepared statement is illegal except via (one) call to prepareStatement().'
             );
         }
 
         // Reset; make reusable.
-        $this->queryWithArguments = '';
+        $this->queryWithArguments = null;
 
         $fragments = explode('?', $this->query);
         $n_params = count($fragments) - 1;
         $n_args = count($arguments);
         if ($n_args != $n_params) {
             throw new \InvalidArgumentException(
-                'Arg $arguments length[' . $n_args . '] doesn\'t match query\'s ?-parameters count[' . $n_params . '].'
+                $this->client->errorMessagePreamble() . ' arg $arguments length[' . $n_args
+                . '] doesn\'t match query\'s ?-parameters count[' . $n_params . '].'
             );
         }
         $this->nParameters = $n_params;
@@ -153,7 +157,7 @@ abstract class AbstractDbQuery extends Explorable implements DbQueryInterface
         }
         elseif (strlen($types) != $n_params) {
             throw new \InvalidArgumentException(
-                'Arg $types length[' . strlen($types)
+                $this->client->errorMessagePreamble() . ' arg $types length[' . strlen($types)
                 . '] doesn\'t match query\'s ?-parameters count[' . $n_params . '].'
             );
         }
@@ -175,7 +179,8 @@ abstract class AbstractDbQuery extends Explorable implements DbQueryInterface
                     break;
                 default:
                     throw new \InvalidArgumentException(
-                        'Arg $types[' . $types . '] index[' . $i . '] char[' . $tps{$i} . '] is not i|d|s|b.'
+                        $this->client->errorMessagePreamble()
+                        . ' arg $types[' . $types . '] index[' . $i . '] char[' . $tps{$i} . '] is not i|d|s|b.'
                     );
             }
             $query_with_args .= $fragments[$i] . $value;
@@ -186,7 +191,11 @@ abstract class AbstractDbQuery extends Explorable implements DbQueryInterface
     }
 
     /**
-     * Pass parameters to simple query for multi-query use.
+     * Convert query to multi-query and pass parameters.
+     *
+     * Callable multiple times, passing parameters to new query instance.
+     * However the base query (with ?-markers) will always be the same,
+     * only parameter values may/will differ.
      *
      * Types:
      * - i: integer.
@@ -296,8 +305,8 @@ abstract class AbstractDbQuery extends Explorable implements DbQueryInterface
         // Protected; readable via 'magic' __get().
         'query',
         'isMultiQuery',
-        'hasLikeClause',
         'isPreparedStatement',
+        'hasLikeClause',
         'nParameters',
     ];
 

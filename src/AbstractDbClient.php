@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace SimpleComplex\Database;
 
 use SimpleComplex\Utils\Explorable;
+use SimpleComplex\Utils\Dependency;
 use SimpleComplex\Database\Interfaces\DbClientInterface;
 use SimpleComplex\Database\Interfaces\DbQueryInterface;
 
@@ -195,6 +196,51 @@ abstract class AbstractDbClient extends Explorable implements DbClientInterface
     public function __destruct()
     {
         $this->disConnect();
+    }
+
+    /**
+     * @return string
+     */
+    public function errorMessagePreamble() : string
+    {
+        return 'Database type[' . $this->type . '] name[' . $this->name . ']';
+    }
+
+    /**
+     * @see \Psr\Log\LogLevel.
+     * @see \SimpleComplex\Inspect\Inspect::variable().
+     *
+     * @param string $level
+     *      PSR-4 LogLevel.
+     *      Empty defaults to 'warning'.
+     * @param string $message
+     * @param null $variable
+     *      Ignored if number of arguments indicates not-used,
+     *      or dependency injection container has no 'inspect'.
+     */
+    public function log(string $level, string $message, $variable = null)
+    {
+        $lvl = $level ? $level : 'warning';
+        /** @var \Psr\Container\ContainerInterface $container */
+        $container = Dependency::container();
+        if (!$container->has('logger')) {
+            throw new \LogicException('Dependency injection container contains no \'logger\'.');
+        }
+        /** @var \Psr\Log\LoggerInterface $logger */
+        $logger = $container->get('logger');
+
+        if (func_num_args() < 3 || !$container->has('inspect')) {
+            $logger->log($lvl, $message, [
+                'subType' => 'database',
+            ]);
+        }
+        else {
+            /** @var \SimpleComplex\Inspect\Inspect $inspect */
+            $inspect = $container->get('inspect');
+            $logger->log($lvl, $message . "\n" . $inspect->variable($variable), [
+                'subType' => 'database',
+            ]);
+        }
     }
 
 
