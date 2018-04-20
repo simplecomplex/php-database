@@ -62,6 +62,7 @@ class MsSqlQuery extends AbstractDbQuery
         if (!$query) {
             throw new \InvalidArgumentException('Arg query cannot be empty');
         }
+        // Remove trailing semicolon.
         $this->query = rtrim($query, ';');
     }
 

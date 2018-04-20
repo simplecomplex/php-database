@@ -138,6 +138,7 @@ class MsSqlClient extends AbstractDbClient
                     . '] failed, with error: ' . $this->getNativeError() . '.'
                 );
             }
+            $this->characterSet = $this->options['CharacterSet'];
             $this->connection = $connection;
         }
 

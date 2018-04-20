@@ -22,6 +22,7 @@ use SimpleComplex\Database\Interfaces\DbQueryInterface;
  * @property-read string $user
  * @property-read array $options
  * @property-read string[] $flags
+ * @property-read string $characterSet
  *
  * @package SimpleComplex\Database
  */
@@ -129,6 +130,11 @@ abstract class AbstractDbClient extends Explorable implements DbClientInterface
     protected $flags;
 
     /**
+     * @var string
+     */
+    protected $characterSet;
+
+    /**
      * @param string $name
      * @param array $databaseInfo {
      *      @var string $host
@@ -214,7 +220,6 @@ abstract class AbstractDbClient extends Explorable implements DbClientInterface
         'port',
         'database',
         'user',
-        'connectTimeout',
         'characterSet',
         'options',
         'flags',

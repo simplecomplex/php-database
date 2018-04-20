@@ -61,6 +61,7 @@ class MariaDbQuery extends AbstractDbQuery
         if (!$query) {
             throw new \InvalidArgumentException('Arg query cannot be empty');
         }
+        // Remove trailing semicolon; for multi-query.
         $this->query = rtrim($query, ';');
     }
 
@@ -103,4 +104,26 @@ class MariaDbQuery extends AbstractDbQuery
         return $this;
     }
 
+    /**
+     * Parameter value escaper.
+     *
+     * Escapes %_ unless instance var hasLikeClause.
+     *
+     * Replaces semicolon with comma if multi-query.
+     *
+     * @param string $str
+     *
+     * @return string
+     */
+    public function escapeString(string $str) : string
+    {
+        $s = $str;
+        if ($this->isMultiQuery) {
+            $s = str_replace(';', ',', $s);
+        }
+
+        $s = $this->client->getConnection()->real_escape_string($s);
+
+        return $this->hasLikeClause ? $s : addcslashes($s, '%_');
+    }
 }

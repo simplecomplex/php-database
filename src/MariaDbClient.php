@@ -206,6 +206,8 @@ class MariaDbClient extends AbstractDbClient
                     . '] failed, with error: ' . $this->getNativeError() . '.'
                 );
             }
+
+            $this->characterSet = $this->options['character_set'];
         }
 
         return $this->mySqlI;
