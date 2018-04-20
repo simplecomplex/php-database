@@ -53,13 +53,13 @@ class MariaDbQuery extends AbstractDbQuery
      * @param string $query
      *
      * @throws \InvalidArgumentException
-     *      Arg query empty.
+     *      Arg $query empty.
      */
     public function __construct(DbClientInterface $client, string $query)
     {
         $this->client = $client;
         if (!$query) {
-            throw new \InvalidArgumentException('Arg query cannot be empty');
+            throw new \InvalidArgumentException('Arg $query cannot be empty');
         }
         // Remove trailing semicolon; for multi-query.
         $this->query = rtrim($query, ';');

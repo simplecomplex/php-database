@@ -24,7 +24,7 @@ interface DbQueryInterface
      * @param string $query
      *
      * @throws \InvalidArgumentException
-     *      Arg query empty.
+     *      Arg $query empty.
      */
     public function __construct(DbClientInterface $client, string $query);
 

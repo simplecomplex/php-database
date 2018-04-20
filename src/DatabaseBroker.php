@@ -69,14 +69,14 @@ class DatabaseBroker extends Explorable
      * @return DbClientInterface
      *
      * @throws \InvalidArgumentException
-     *      Arg name empty.
-     *      Arg type value not supported.
+     *      Arg $name empty.
+     *      Arg $type value not supported.
      */
     public function getClient(string $name, string $type, array $databaseInfo) : DbClientInterface
     {
         if (!$name) {
             throw new \InvalidArgumentException(
-                'Arg name cannot be empty.'
+                'Arg $name cannot be empty.'
             );
         }
         if (isset($this->clients[$name])) {
@@ -86,7 +86,7 @@ class DatabaseBroker extends Explorable
         $class = constant('static::CLASS_CLIENT_' . strtoupper($type));
         if (!$class) {
             throw new \InvalidArgumentException(
-                'Arg type[' . $type . '] is not supported, no equivalent DbClientInterface class available.'
+                'Arg $type[' . $type . '] is not supported, no equivalent DbClientInterface class available.'
             );
         }
         /** @var DbClientInterface $client */
@@ -99,13 +99,13 @@ class DatabaseBroker extends Explorable
      * @param string $name
      *
      * @throws \InvalidArgumentException
-     *      Arg name empty.
+     *      Arg $name empty.
      */
     public function destroyClient(string $name)
     {
         if (!$name) {
             throw new \InvalidArgumentException(
-                'Arg name cannot be empty.'
+                'Arg $name cannot be empty.'
             );
         }
         if (isset($this->clients[$name])) {

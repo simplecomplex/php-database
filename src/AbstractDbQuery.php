@@ -19,6 +19,7 @@ use SimpleComplex\Database\Exception\DbLogicalException;
  * @property-read bool $isMultiQuery
  * @property-read bool $hasLikeClause
  * @property-read bool $isPreparedStatement
+ * @property-read int $nParameters
  *
  * @package SimpleComplex\Database
  */
@@ -58,11 +59,11 @@ abstract class AbstractDbQuery extends Explorable implements DbQueryInterface
     protected $isPreparedStatement = false;
 
     /**
-     * Query parameter ? positions.
+     * Number of query parameter ? positions.
      *
-     * @var int[]
+     * @var int
      */
-    protected $parameterPositions;
+    protected $nParameters = 0;
 
     /**
      * @param DbClientInterface $client
@@ -70,11 +71,16 @@ abstract class AbstractDbQuery extends Explorable implements DbQueryInterface
      * @param string $query
      *
      * @throws \InvalidArgumentException
-     *      Arg query empty.
+     *      Arg $query empty.
      */
     abstract public function __construct(DbClientInterface $client, string $query);
 
     /**
+     * Flag that the query contains LIKE clause(s).
+     *
+     * Affects parameter escaping: chars %_ won't be escaped.
+     * @see AbstractDbQuery::escapeString()
+     *
      * @return $this|DbQueryInterface
      */
     public function hasLikeClause()
@@ -86,6 +92,9 @@ abstract class AbstractDbQuery extends Explorable implements DbQueryInterface
     /**
      * Pass parameters to simple (non-prepared statement) query.
      *
+     * Secures that the query is reusable - resets internal query
+     * with parameters substituted by arguments.
+     *
      * Types:
      * - i: integer.
      * - d: float (double).
@@ -95,14 +104,15 @@ abstract class AbstractDbQuery extends Explorable implements DbQueryInterface
      * @param string $types
      *      Empty: uses string for all.
      * @param array $arguments
+     *      Values to substitute query ?-parameters with.
      *
      * @return $this|DbQueryInterface
      *
      * @throws DbLogicalException
      *      Calling this method when prepare() called previously.
      * @throws \InvalidArgumentException
-     *      Arg types length (unless empty) doesn't match number of parameters.
-     *      Arg arguments length doesn't match number of parameters.
+     *      Arg $types length (unless empty) doesn't match number of parameters.
+     *      Arg $arguments length doesn't match number of parameters.
      */
     public function parameters(string $types, array $arguments) : DbQueryInterface
     {
@@ -112,36 +122,33 @@ abstract class AbstractDbQuery extends Explorable implements DbQueryInterface
             );
         }
 
-        // Reset.
+        // Reset; make reusable.
         $this->queryWithArguments = '';
 
-
-        // @todo: use explode('?', $this->query) instead; quicker than strpos()... and substr_replace()...
-
-        if ($this->parameterPositions === null) {
-            $this->parameterPositions = [];
-            $haystack = $this->query;
-            $offset = 0;
-            while (($pos = strpos($haystack, '?', $offset)) !== false) {
-                $offset = $pos + 1;
-                $this->parameterPositions[] = $pos;
-            }
-        }
-        $n_params = count($this->parameterPositions);
+        $fragments = explode('?', $this->query);
+        $n_params = count($fragments) - 1;
         $n_args = count($arguments);
         if ($n_args != $n_params) {
             throw new \InvalidArgumentException(
-                'Database query has ' . $n_params . ' parameters, saw ' . $n_args . ' arguments.'
+                'Arg $arguments length[' . $n_args . '] doesn\'t match query\'s ?-parameters count[' . $n_params . '].'
             );
+        }
+        $this->nParameters = $n_params;
+
+        if (!$n_params) {
+            // No work to do.
+            return $this;
         }
 
         $tps = $types;
-        if (!$tps) {
+        if ($tps === '') {
+            // Be friendly, all strings.
             $tps = str_repeat('s', $n_params);
         }
         elseif (strlen($types) != $n_params) {
             throw new \InvalidArgumentException(
-                'Database query has ' . $n_params . ' parameters, saw ' . strlen($types) . ' types.'
+                'Arg $types length[' . strlen($types)
+                . '] doesn\'t match query\'s ?-parameters count[' . $n_params . '].'
             );
         }
 
@@ -149,10 +156,8 @@ abstract class AbstractDbQuery extends Explorable implements DbQueryInterface
         // nor correctly indexed.
         $args = array_values($arguments);
 
-        $query_with_args = $this->query;
-
-        // Work in reverse order to prevent ?-positions from moving.
-        for ($i = $n_args - 1; $i >= 0; --$i) {
+        $query_with_args = '';
+        for ($i = 0; $i < $n_params; ++$i) {
             $value = $args[$i];
             switch ($tps{$i}) {
                 case 's':
@@ -161,17 +166,15 @@ abstract class AbstractDbQuery extends Explorable implements DbQueryInterface
                     break;
                 case 'i':
                 case 'd':
-                case 'f':
                     break;
                 default:
                     throw new \InvalidArgumentException(
-                        'Arg types[' . $types . '] index[' . $i . '] char[' . $tps{$i} . '] is not i|d|s|b.'
+                        'Arg $types[' . $types . '] index[' . $i . '] char[' . $tps{$i} . '] is not i|d|s|b.'
                     );
             }
-            $query_with_args = substr_replace($query_with_args, $value, $this->parameterPositions[$i], 1);
+            $query_with_args .= $fragments[$i] . $value;
         }
-
-        $this->queryWithArguments = $query_with_args;
+        $this->queryWithArguments = $query_with_args . $fragments[$i];
 
         return $this;
     }
@@ -188,6 +191,7 @@ abstract class AbstractDbQuery extends Explorable implements DbQueryInterface
      * @param string $types
      *      Empty: uses string for all.
      * @param array $arguments
+     *      Values to substitute query ?-parameters with.
      *
      * @return $this|DbQueryInterface
      *
@@ -202,7 +206,10 @@ abstract class AbstractDbQuery extends Explorable implements DbQueryInterface
 
         $this->parameters($types, $arguments);
 
-        $this->queryWithArguments = (!$previousQueries ? '' : ($previousQueries . '; ')) . $this->queryWithArguments;
+        if ($this->nParameters) {
+            $this->queryWithArguments = (!$previousQueries ? '' : ($previousQueries . '; '))
+                . $this->queryWithArguments;
+        }
 
         return $this;
     }
@@ -284,6 +291,7 @@ abstract class AbstractDbQuery extends Explorable implements DbQueryInterface
         'isMultiQuery',
         'hasLikeClause',
         'isPreparedStatement',
+        'nParameters',
     ];
 
     /**
