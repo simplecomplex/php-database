@@ -19,22 +19,54 @@ interface DbQueryInterface
     /**
      * @param \SimpleComplex\Database\Interfaces\DbClientInterface $client
      *      Reference to parent client.
-     * @param string $query
+     * @param string $baseQuery
+     * @param bool $isMulti
+     *      True: arg $baseQuery contains multiple queries.
      *
      * @throws \InvalidArgumentException
      *      Arg $query empty.
      */
-    public function __construct(DbClientInterface $client, string $query);
+    public function __construct(DbClientInterface $client, string $baseQuery, bool $isMulti = false);
 
     /**
-     * Pass parameters to simple (non-prepared statement) query.
+     * Turn query into prepared statement and bind parameters.
+     *
+     * Types:
+     * - i: integer.
+     * - d: float (double).
+     * - s: string.
+     * - b: blob.
      *
      * @param string $types
-     *      i: integer.
-     *      d: float (double).
-     *      s: string.
-     *      b: blob.
+     *      Empty: uses string for all.
+     * @param array &$arguments
+     *      By reference.
+     * @param array $options
+     *
+     * @return $this|DbQueryInterface
+     *
+     * @throws \SimpleComplex\Database\Exception\DbConnectionException
+     *      Propagated.
+     * @throws \SimpleComplex\Database\Exception\DbRuntimeException
+     */
+    public function prepareStatement(string $types, array &$arguments, array $options = []) : DbQueryInterface;
+
+    /**
+     * Substitute base query ?-parameters by arguments.
+     *
+     * Non-prepared statement only.
+     *
+     * Types:
+     * - i: integer.
+     * - d: float (double).
+     * - s: string.
+     * - b: blob.
+     *
+     * @param string $types
+     *      Empty: uses string for all.
      * @param array $arguments
+     *      Values to substitute query ?-parameters with.
+     *      Arguments are consumed once, not referred.
      *
      * @return $this|DbQueryInterface
      */
@@ -46,25 +78,6 @@ interface DbQueryInterface
      * @return DbResultInterface
      */
     public function execute() : DbResultInterface;
-
-    /**
-     * Turn query into prepared statement and bind parameters.
-     *
-     * @param string $types
-     *      i: integer.
-     *      d: float (double).
-     *      s: string.
-     *      b: blob.
-     * @param array &$arguments
-     *      By reference.
-     *
-     * @return $this|DbQueryInterface
-     *
-     * @throws \SimpleComplex\Database\Exception\DbConnectionException
-     *      Propagated.
-     * @throws \SimpleComplex\Database\Exception\DbRuntimeException
-     */
-    public function prepareStatement(string $types, array &$arguments) : DbQueryInterface;
 
     /**
      * @return void

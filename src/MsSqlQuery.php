@@ -22,15 +22,23 @@ use SimpleComplex\Database\Exception\DbQueryException;
  * MS SQL query.
  *
  * @property-read string $query
- * @property-read bool $isMultiQuery
- * @property-read bool $hasLikeClause
  * @property-read bool $isPreparedStatement
- * @property-read int $nParameters
+ * @property-read bool $isMultiQuery
+ * @property-read bool $isRepeatStatement
+ * @property-read bool $queryAppended
+ * @property-read bool $hasLikeClause
  *
  * @package SimpleComplex\Database
  */
 class MsSqlQuery extends AbstractDbQuery
 {
+    /**
+     * MS SQL (Sqlsrv) does not support multi-query.
+     *
+     * @var bool
+     */
+    const MULTI_QUERY_SUPPORT = false;
+
     /**
      * Class name of \SimpleComplex\Database\MsSqlResult or extending class.
      *
@@ -68,26 +76,6 @@ class MsSqlQuery extends AbstractDbQuery
      */
     protected $preparedStatementTypes;
 
-    /**
-     * @param MsSqlClient|DbClientInterface $client
-     *      Reference to parent client.
-     * @param string $query
-     *
-     * @throws \InvalidArgumentException
-     *      Arg $query empty.
-     */
-    public function __construct(DbClientInterface $client, string $query)
-    {
-        $this->client = $client;
-        if (!$query) {
-            throw new \InvalidArgumentException(
-                $this->client->errorMessagePreamble() . ' arg $query cannot be empty'
-            );
-        }
-        // Remove trailing semicolon.
-        $this->query = rtrim($query, ';');
-    }
-
     public function __destruct()
     {
         if ($this->preparedStatement) {
@@ -96,30 +84,36 @@ class MsSqlQuery extends AbstractDbQuery
     }
 
     /**
-     * Not supported by this type of database client.
-     *
-     * @param string $types
-     * @param array $arguments
-     *
-     * @return $this|DbQueryInterface
-     *
-     * @throws DbLogicalException
-     *      MS SQL (at least Sqlsrv extension) doesn't support multi-query.
-     */
-    public function multiQueryParameters(string $types, array $arguments) : DbQueryInterface
-    {
-        throw new DbLogicalException(
-            $this->client->errorMessagePreamble() . ' doesn\'t support multi-query.'
-        );
-    }
-
-    /**
      * Turn query into prepared statement and bind parameters.
      *
+     * Executes far quicker if all arguments are arrays, qualifying:
+     * - 'in' and/or 'out' nature of the argument
+     * - SQLSRV_SQLTYPE_* if 'in' parameter
+     *
+     * Optimal argument array structure:
+     * - 0: (mixed) value
+     * - 1: (int|null) SQLSRV_PARAM_IN|SQLSRV_PARAM_INOUT|null
+     * - 2: (int|null) SQLSRV_PHPTYPE_*; out type
+     * - 3: (int|null) SQLSRV_SQLTYPE_*; in type
+     *
+     * @see http://php.net/manual/en/function.sqlsrv-prepare.php
+     *
+     * Types:
+     * - i: integer.
+     * - d: float (double).
+     * - s: string.
+     * - b: blob.
+     *
      * @param string $types
-     *      Ignored; Sqlsrv parameter binding too weird.
+     *      Empty: uses string for all.
+     *      Ignored if all $arguments are arrays.
      * @param array &$arguments
      *      By reference.
+     * @param array $options {
+     *      @var int $QueryTimeout
+     *      @var bool $SendStreamParamsAtExec
+     *      @var bool $Scrollable  May break this library's modus of operation.
+     * }
      *
      * @return $this|DbQueryInterface
      *
@@ -130,26 +124,128 @@ class MsSqlQuery extends AbstractDbQuery
      * @throws DbRuntimeException
      *      Failure to bind $arguments to native layer.
      */
-    public function prepareStatement(string $types, array &$arguments) : DbQueryInterface
+    public function prepareStatement(string $types, array &$arguments, array $options = []) : DbQueryInterface
     {
         if ($this->isPreparedStatement) {
             throw new DbLogicalException(
-                $this->client->errorMessagePreamble() . ' query cannot prepare statement more than once.'
+                $this->client->errorMessagePreamble() . ' - query cannot prepare statement more than once.'
             );
+        }
+
+        $fragments = explode('?', $this->query);
+        $n_params = count($fragments) - 1;
+        unset($fragments);
+        $n_args = count($arguments);
+        if ($n_args != $n_params) {
+            throw new \InvalidArgumentException(
+                $this->client->errorMessagePreamble() . ' - arg $arguments length[' . $n_args
+                . '] doesn\'t match query\'s ?-parameters count[' . $n_params . '].'
+            );
+        }
+
+        if (!$n_params) {
+            $this->preparedStatementArgs = [];
+        }
+        else {
+            $args_typed = true;
+            /**
+             * Check that all arguments are arrays, indicating (in) type, like:
+             * - 0: (mixed) value
+             * - 1: (int|null) SQLSRV_PARAM_IN|SQLSRV_PARAM_INOUT|null
+             * - 2: (int|null) SQLSRV_PHPTYPE_*; out type
+             * - 3: (int|null) SQLSRV_SQLTYPE_*; in type
+             *
+             * @see http://php.net/manual/en/function.sqlsrv-prepare.php
+             */
+            $i = -1;
+            foreach ($arguments as $arg) {
+                ++$i;
+                if (!is_array($arg)) {
+                    $args_typed = false;
+                    break;
+                }
+                $count = count($arg);
+                if (!$count) {
+                    throw new \InvalidArgumentException(
+                        $this->client->errorMessagePreamble() . ' - arg $arguments bucket ' . $i . ' is empty array.'
+                    );
+                }
+                if (
+                    $count == 1
+                    || ($arg[1] != SQLSRV_PARAM_OUT && ($count < 4 || !$arg[3]))
+                ) {
+                    $args_typed = false;
+                    break;
+                }
+            }
+
+            if ($args_typed) {
+                $this->preparedStatementArgs =& $arguments;
+            }
+            else {
+                $tps = $types;
+                if ($tps === '') {
+                    // Be friendly, all strings.
+                    $tps = str_repeat('s', $n_params);
+                }
+                elseif (strlen($types) != $n_params) {
+                    throw new \InvalidArgumentException(
+                        $this->client->errorMessagePreamble() . ' - arg $types length[' . strlen($types)
+                        . '] doesn\'t match query\'s ?-parameters count[' . $n_params . '].'
+                    );
+                }
+                elseif (($type_illegals = $this->parameterTypesCheck($types))) {
+                    throw new \InvalidArgumentException(
+                        $this->client->errorMessagePreamble()
+                        . ' - arg $types contains illegal char(s) ' . $type_illegals . '.'
+                    );
+                }
+
+                $this->preparedStatementArgs = [];
+                $i = -1;
+                foreach ($arguments as $arg) {
+                    ++$i;
+                    if (!is_array($arg)) {
+                        $this->preparedStatementArgs[] = [
+                            &$arg,
+                            SQLSRV_PARAM_IN,
+                            null,
+                            $this->nativeType($arg, $tps[$i])
+                        ];
+                    }
+                    else {
+                        $count = count($arg);
+                        if ($count > 3) {
+                            $this->preparedStatementArgs[] = [
+                                &$arg[0],
+                                $arg[1],
+                                $arg[2],
+                                $arg[3]
+                            ];
+                        }
+                        else {
+                            $this->preparedStatementArgs[] = [
+                                &$arg[0],
+                                $count > 1 ? $arg[1] : null,
+                                $count > 2 ? $arg[2] : null,
+                                $count > 1 && $arg[1] == SQLSRV_PARAM_OUT ? null : $this->nativeType($arg, $tps[$i])
+                            ];
+                        }
+                    }
+                }
+            }
         }
 
         // Allow re-connection.
         $connection = $this->client->getConnection(true);
 
-        $this->preparedStatementArgs =& $arguments;
-
         /** @var resource $statement */
-        $statement = @sqlsrv_prepare($connection, $this->query, $this->preparedStatementArgs);
+        $statement = @sqlsrv_prepare($connection, $this->query, $this->preparedStatementArgs, $options);
         if (!$statement) {
             unset($this->preparedStatementArgs);
             throw new DbRuntimeException(
                 $this->client->errorMessagePreamble()
-                . ' query failed to prepare statement and bind parameters, with error: '
+                . ' - query failed to prepare statement and bind parameters, with error: '
                 . $this->client->getNativeError() . '.'
             );
         }
@@ -175,18 +271,18 @@ class MsSqlQuery extends AbstractDbQuery
             if (!$this->client->isConnected()) {
                 throw new DbInterruptionException(
                     $this->client->errorMessagePreamble()
-                    . ' query can\'t execute prepared statement when connection lost.'
+                    . ' - query can\'t execute prepared statement when connection lost.'
                 );
             }
             if (!@sqlsrv_execute($this->preparedStatement)) {
                 $this->client->log(
                     'warning',
-                    $this->client->errorMessagePreamble() . ' failed executing prepared statement, query',
+                    $this->client->errorMessagePreamble() . ' - failed executing prepared statement, query',
                     $this->query
                 );
                 throw new DbQueryException(
                     $this->client->errorMessagePreamble()
-                    . ' failed executing prepared statement, with error: ' . $this->client->getNativeError() . '.'
+                    . ' - failed executing prepared statement, with error: ' . $this->client->getNativeError() . '.'
                 );
             }
         }
@@ -198,12 +294,12 @@ class MsSqlQuery extends AbstractDbQuery
             if (!$simple_statement) {
                 $this->client->log(
                     'warning',
-                    $this->client->errorMessagePreamble() . ' failed executing simple query, query',
+                    $this->client->errorMessagePreamble() . ' - failed executing simple query, query',
                     $this->queryWithArguments ?? $this->query
                 );
                 throw new DbQueryException(
                     $this->client->errorMessagePreamble()
-                    . ' failed executing simple query, with error: ' . $this->client->getNativeError() . '.'
+                    . ' - failed executing simple query, with error: ' . $this->client->getNativeError() . '.'
                 );
             }
             $this->simpleStatement = $simple_statement;
@@ -221,12 +317,117 @@ class MsSqlQuery extends AbstractDbQuery
     {
         if (!$this->isPreparedStatement) {
             throw new DbLogicalException(
-                $this->client->errorMessagePreamble() . ' query isn\'t a prepared statement.'
+                $this->client->errorMessagePreamble() . ' - query isn\'t a prepared statement.'
             );
         }
         if ($this->client->isConnected() && $this->preparedStatement) {
             @sqlsrv_free_stmt($this->preparedStatement);
             unset($this->preparedStatement, $this->preparedStatementArgs);
         }
+    }
+
+
+    //  Helpers.----------------------------------------------------------------
+
+    /**
+     * Get native SQLSRV_SQLTYPE_* constant equivalent of arg $value type.
+     *
+     * Checks that non-empty $typeChar matches $value type.
+     *
+     * Cannot detect binary unless non-empty $typeChar (b).
+     *
+     * SQLTYPE Constants:
+     * @see https://docs.microsoft.com/en-us/sql/connect/php/constants-microsoft-drivers-for-php-for-sql-server
+     *
+     * Integers:
+     * @see https://docs.microsoft.com/en-us/sql/t-sql/data-types/int-bigint-smallint-and-tinyint-transact-sql
+     *
+     * @param integer|float|string $value
+     * @param string $typeChar
+     *      Values: i, d, s, b.
+     *
+     * @return int
+     *
+     * @throws \InvalidArgumentException
+     *      Non-empty arg $typeChar isn't one of i, d, s, b.
+     * @throws \RuntimeException
+     *      Non-empty arg $typeChar doesn't arg $value type.
+     */
+    public function nativeType($value, string $typeChar = '')
+    {
+        if ($typeChar) {
+            switch ($typeChar) {
+                case 'i':
+                    if (!is_int($value)) {
+                        throw new \RuntimeException(
+                            'Arg $typeChar value[' . $typeChar
+                            . '] doesn\'t match arg $value type[' . gettype($value) . '].'
+                        );
+                    }
+                    // Integer; continue to end of method body.
+                    break;
+                case 'd':
+                    if (!is_float($value)) {
+                        throw new \RuntimeException(
+                            'Arg $typeChar value[' . $typeChar
+                            . '] doesn\'t match arg $value type[' . gettype($value) . '].'
+                        );
+                    }
+                    return SQLSRV_SQLTYPE_FLOAT;
+                case 's':
+                    if (!is_string($value)) {
+                        throw new \RuntimeException(
+                            'Arg $typeChar value[' . $typeChar
+                            . '] doesn\'t match arg $value type[' . gettype($value) . '].'
+                        );
+                    }
+                    return SQLSRV_SQLTYPE_VARCHAR(strlen($value));
+                case 'b':
+                    if (!is_string($value)) {
+                        throw new \RuntimeException(
+                            'Arg $typeChar value[' . $typeChar
+                            . '] doesn\'t match arg $value type[' . gettype($value) . '].'
+                        );
+                    }
+                    return SQLSRV_SQLTYPE_VARBINARY(strlen($value));
+                default:
+                    throw new \InvalidArgumentException(
+                        'Arg $typeChar value[' . $typeChar . '] is not one of i, d, s, b.'
+                    );
+            }
+        }
+        else {
+            if ($value === '') {
+                return SQLSRV_SQLTYPE_VARCHAR(0);
+            }
+
+            $type = gettype($value);
+            switch ($type) {
+                case 'string':
+                    // Cannot discern binary from string.
+                    return SQLSRV_SQLTYPE_VARCHAR(strlen($value));
+                case 'integer':
+                    // Integer; continue to end of method body.
+                    break;
+                case 'double':
+                case 'float':
+                    return SQLSRV_SQLTYPE_FLOAT;
+                default:
+                    throw new \InvalidArgumentException(
+                        'Arg $value type[' . $type . '] is not integer|float|string.'
+                    );
+            }
+        }
+
+        if ($value >= 0 && $value <= 255) {
+            return SQLSRV_SQLTYPE_TINYINT;
+        }
+        if ($value >= -32768 && $value <= 32767) {
+            return SQLSRV_SQLTYPE_SMALLINT;
+        }
+        if ($value >= -2147483648 && $value <= 2147483647) {
+            return SQLSRV_SQLTYPE_INT;
+        }
+        return SQLSRV_SQLTYPE_BIGINT;
     }
 }

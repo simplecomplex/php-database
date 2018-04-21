@@ -181,18 +181,19 @@ abstract class AbstractDbClient extends Explorable implements DbClientInterface
     }
 
     /**
-     * @param string $query
-     *      Leave empty when intending to use prepared statement.
+     * @param string $baseQuery
+     * @param bool $isMulti
+     *      True: arg $baseQuery contains multiple queries.
      *
      * @return DbQueryInterface
      */
-    public function query(string $query = '') : DbQueryInterface
+    public function query(string $baseQuery, bool $isMulti = false) : DbQueryInterface
     {
         $class_query = static::CLASS_QUERY;
         /** @var DbQueryInterface|MariaDbQuery|MsSqlQuery */
         return new $class_query(
             $this,
-            $query
+            $baseQuery
         );
     }
 

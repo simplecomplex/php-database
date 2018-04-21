@@ -27,10 +27,11 @@ use SimpleComplex\Database\Exception\DbQueryException;
  * @see http://php.net/manual/en/mysqli-stmt.get-result.php
  *
  * @property-read string $query
- * @property-read bool $isMultiQuery
  * @property-read bool $isPreparedStatement
+ * @property-read bool $isMultiQuery
+ * @property-read bool $isRepeatStatement
+ * @property-read bool $queryAppended
  * @property-read bool $hasLikeClause
- * @property-read int $nParameters
  *
  * @package SimpleComplex\Database
  */
@@ -63,26 +64,6 @@ class MariaDbQuery extends AbstractDbQuery
      */
     protected $preparedStatement;
 
-    /**
-     * @param MariaDbClient|DbClientInterface $client
-     *      Reference to parent client.
-     * @param string $query
-     *
-     * @throws \InvalidArgumentException
-     *      Arg $query empty.
-     */
-    public function __construct(DbClientInterface $client, string $query)
-    {
-        $this->client = $client;
-        if (!$query) {
-            throw new \InvalidArgumentException(
-                $this->client->errorMessagePreamble() . ' arg $query cannot be empty'
-            );
-        }
-        // Remove trailing semicolon; for multi-query.
-        $this->query = rtrim($query, ';');
-    }
-
     public function __destruct()
     {
         if ($this->preparedStatement) {
@@ -98,13 +79,18 @@ class MariaDbQuery extends AbstractDbQuery
      * via mysqli_stmt::get_result(); only available with mysqlnd.
      * @see http://php.net/manual/en/mysqli-stmt.get-result.php
      *
+     * Types:
+     * - i: integer.
+     * - d: float (double).
+     * - s: string.
+     * - b: blob.
+     *
      * @param string $types
-     *      i: integer.
-     *      d: float (double).
-     *      s: string.
-     *      b: blob.
+     *      Empty: uses string for all.
      * @param array &$arguments
      *      By reference.
+     * @param array $options
+     *      Ignored.
      *
      * @return $this|DbQueryInterface
      *
@@ -112,16 +98,48 @@ class MariaDbQuery extends AbstractDbQuery
      *      Propagated.
      * @throws DbLogicalException
      *      Method called more than once for this query.
+     * @throws \InvalidArgumentException
+     *      Arg $types contains illegal char(s).
      * @throws DbRuntimeException
      *      Failure to bind $arguments to native layer.
      */
-    public function prepareStatement(string $types, array &$arguments) : DbQueryInterface
+    public function prepareStatement(string $types, array &$arguments, array $options = []) : DbQueryInterface
     {
         if ($this->isPreparedStatement) {
             throw new DbLogicalException(
-                $this->client->errorMessagePreamble()
-                . ' query cannot prepare statement more than once.'
+                $this->client->errorMessagePreamble() . ' - query cannot prepare statement more than once.'
             );
+        }
+
+        $fragments = explode('?', $this->query);
+        $n_params = count($fragments) - 1;
+        unset($fragments);
+        $n_args = count($arguments);
+        if ($n_args != $n_params) {
+            throw new \InvalidArgumentException(
+                $this->client->errorMessagePreamble() . ' - arg $arguments length[' . $n_args
+                . '] doesn\'t match query\'s ?-parameters count[' . $n_params . '].'
+            );
+        }
+
+        $tps = $types;
+        if ($n_params) {
+            if ($tps === '') {
+                // Be friendly, all strings.
+                $tps = str_repeat('s', $n_params);
+            }
+            elseif (strlen($types) != $n_params) {
+                throw new \InvalidArgumentException(
+                    $this->client->errorMessagePreamble() . ' - arg $types length[' . strlen($types)
+                    . '] doesn\'t match query\'s ?-parameters count[' . $n_params . '].'
+                );
+            }
+            elseif (($type_illegals = $this->parameterTypesCheck($types))) {
+                throw new \InvalidArgumentException(
+                    $this->client->errorMessagePreamble()
+                    . ' - arg $types contains illegal char(s) ' . $type_illegals . '.'
+                );
+            }
         }
 
         // Allow re-connection.
@@ -132,19 +150,21 @@ class MariaDbQuery extends AbstractDbQuery
         if (!$mysqli_stmt) {
             throw new DbRuntimeException(
                 $this->client->errorMessagePreamble()
-                . ' query failed to prepare statement, with error: ' . $this->client->getNativeError() . '.'
+                . ' - query failed to prepare statement, with error: ' . $this->client->getNativeError() . '.'
             );
         }
 
-        $this->preparedStatementArgs =& $arguments;
+        if ($n_params) {
+            $this->preparedStatementArgs =& $arguments;
 
-        if (!@$mysqli_stmt->bind_param($types, ...$this->preparedStatementArgs)) {
-            unset($this->preparedStatementArgs);
-            throw new DbRuntimeException(
-                $this->client->errorMessagePreamble()
-                . ' query failed to bind parameters prepare statement, with error: '
-                . $this->client->getNativeError() . '.'
-            );
+            if (!@$mysqli_stmt->bind_param($tps, ...$this->preparedStatementArgs)) {
+                unset($this->preparedStatementArgs);
+                throw new DbRuntimeException(
+                    $this->client->errorMessagePreamble()
+                    . ' - query failed to bind parameters prepare statement, with error: '
+                    . $this->client->getNativeError() . '.'
+                );
+            }
         }
         $this->preparedStatement = $mysqli_stmt;
         $this->isPreparedStatement = true;
@@ -166,18 +186,18 @@ class MariaDbQuery extends AbstractDbQuery
             if (!$this->client->isConnected()) {
                 throw new DbInterruptionException(
                     $this->client->errorMessagePreamble()
-                    . ' query can\'t execute prepared statement when connection lost.'
+                    . ' - query can\'t execute prepared statement when connection lost.'
                 );
             }
             if (!@$this->preparedStatement->execute()) {
                 $this->client->log(
                     'warning',
-                    $this->client->errorMessagePreamble() . ' failed executing prepared statement, query',
+                    $this->client->errorMessagePreamble() . ' - failed executing prepared statement, query',
                     $this->query
                 );
                 throw new DbQueryException(
                     $this->client->errorMessagePreamble()
-                    . ' failed executing prepared statement, with error: ' . $this->client->getNativeError() . '.'
+                    . ' - failed executing prepared statement, with error: ' . $this->client->getNativeError() . '.'
                 );
             }
         }
@@ -188,12 +208,12 @@ class MariaDbQuery extends AbstractDbQuery
             if (!@$mysqli->multi_query($this->queryWithArguments ?? $this->query)) {
                 $this->client->log(
                     'warning',
-                    $this->client->errorMessagePreamble() . ' failed executing multi-query, query',
+                    $this->client->errorMessagePreamble() . ' - failed executing multi-query, query',
                     $this->queryWithArguments ?? $this->query
                 );
                 throw new DbQueryException(
                     $this->client->errorMessagePreamble()
-                    . ' failed executing multi-query, with error: ' . $this->client->getNativeError() . '.'
+                    . ' - failed executing multi-query, with error: ' . $this->client->getNativeError() . '.'
                 );
             }
         }
@@ -207,12 +227,12 @@ class MariaDbQuery extends AbstractDbQuery
             if (!@$mysqli->real_query($this->queryWithArguments ?? $this->query)) {
                 $this->client->log(
                     'warning',
-                    $this->client->errorMessagePreamble() . ' failed executing simple query, query',
+                    $this->client->errorMessagePreamble() . ' - failed executing simple query, query',
                     $this->queryWithArguments ?? $this->query
                 );
                 throw new DbQueryException(
                     $this->client->errorMessagePreamble()
-                    . ' failed executing simple query, with error: ' . $this->client->getNativeError() . '.'
+                    . ' - failed executing simple query, with error: ' . $this->client->getNativeError() . '.'
                 );
             }
         }
@@ -229,7 +249,7 @@ class MariaDbQuery extends AbstractDbQuery
     {
         if (!$this->isPreparedStatement) {
             throw new DbLogicalException(
-                $this->client->errorMessagePreamble() . ' query isn\'t a prepared statement.'
+                $this->client->errorMessagePreamble() . ' - query isn\'t a prepared statement.'
             );
         }
         if ($this->client->isConnected() && $this->preparedStatement) {
@@ -237,6 +257,9 @@ class MariaDbQuery extends AbstractDbQuery
             unset($this->preparedStatement, $this->preparedStatementArgs);
         }
     }
+
+
+    // Helpers.-----------------------------------------------------------------
 
     /**
      * Parameter value escaper.

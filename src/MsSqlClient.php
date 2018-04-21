@@ -222,7 +222,7 @@ class MsSqlClient extends AbstractDbClient
     {
         if ($this->transactionStarted) {
             throw new DbLogicalException(
-                $this->errorMessagePreamble() . ' previously started transaction isn\'t committed/rolled-back.'
+                $this->errorMessagePreamble() . ' - previously started transaction isn\'t committed/rolled-back.'
             );
         }
         // Allow re-connection.
@@ -230,7 +230,7 @@ class MsSqlClient extends AbstractDbClient
         if (!@sqlsrv_begin_transaction($this->connection)) {
             throw new DbRuntimeException(
                 $this->errorMessagePreamble()
-                . ' failed to start transaction, with error: ' . $this->getNativeError() . '.'
+                . ' - failed to start transaction, with error: ' . $this->getNativeError() . '.'
             );
         }
     }
@@ -251,13 +251,13 @@ class MsSqlClient extends AbstractDbClient
             // Require unbroken connection.
             if (!$this->isConnected()) {
                 throw new DbInterruptionException(
-                    $this->errorMessagePreamble() . ' can\'t commit, connection lost.'
+                    $this->errorMessagePreamble() . ' - can\'t commit, connection lost.'
                 );
             }
             if (!@sqlsrv_commit($this->connection)) {
                 throw new DbRuntimeException(
                     $this->errorMessagePreamble()
-                    . ' failed to commit transaction, with error: ' . $this->getNativeError() . '.'
+                    . ' - failed to commit transaction, with error: ' . $this->getNativeError() . '.'
                 );
             }
             $this->transactionStarted = false;
@@ -280,13 +280,13 @@ class MsSqlClient extends AbstractDbClient
             // Require unbroken connection.
             if (!$this->isConnected()) {
                 throw new DbInterruptionException(
-                    $this->errorMessagePreamble() . ' can\'t rollback, connection lost.'
+                    $this->errorMessagePreamble() . ' - can\'t rollback, connection lost.'
                 );
             }
             if (!@sqlsrv_rollback($this->connection)) {
                 throw new DbRuntimeException(
                     $this->errorMessagePreamble()
-                    . ' failed to rollback transaction, with error: ' . $this->getNativeError() . '.'
+                    . ' - failed to rollback transaction, with error: ' . $this->getNativeError() . '.'
                 );
             }
             $this->transactionStarted = false;

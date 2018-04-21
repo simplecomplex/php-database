@@ -16,15 +16,23 @@ use SimpleComplex\Database\Exception\DbLogicalException;
 
 /**
  * @property-read string $query
- * @property-read bool $isMultiQuery
  * @property-read bool $isPreparedStatement
+ * @property-read bool $isMultiQuery
+ * @property-read bool $isRepeatStatement
+ * @property-read bool $queryAppended
  * @property-read bool $hasLikeClause
- * @property-read int $nParameters
  *
  * @package SimpleComplex\Database
  */
 abstract class AbstractDbQuery extends Explorable implements DbQueryInterface
 {
+    /**
+     * Whether the database type supports multi-query.
+     *
+     * @var bool
+     */
+    const MULTI_QUERY_SUPPORT = true;
+
     /**
      * Ought to be protected, but too costly since result instance
      * may use it repetetively; via the query instance.
@@ -48,24 +56,27 @@ abstract class AbstractDbQuery extends Explorable implements DbQueryInterface
     /**
      * @var bool
      */
-    protected $isMultiQuery = false;
-
-    /**
-     * @var bool
-     */
     protected $isPreparedStatement = false;
 
     /**
      * @var bool
      */
-    protected $hasLikeClause = false;
+    protected $isMultiQuery = false;
 
     /**
-     * Number of query parameter ? positions.
-     *
-     * @var int
+     * @var bool
      */
-    protected $nParameters = 0;
+    protected $isRepeatStatement = false;
+
+    /**
+     * @var bool
+     */
+    protected $queryAppended = false;
+
+    /**
+     * @var bool
+     */
+    protected $hasLikeClause = false;
 
     /**
      * @var array
@@ -75,32 +86,69 @@ abstract class AbstractDbQuery extends Explorable implements DbQueryInterface
     /**
      * @param DbClientInterface $client
      *      Reference to parent client.
-     * @param string $query
+     * @param string $baseQuery
+     * @param bool $isMulti
+     *      True: arg $baseQuery contains multiple queries.
      *
      * @throws \InvalidArgumentException
      *      Arg $query empty.
+     * @throws DbLogicalException
+     *      True arg $isMulti and query class doesn't support multi-query.
      */
-    abstract public function __construct(DbClientInterface $client, string $query);
-
-    /**
-     * Flag that the query contains LIKE clause(s).
-     *
-     * Affects parameter escaping: chars %_ won't be escaped.
-     * @see AbstractDbQuery::escapeString()
-     *
-     * @return $this|DbQueryInterface
-     */
-    public function hasLikeClause()
+    public function __construct(DbClientInterface $client, string $baseQuery, bool $isMulti = false)
     {
-        $this->hasLikeClause = true;
-        return $this;
+        $this->client = $client;
+
+        if (!$baseQuery) {
+            throw new \InvalidArgumentException(
+                $this->client->errorMessagePreamble() . ' - arg $baseQuery cannot be empty.'
+            );
+        }
+        // Remove trailing (and leading) semicolon; for multi-query.
+        $this->query = trim($baseQuery, ' \t\n\r\0\x0B;');
+
+        // The $isMulti parameter is needed because we cannot safely deduct
+        // that a query is multi-query contains semicolon.
+        // False positive if the query contains literal parameter value
+        // and that value contains semicolon.
+
+        if ($isMulti) {
+            if (!static::MULTI_QUERY_SUPPORT) {
+                throw new DbLogicalException(
+                    $this->client->errorMessagePreamble() . ' doesn\'t support multi-query.'
+                );
+            }
+            $this->isMultiQuery = true;
+        }
     }
 
     /**
-     * Pass parameters to simple (non-prepared statement) query.
+     * Turn query into prepared statement and bind parameters.
      *
-     * Secures that the query is reusable - resets internal query
-     * with parameters substituted by arguments.
+     * Types:
+     * - i: integer.
+     * - d: float (double).
+     * - s: string.
+     * - b: blob.
+     *
+     * @param string $types
+     *      Empty: uses string for all.
+     * @param array &$arguments
+     *      By reference.
+     * @param array $options
+     *
+     * @return $this|DbQueryInterface
+     *
+     * @throws \SimpleComplex\Database\Exception\DbConnectionException
+     *      Propagated.
+     * @throws \SimpleComplex\Database\Exception\DbRuntimeException
+     */
+    abstract public function prepareStatement(string $types, array &$arguments, array $options = []) : DbQueryInterface;
+
+    /**
+     * Substitute base query ?-parameters by arguments.
+     *
+     * Non-prepared statement only.
      *
      * Types:
      * - i: integer.
@@ -117,85 +165,104 @@ abstract class AbstractDbQuery extends Explorable implements DbQueryInterface
      * @return $this|DbQueryInterface
      *
      * @throws DbLogicalException
-     *      Calling this method when prepare() called previously.
+     *      Base query has been repeated.
+     *      Another query has been appended to base query.
+     *      Query is prepared statement.
      * @throws \InvalidArgumentException
+     *      Arg $types contains illegal char(s).
      *      Arg $types length (unless empty) doesn't match number of parameters.
      *      Arg $arguments length doesn't match number of parameters.
      */
     public function parameters(string $types, array $arguments) : DbQueryInterface
     {
+        if ($this->isRepeatStatement) {
+            throw new DbLogicalException(
+                $this->client->errorMessagePreamble()
+                . ' - passing parameters to base query is illegal when base query has been repeated.'
+            );
+        }
+        if ($this->queryAppended) {
+            throw new DbLogicalException(
+                $this->client->errorMessagePreamble()
+                . ' - passing parameters to base query is illegal after another query has been appended.'
+            );
+        }
         if ($this->isPreparedStatement) {
             throw new DbLogicalException(
                 $this->client->errorMessagePreamble()
-                . ' passing parameters to prepared statement is illegal except via (one) call to prepareStatement().'
+                . ' - passing parameters to prepared statement is illegal except via call to prepareStatement().'
             );
         }
 
-        // Reset; make reusable.
-        $this->queryWithArguments = null;
-
-        $fragments = explode('?', $this->query);
-        $n_params = count($fragments) - 1;
-        $n_args = count($arguments);
-        if ($n_args != $n_params) {
+        if ($types !== '' && ($type_illegals = $this->parameterTypesCheck($types))) {
             throw new \InvalidArgumentException(
-                $this->client->errorMessagePreamble() . ' arg $arguments length[' . $n_args
-                . '] doesn\'t match query\'s ?-parameters count[' . $n_params . '].'
-            );
-        }
-        $this->nParameters = $n_params;
-
-        if (!$n_params) {
-            // No work to do.
-            return $this;
-        }
-
-        $tps = $types;
-        if ($tps === '') {
-            // Be friendly, all strings.
-            $tps = str_repeat('s', $n_params);
-        }
-        elseif (strlen($types) != $n_params) {
-            throw new \InvalidArgumentException(
-                $this->client->errorMessagePreamble() . ' arg $types length[' . strlen($types)
-                . '] doesn\'t match query\'s ?-parameters count[' . $n_params . '].'
+                $this->client->errorMessagePreamble()
+                . ' - arg $types contains illegal char(s) ' . $type_illegals . '.'
             );
         }
 
-        // Mend that arguments array may not be numerically indexed,
-        // nor correctly indexed.
-        $args = array_values($arguments);
-
-        $query_with_args = '';
-        for ($i = 0; $i < $n_params; ++$i) {
-            $value = $args[$i];
-            switch ($tps{$i}) {
-                case 's':
-                case 'b':
-                    $value = "'" . $this->escapeString($value) . "'";
-                    break;
-                case 'i':
-                case 'd':
-                    break;
-                default:
-                    throw new \InvalidArgumentException(
-                        $this->client->errorMessagePreamble()
-                        . ' arg $types[' . $types . '] index[' . $i . '] char[' . $tps{$i} . '] is not i|d|s|b.'
-                    );
-            }
-            $query_with_args .= $fragments[$i] . $value;
-        }
-        $this->queryWithArguments = $query_with_args . $fragments[$i];
+        $this->queryWithArguments = $this->substituteParametersByArgs($this->query, $types, $arguments);
 
         return $this;
     }
 
     /**
-     * Convert query to multi-query and pass parameters.
+     * Append query to previously defined query(ies).
      *
-     * Callable multiple times, passing parameters to new query instance.
-     * However the base query (with ?-markers) will always be the same,
-     * only parameter values may/will differ.
+     * Non-prepared statement only.
+     *
+     * Turns the full query into multi-query.
+     *
+     * @param string $query
+     * @param string $types
+     *      Empty: uses string for all.
+     * @param array $arguments
+     *      Values to substitute query ?-parameters with.
+     *      Arguments are consumed once, not referred.
+     *
+     * @return $this|DbQueryInterface
+     *
+     * @throws DbLogicalException
+     *      Query class doesn't support multi-query.
+     *      Query is prepared statement.
+     * @throws \InvalidArgumentException
+     *      Arg $query empty.
+     */
+    public function appendQuery(string $query, string $types, array $arguments) : DbQueryInterface
+    {
+        if (!static::MULTI_QUERY_SUPPORT) {
+            throw new DbLogicalException(
+                $this->client->errorMessagePreamble() . ' doesn\'t support multi-query.'
+            );
+        }
+        if ($this->isPreparedStatement) {
+            throw new DbLogicalException(
+                $this->client->errorMessagePreamble() . ' - appending to prepared statement is illegal.'
+            );
+        }
+
+        if (!$query) {
+            throw new \InvalidArgumentException(
+                $this->client->errorMessagePreamble() . ' - arg $query cannot be empty.'
+            );
+        }
+
+        $this->isMultiQuery = $this->queryAppended = true;
+
+        if (!$this->queryWithArguments) {
+            $this->queryWithArguments = $this->query;
+        }
+        $this->queryWithArguments .= '; ' . $this->substituteParametersByArgs($query, $types, $arguments);
+
+        return $this;
+    }
+
+    /**
+     * Repeat base query, and substitute it's ?-parameters by arguments.
+     *
+     * Turns the full query into multi-query, except at first call.
+     *
+     * Non-prepared statement only.
      *
      * Types:
      * - i: integer.
@@ -211,42 +278,61 @@ abstract class AbstractDbQuery extends Explorable implements DbQueryInterface
      * @return $this|DbQueryInterface
      *
      * @throws DbLogicalException
-     *      Calling this method when prepare() called previously.
+     *      Query class doesn't support multi-query.
+     *      Another query has been appended to base query.
+     *      Query is prepared statement.
      */
-    public function multiQueryParameters(string $types, array $arguments) : DbQueryInterface
+    public function repeatStatement(string $types, array $arguments) : DbQueryInterface
     {
-        $this->isMultiQuery = true;
+        if (!static::MULTI_QUERY_SUPPORT) {
+            throw new DbLogicalException(
+                $this->client->errorMessagePreamble() . ' doesn\'t support multi-query.'
+            );
+        }
+        if ($this->queryAppended) {
+            throw new DbLogicalException(
+                $this->client->errorMessagePreamble()
+                . ' - repeating base query is illegal after another query has been appended.'
+            );
+        }
+        if ($this->isPreparedStatement) {
+            throw new DbLogicalException(
+                $this->client->errorMessagePreamble() . ' - appending to prepared statement is illegal.'
+            );
+        }
 
-        $previousQueries = $this->queryWithArguments;
+        $repeated_query = $this->substituteParametersByArgs($this->query, $types, $arguments);
 
-        $this->parameters($types, $arguments);
+        if (!$this->queryWithArguments) {
+            // Not necessarily multi-query yet.
 
-        if ($this->nParameters) {
-            $this->queryWithArguments = (!$previousQueries ? '' : ($previousQueries . '; '))
-                . $this->queryWithArguments;
+            $this->queryWithArguments = $repeated_query;
+        }
+        else {
+            $this->isMultiQuery = $this->isRepeatStatement = true;
+
+            $this->queryWithArguments .= '; ' . $repeated_query;
         }
 
         return $this;
     }
 
     /**
-     * Turn query into prepared statement and bind parameters.
+     * Flag that the query contains LIKE clause(s).
      *
-     * @param string $types
-     *      i: integer.
-     *      d: float (double).
-     *      s: string.
-     *      b: blob.
-     * @param array &$arguments
-     *      By reference.
+     * Affects parameter escaping: chars %_ won't be escaped.
+     * @see AbstractDbQuery::escapeString()
      *
      * @return $this|DbQueryInterface
-     *
-     * @throws \SimpleComplex\Database\Exception\DbConnectionException
-     *      Propagated.
-     * @throws \SimpleComplex\Database\Exception\DbRuntimeException
      */
-    abstract public function prepareStatement(string $types, array &$arguments) : DbQueryInterface;
+    public function hasLikeClause()
+    {
+        $this->hasLikeClause = true;
+        return $this;
+    }
+
+
+    // Helpers.-----------------------------------------------------------------
 
     /**
      * @var string
@@ -286,6 +372,125 @@ abstract class AbstractDbQuery extends Explorable implements DbQueryInterface
         return '' . preg_replace($this->escapeStringPattern, '\\\$0', $s);
     }
 
+    /**
+     * Types:
+     * - i: integer.
+     * - d: float (double).
+     * - s: string.
+     * - b: blob.
+     *
+     * @param string $types
+     *
+     * @return string
+     *      Empty on no error.
+     */
+    public function parameterTypesCheck(string $types) : string
+    {
+        // Probably faster than regular expression check.
+        $illegals = str_replace(
+            [
+                'i', 'd', 's', 'b',
+            ],
+            '',
+            $types
+        );
+
+        if ($illegals !== '') {
+            $illegals = [];
+            $le = strlen($types);
+            for ($i = 0; $i < $le; ++$i) {
+                switch ($types{$i}) {
+                    case 's':
+                    case 'b':
+                    case 'i':
+                    case 'd':
+                        break;
+                    default:
+                        $illegals[] = 'index[' . $i . '] char[' . $types{$i} . ']';
+                }
+            }
+            return join(', ', $illegals);
+        }
+
+        return '';
+    }
+
+    /**
+     * Substitute query ?-parameters by arguments.
+     *
+     * Types:
+     * - i: integer.
+     * - d: float (double).
+     * - s: string.
+     * - b: blob.
+     *
+     * @param string $query
+     * @param string $types
+     * @param array $arguments
+     *
+     * @return string
+     *
+     * @throws \InvalidArgumentException
+     *      Arg $types length (unless empty) doesn't match number of parameters.
+     *      Arg $arguments length doesn't match number of parameters.
+     */
+    protected function substituteParametersByArgs(string $query, string $types, array $arguments) : string
+    {
+        $fragments = explode('?', $query);
+        $n_params = count($fragments) - 1;
+        $n_args = count($arguments);
+        if ($n_args != $n_params) {
+            throw new \InvalidArgumentException(
+                $this->client->errorMessagePreamble() . ' - arg $arguments length[' . $n_args
+                . '] doesn\'t match query\'s ?-parameters count[' . $n_params . '].'
+            );
+        }
+
+        if (!$n_params) {
+            // No work to do.
+            return $query;
+        }
+
+        $tps = $types;
+        if ($tps === '') {
+            // Be friendly, all strings.
+            $tps = str_repeat('s', $n_params);
+        }
+        elseif (strlen($types) != $n_params) {
+            throw new \InvalidArgumentException(
+                $this->client->errorMessagePreamble() . ' - arg $types length[' . strlen($types)
+                . '] doesn\'t match query\'s ?-parameters count[' . $n_params . '].'
+            );
+        }
+
+        // Mend that arguments array may not be numerically indexed,
+        // nor correctly indexed.
+        $args = array_values($arguments);
+
+        $query_with_args = '';
+        for ($i = 0; $i < $n_params; ++$i) {
+            $value = $args[$i];
+            switch ($tps{$i}) {
+                case 's':
+                case 'b':
+                    $value = "'" . $this->escapeString($value) . "'";
+                    break;
+                case 'i':
+                case 'd':
+                    break;
+                default:
+                    // Unlikely when checked via parameterTypesCheck().
+                    throw new \InvalidArgumentException(
+                        $this->client->errorMessagePreamble()
+                        . ' - arg $types[' . $types . '] index[' . $i . '] char[' . $tps{$i} . '] is not i|d|s|b.'
+                    );
+            }
+            $query_with_args .= $fragments[$i] . $value;
+        }
+
+        return $query_with_args . $fragments[$i];
+    }
+
 
     // Explorable.--------------------------------------------------------------
 
@@ -304,10 +509,11 @@ abstract class AbstractDbQuery extends Explorable implements DbQueryInterface
     protected $explorableIndex = [
         // Protected; readable via 'magic' __get().
         'query',
-        'isMultiQuery',
         'isPreparedStatement',
+        'isMultiQuery',
+        'isRepeatStatement',
+        'queryAppended',
         'hasLikeClause',
-        'nParameters',
     ];
 
     /**

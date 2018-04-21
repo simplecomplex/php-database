@@ -160,21 +160,20 @@ class MariaDbClient extends AbstractDbClient
                 if (ctype_digit('' . $name)) {
                     throw new DbOptionException(
                         $this->errorMessagePreamble()
-                        . ' option[' . $name . '] is integer, must be string name of MYSQLI_... PHP constant.'
+                        . ' - option[' . $name . '] is integer, must be string name of MYSQLI_* PHP constant.'
                     );
                 }
                 $constant = constant($name);
                 if (!$constant) {
                     throw new DbOptionException(
-                        $this->errorMessagePreamble()
-                        . ' failed setting option[' . $name . '] value[' . $value
+                        $this->errorMessagePreamble() . ' - failed setting option[' . $name . '] value[' . $value
                         . '], because there is no PHP constant by that name.'
                     );
                 }
                 if (!$mysqli->options($constant, $value)) {
                     throw new DbOptionException(
                         $this->errorMessagePreamble()
-                        . ' failed to set ' . $this->type . ' option[' . $name . '] value[' . $value . '].'
+                        . ' - failed to set ' . $this->type . ' option[' . $name . '] value[' . $value . '].'
                     );
                 }
             }
@@ -186,14 +185,14 @@ class MariaDbClient extends AbstractDbClient
                     if (ctype_digit('' . $name)) {
                         throw new DbOptionException(
                             $this->errorMessagePreamble()
-                            . ' flag[' . $name . '] is integer, must be string name of MYSQLI_CLIENT_... PHP constant.'
+                            . ' - flag[' . $name . '] is integer, must be string name of MYSQLI_CLIENT_* PHP constant.'
                         );
                     }
                     $constant = constant($name);
                     if (!$constant) {
                         throw new DbOptionException(
                             $this->errorMessagePreamble()
-                            . 'failed setting flag[' . $name . '], because there is no PHP constant by that name.'
+                            . ' - failed setting flag[' . $name . '], because there is no PHP constant by that name.'
                         );
                     }
                     // Set if missing; bitwise Or (inclusive or).
@@ -215,7 +214,7 @@ class MariaDbClient extends AbstractDbClient
             ) {
                 throw new DbConnectionException(
                     $this->errorMessagePreamble()
-                    . ' connect to host[' . $this->host . '] port[' . $this->port
+                    . ' - connect to host[' . $this->host . '] port[' . $this->port
                     . '] failed, with error: (' . $mysqli->connect_errno . ') ' . $mysqli->connect_error . '.'
                 );
             }
@@ -224,7 +223,7 @@ class MariaDbClient extends AbstractDbClient
             if (!@$this->mySqlI->set_charset($this->options['character_set'])) {
                 throw new DbOptionException(
                     $this->errorMessagePreamble()
-                    . ' setting connection character set[' . $this->options['character_set']
+                    . ' - setting connection character set[' . $this->options['character_set']
                     . '] failed, with error: ' . $this->getNativeError() . '.'
                 );
             }
@@ -284,7 +283,7 @@ class MariaDbClient extends AbstractDbClient
     {
         if ($this->transactionStarted) {
             throw new DbLogicalException(
-                $this->errorMessagePreamble() . ' previously started transaction isn\'t committed/rolled-back.'
+                $this->errorMessagePreamble() . ' - previously started transaction isn\'t committed/rolled-back.'
             );
         }
         // Allow re-connection.
@@ -292,7 +291,7 @@ class MariaDbClient extends AbstractDbClient
         if (!@$this->mySqlI->begin_transaction()) {
             throw new DbRuntimeException(
                 $this->errorMessagePreamble()
-                . ' failed to start transaction, with error: ' . $this->getNativeError() . '.'
+                . ' - failed to start transaction, with error: ' . $this->getNativeError() . '.'
             );
         }
         $this->transactionStarted = true;
@@ -316,13 +315,13 @@ class MariaDbClient extends AbstractDbClient
             // Require unbroken connection.
             if (!$this->isConnected()) {
                 throw new DbInterruptionException(
-                    $this->errorMessagePreamble() . ' can\'t commit, connection lost.'
+                    $this->errorMessagePreamble() . ' - can\'t commit, connection lost.'
                 );
             }
             if (!@$this->mySqlI->commit()) {
                 throw new DbRuntimeException(
                     $this->errorMessagePreamble()
-                    . ' failed to commit transaction, with error: ' . $this->getNativeError() . '.'
+                    . ' - failed to commit transaction, with error: ' . $this->getNativeError() . '.'
                 );
             }
             $this->transactionStarted = false;
@@ -347,13 +346,13 @@ class MariaDbClient extends AbstractDbClient
             // Require unbroken connection.
             if (!$this->isConnected()) {
                 throw new DbInterruptionException(
-                    $this->errorMessagePreamble() . ' can\'t rollback, connection lost.'
+                    $this->errorMessagePreamble() . ' - can\'t rollback, connection lost.'
                 );
             }
             if (!@$this->mySqlI->rollback()) {
                 throw new DbRuntimeException(
                     $this->errorMessagePreamble()
-                    . ' failed to rollback transaction, with error: ' . $this->getNativeError() . '.'
+                    . ' - failed to rollback transaction, with error: ' . $this->getNativeError() . '.'
                 );
             }
             $this->transactionStarted = false;

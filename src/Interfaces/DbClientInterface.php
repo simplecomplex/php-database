@@ -55,11 +55,13 @@ interface DbClientInterface
     public function getNativeError(bool $emptyOnNone = false) : string;
 
     /**
-     * @param string $name
+     * @param string $baseQuery
+     * @param bool $isMulti
+     *      True: arg $baseQuery contains multiple queries.
      *
      * @return DbQueryInterface
      */
-    public function query(string $name = '') : DbQueryInterface;
+    public function query(string $baseQuery, bool $isMulti = false) : DbQueryInterface;
 
     /**
      * @return void
