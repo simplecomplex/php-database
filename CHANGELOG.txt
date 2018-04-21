@@ -4,6 +4,7 @@ SimpleComplex/Database 1.x, 2018-04-21
 - Query multi-query features sorted.
 - Client options resolved into separate optionsResolved property.
   And connection flags is a MariaDb/MySQL-only feature.
+- Client public optionsResolve() to facilitate debugging.
 
 SimpleComplex/Database 1.x, 2018-04-20
 --------------------------------------

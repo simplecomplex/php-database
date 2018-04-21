@@ -25,12 +25,13 @@ use SimpleComplex\Database\Exception\DbQueryException;
  * via mysqli_stmt::get_result(); only available with mysqlnd.
  * @see http://php.net/manual/en/mysqli-stmt.get-result.php
  *
- * @property-read string $query
  * @property-read bool $isPreparedStatement
  * @property-read bool $isMultiQuery
  * @property-read bool $isRepeatStatement
  * @property-read bool $queryAppended
  * @property-read bool $hasLikeClause
+ * @property-read string $query
+ * @property-read string $queryWithArguments
  *
  * @package SimpleComplex\Database
  */
@@ -242,7 +243,7 @@ class MariaDbQuery extends AbstractDbQuery
 
         $class_result = static::CLASS_RESULT;
         /** @var DbResultInterface|MariaDbResult */
-        return new $class_result();
+        return new $class_result($this);
     }
 
     /**

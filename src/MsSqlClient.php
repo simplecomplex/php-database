@@ -59,6 +59,14 @@ class MsSqlClient extends AbstractDbClient
     const SERVER_PORT = 1433;
 
     /**
+     * Whether to trust self-signed TLS certificate.
+     *
+     * @var int
+     *      0|1.
+     */
+    const TLS_TRUST_SELF_SIGNED = 0;
+
+    /**
      * Shorthand name to PHP Sqlsrv native option name.
      *
      * @see MsSqlClient::getConnection()
@@ -70,6 +78,8 @@ class MsSqlClient extends AbstractDbClient
         'connect_timeout' => 'LoginTimeout',
         // str. default: CHARACTER_SET
         'character_set' => 'CharacterSet',
+        // int. default: TLS_TRUST_SELF_SIGNED
+        'tls_trust_self_signed' => 'TrustServerCertificate',
     ];
 
     /**
@@ -85,11 +95,16 @@ class MsSqlClient extends AbstractDbClient
     /**
      * Attempts to re-connect if connection lost and arg $reConnect.
      *
-     * Always sets connection timeout and connection character set.
+     * Always sets:
+     * - connection timeout; (int) LoginTimeout
+     * - connection character set; (str) CharacterSet
+     * - whether to trust self-signed TLS certificate; (int) TrustServerCertificate
      *
      * Uses standard database user authentication;
      * - SQL Server Authentication/SqlPassword.
      * Windows user authentication not supported.
+     *
+     * @see MsSqlClient::optionsResolve()
      *
      * @param bool $reConnect
      *
@@ -107,37 +122,7 @@ class MsSqlClient extends AbstractDbClient
             }
 
             if (!$this->optionsResolved) {
-                // Copy.
-                $options = $this->options;
-                
-                // Secure connection timeout.
-                if (!empty($options['connect_timeout'])) {
-                    $options['LoginTimeout'] = (int) $options['connect_timeout'];
-                }
-                elseif (empty($options['LoginTimeout'])) {
-                    $options['LoginTimeout'] = static::CONNECT_TIMEOUT;
-                }
-                unset($options['connect_timeout']);
-
-                /**
-                 * Character set shan't be an option (any longer);
-                 * handled elsewhere.
-                 * @see MsSqlClient::characterSetResolve()
-                 */
-                unset($options['character_set']);
-
-                // user+pass shan't be recorded in resolved options.
-                unset(
-                    $options['UID'], $options['PWD']
-                );
-
-                $this->optionsResolved =& $options;
-
-                // Set/overwrite required options.
-                $this->optionsResolved['Database'] = $this->database;
-                $this->optionsResolved['CharacterSet'] = $this->characterSet;
-                // SQL Server Authentication.
-                $this->optionsResolved['Authentication'] = 'SqlPassword';
+                $this->optionsResolve();
             }
 
             $connection = @sqlsrv_connect(
@@ -291,6 +276,64 @@ class MsSqlClient extends AbstractDbClient
     }
 
     /**
+     * Resolve options.
+     *
+     * Public to facilitate option debugging prior to attempt to connect.
+     *
+     * @see MsSqlClient::getConnection()
+     * @see MsSqlClient::OPTION_SHORTHANDS
+     * @see MsSqlClient::$optionsResolved
+     *
+     * @return void
+     *      Throws exception on error.
+     */
+    public function optionsResolve()
+    {
+        if (!$this->optionsResolved) {
+            // Copy.
+            $options = $this->options;
+
+            // Secure connection timeout.
+            if (!empty($options['connect_timeout'])) {
+                $options['LoginTimeout'] = (int) $options['connect_timeout'];
+            }
+            elseif (empty($options['LoginTimeout'])) {
+                $options['LoginTimeout'] = static::CONNECT_TIMEOUT;
+            }
+            unset($options['connect_timeout']);
+
+            /**
+             * Character set shan't be an option (any longer);
+             * handled elsewhere.
+             * @see MsSqlClient::characterSetResolve()
+             */
+            unset($options['character_set']);
+
+            // Secure TLS trust self-signed.
+            if (isset($options['tls_trust_self_signed'])) {
+                $options['TrustServerCertificate'] = (int) $options['tls_trust_self_signed'];
+                unset($options['tls_trust_self_signed']);
+            }
+            elseif (!isset($options['TrustServerCertificate'])) {
+                $options['TrustServerCertificate'] = static::TLS_TRUST_SELF_SIGNED;
+            }
+
+            // user+pass shan't be recorded in resolved options.
+            unset(
+                $options['UID'], $options['PWD']
+            );
+
+            $this->optionsResolved =& $options;
+
+            // Set/overwrite required options.
+            $this->optionsResolved['Database'] = $this->database;
+            $this->optionsResolved['CharacterSet'] = $this->characterSet;
+            // SQL Server Authentication.
+            $this->optionsResolved['Authentication'] = 'SqlPassword';
+        }
+    }
+
+    /**
      * NB: An error may not belong to current connection;
      * Sqlsrv's error getter takes no connection argument.
      *
@@ -312,9 +355,9 @@ class MsSqlClient extends AbstractDbClient
                 } else {
                     $em = '';
                 }
-                $list[] = $em . rtrim($error['message'] ?? '', '.');
+                $list[] = $em . $error['message'] ?? '';
             }
-            return join(' ', $list);
+            return rtrim(join(' | ', $list), '.');
         }
         return $emptyOnNone ? '' : '- no native error recorded -';
     }

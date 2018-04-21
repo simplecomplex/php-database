@@ -20,12 +20,13 @@ use SimpleComplex\Database\Exception\DbQueryException;
 /**
  * MS SQL query.
  *
- * @property-read string $query
  * @property-read bool $isPreparedStatement
  * @property-read bool $isMultiQuery
  * @property-read bool $isRepeatStatement
  * @property-read bool $queryAppended
  * @property-read bool $hasLikeClause
+ * @property-read string $query
+ * @property-read string $queryWithArguments
  *
  * @package SimpleComplex\Database
  */
@@ -322,7 +323,7 @@ class MsSqlQuery extends AbstractDbQuery
 
         $class_result = static::CLASS_RESULT;
         /** @var DbResultInterface|MsSqlResult */
-        return new $class_result();
+        return new $class_result($this);
     }
 
     /**

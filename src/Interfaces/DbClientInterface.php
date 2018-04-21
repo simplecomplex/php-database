@@ -50,15 +50,6 @@ interface DbClientInterface
     public function disConnect();
 
     /**
-     * @param bool $emptyOnNone
-     *      False: on no error returns message indication just that.
-     *      True: on no error return empty string.
-     *
-     * @return string
-     */
-    public function nativeError(bool $emptyOnNone = false) : string;
-
-    /**
      * @param string $baseQuery
      * @param bool $isMulti
      *      True: arg $baseQuery contains multiple queries.
@@ -90,4 +81,13 @@ interface DbClientInterface
      *      Connection lost.
      */
     public function transactionRollback();
+
+    /**
+     * @param bool $emptyOnNone
+     *      False: on no error returns message indication just that.
+     *      True: on no error return empty string.
+     *
+     * @return string
+     */
+    public function nativeError(bool $emptyOnNone = false) : string;
 }

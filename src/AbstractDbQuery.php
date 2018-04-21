@@ -15,12 +15,13 @@ use SimpleComplex\Database\Interfaces\DbQueryInterface;
 use SimpleComplex\Database\Exception\DbLogicalException;
 
 /**
- * @property-read string $query
  * @property-read bool $isPreparedStatement
  * @property-read bool $isMultiQuery
  * @property-read bool $isRepeatStatement
  * @property-read bool $queryAppended
  * @property-read bool $hasLikeClause
+ * @property-read string $query
+ * @property-read string $queryWithArguments
  *
  * @package SimpleComplex\Database
  */
@@ -513,12 +514,13 @@ abstract class AbstractDbQuery extends Explorable implements DbQueryInterface
      */
     protected $explorableIndex = [
         // Protected; readable via 'magic' __get().
-        'query',
         'isPreparedStatement',
         'isMultiQuery',
         'isRepeatStatement',
         'queryAppended',
         'hasLikeClause',
+        'query',
+        'queryWithArguments',
     ];
 
     /**

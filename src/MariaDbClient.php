@@ -158,6 +158,8 @@ class MariaDbClient extends AbstractDbClient
      *
      * Always sets connection timeout and connection character set.
      *
+     * @see MariaDbClient::optionsResolve()
+     *
      * @param bool $reConnect
      *
      * @return \MySQLi|bool
@@ -165,7 +167,7 @@ class MariaDbClient extends AbstractDbClient
      *      \MySQLi: connection (re-)established.
      *
      * @throws DbOptionException
-     *      Invalid option.
+     *      Propagated.
      *      Failure to set option.
      * @throws DbConnectionException
      */
@@ -181,67 +183,7 @@ class MariaDbClient extends AbstractDbClient
             $mysqli = mysqli_init();
 
             if (!$this->optionsResolved) {
-                $this->optionsResolved = [];
-                // Copy.
-                $options = $this->options;
-
-                // Secure connection timeout.
-                if (!empty($options['connect_timeout'])) {
-                    $options['MYSQLI_OPT_CONNECT_TIMEOUT'] = (int) $options['connect_timeout'];
-                }
-                elseif (empty($options['MYSQLI_OPT_CONNECT_TIMEOUT'])) {
-                    $options['MYSQLI_OPT_CONNECT_TIMEOUT'] = static::CONNECT_TIMEOUT;
-                }
-                unset($options['connect_timeout']);
-
-                /**
-                 * Character set shan't be an option (any longer);
-                 * handled elsewhere.
-                 * @see MariaDbClient::characterSetResolve()
-                 */
-                unset($options['character_set']);
-
-                foreach ($options as $name => $value) {
-                    // Name must be (string) name, not constant value.
-                    if (ctype_digit('' . $name)) {
-                        throw new DbOptionException(
-                            $this->errorMessagePreamble()
-                            . ' - option[' . $name . '] is integer, must be string name of PHP constant.'
-                        );
-                    }
-                    $constant = @constant($name);
-                    if (!$constant) {
-                        throw new DbOptionException(
-                            $this->errorMessagePreamble() . ' - invalid option[' . $name . '] value[' . $value
-                            . '], there\'s no PHP constant by that name.'
-                        );
-                    }
-                    $this->optionsResolved[$constant] = $value;
-                }
-                unset($options);
-
-                $flags = 0;
-                if ($this->flags) {
-                    foreach ($this->flags as $name) {
-                        // Name must be (string) name, not constant value.
-                        if (ctype_digit('' . $name)) {
-                            throw new DbOptionException(
-                                $this->errorMessagePreamble() . ' - flag[' . $name
-                                . '] is integer, must be string name of MYSQLI_CLIENT_* PHP constant.'
-                            );
-                        }
-                        $constant = @constant($name);
-                        if ($constant === null) {
-                            throw new DbOptionException(
-                                $this->errorMessagePreamble()
-                                . ' - invalid flag[' . $name . '], there\'s no PHP constant by that name.'
-                            );
-                        }
-                        // Set if missing; bitwise Or (inclusive or).
-                        $flags = $flags | $constant;
-                    }
-                }
-                $this->flagsResolved = $flags;
+                $this->optionsResolve();
             }
 
             foreach ($this->optionsResolved as $int => $value) {
@@ -418,6 +360,90 @@ class MariaDbClient extends AbstractDbClient
         }
 
         $this->characterSet = $charset;
+    }
+
+    /**
+     * Resolve options.
+     *
+     * Public to facilitate option debugging prior to attempt to connect.
+     *
+     * @see MariaDbClient::getConnection()
+     * @see MariaDbClient::OPTION_SHORTHANDS
+     * @see MariaDbClient::$optionsResolved
+     * @see MariaDbClient::$flagsResolved
+     *
+     * @return void
+     *      Throws exception on error.
+     *
+     * @throws DbOptionException
+     *      Invalid option.
+     */
+    public function optionsResolve()
+    {
+        if (!$this->optionsResolved) {
+            $this->optionsResolved = [];
+            // Copy.
+            $options = $this->options;
+
+            // Secure connection timeout.
+            if (!empty($options['connect_timeout'])) {
+                $options['MYSQLI_OPT_CONNECT_TIMEOUT'] = (int) $options['connect_timeout'];
+            }
+            elseif (empty($options['MYSQLI_OPT_CONNECT_TIMEOUT'])) {
+                $options['MYSQLI_OPT_CONNECT_TIMEOUT'] = static::CONNECT_TIMEOUT;
+            }
+            unset($options['connect_timeout']);
+
+            /**
+             * Character set shan't be an option (any longer);
+             * handled elsewhere.
+             * @see MariaDbClient::characterSetResolve()
+             */
+            unset($options['character_set']);
+
+            foreach ($options as $name => $value) {
+                // Name must be (string) name, not constant value.
+                if (ctype_digit('' . $name)) {
+                    throw new DbOptionException(
+                        $this->errorMessagePreamble()
+                        . ' - option[' . $name . '] is integer, must be string name of PHP constant.'
+                    );
+                }
+                $constant = @constant($name);
+                if (!$constant) {
+                    throw new DbOptionException(
+                        $this->errorMessagePreamble() . ' - invalid option[' . $name . '] value[' . $value
+                        . '], there\'s no PHP constant by that name.'
+                    );
+                }
+                $this->optionsResolved[$constant] = $value;
+            }
+            unset($options);
+
+            // Do (MySQLi specialty) connection flags.
+            $flags = 0;
+            if ($this->flags) {
+                foreach ($this->flags as $name) {
+                    // Name must be (string) name, not constant value.
+                    if (ctype_digit('' . $name)) {
+                        throw new DbOptionException(
+                            $this->errorMessagePreamble() . ' - flag[' . $name
+                            . '] is integer, must be string name of MYSQLI_CLIENT_* PHP constant.'
+                        );
+                    }
+                    $constant = @constant($name);
+                    if ($constant === null) {
+                        throw new DbOptionException(
+                            $this->errorMessagePreamble()
+                            . ' - invalid flag[' . $name . '], there\'s no PHP constant by that name.'
+                        );
+                    }
+                    // Set if missing; bitwise Or (inclusive or).
+                    $flags = $flags | $constant;
+                }
+            }
+            $this->flagsResolved = $flags;
+        }
     }
 
     /**

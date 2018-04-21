@@ -233,8 +233,23 @@ abstract class AbstractDbClient extends Explorable implements DbClientInterface
      * (at least) for external use.
      *
      * @return void
+     *      Throws exception on error.
      */
     abstract protected function characterSetResolve() /*:void*/;
+
+    /**
+     * Resolve options.
+     *
+     * Public to facilitate option debugging prior to attempt to connect.
+     *
+     * @see DbClientInterface::getConnection()
+     * @see AbstractDbClient::OPTION_SHORTHANDS
+     * @see AbstractDbClient::$optionsResolved
+     *
+     * @return void
+     *      Throws exception on error.
+     */
+    abstract public function optionsResolve() /*:void*/;
 
     /**
      * @return string
