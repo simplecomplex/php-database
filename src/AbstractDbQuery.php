@@ -84,7 +84,7 @@ abstract class AbstractDbQuery extends Explorable implements DbQueryInterface
     protected $preparedStatementArgs;
 
     /**
-     * @param DbClientInterface $client
+     * @param DbClientInterface|AbstractDbClient $client
      *      Reference to parent client.
      * @param string $baseQuery
      * @param bool $isMulti

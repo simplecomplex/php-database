@@ -9,7 +9,6 @@ declare(strict_types=1);
 
 namespace SimpleComplex\Database;
 
-use SimpleComplex\Database\Interfaces\DbClientInterface;
 use SimpleComplex\Database\Interfaces\DbQueryInterface;
 use SimpleComplex\Database\Interfaces\DbResultInterface;
 
