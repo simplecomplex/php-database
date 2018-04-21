@@ -22,7 +22,7 @@ use SimpleComplex\Database\Interfaces\DbQueryInterface;
  * @property-read string $database
  * @property-read string $user
  * @property-read array $options
- * @property-read string[] $flags
+ * @property-read array $optionsResolved
  * @property-read string $characterSet
  * @property-read bool $transactionStarted
  *
@@ -83,6 +83,13 @@ abstract class AbstractDbClient extends Explorable implements DbClientInterface
     const CONNECT_TIMEOUT = 5;
 
     /**
+     * Shorthand name to native option name.
+     *
+     * @var string[]
+     */
+    const OPTION_SHORTHANDS = [];
+
+    /**
      * Like mariadb|mssql.
      *
      * @var string
@@ -120,18 +127,22 @@ abstract class AbstractDbClient extends Explorable implements DbClientInterface
     protected $pass;
 
     /**
+     * Constructor arg $options.
+     *
      * @var array
      */
     protected $options;
 
     /**
-     * (MySQLi) Constant names, not constant values.
+     * Final connection options, based on constructor arg $options.
      *
-     * @var string[]
+     * @var array
      */
-    protected $flags;
+    protected $optionsResolved;
 
     /**
+     * @see AbstractDbClient::characterSetResolve()
+     *
      * @var string
      */
     protected $characterSet;
@@ -142,6 +153,14 @@ abstract class AbstractDbClient extends Explorable implements DbClientInterface
     protected $transactionStarted = false;
 
     /**
+     * Configures database client.
+     *
+     * Connection to the database server is created later, on demand.
+     *
+     * @see AbstractDbClient::OPTION_SHORTHANDS
+     *
+     * @see AbstractDbClient::characterSetResolve()
+     *
      * @param string $name
      * @param array $databaseInfo {
      *      @var string $host
@@ -149,10 +168,8 @@ abstract class AbstractDbClient extends Explorable implements DbClientInterface
      *      @var string $database
      *      @var string $user
      *      @var string $pass
-     *      @var array $options  Database type specific options.
-     *      @var string[] $flags
-     *          Database type specific bitmask flags, by name not value;
-     *          'MYSQLI_CLIENT_COMPRESS', not MYSQLI_CLIENT_COMPRESS.
+     *      @var array $options
+     *          Database type specific options, see also OPTION_SHORTHANDS.
      * }
      */
     public function __construct(string $name, array $databaseInfo)
@@ -177,7 +194,8 @@ abstract class AbstractDbClient extends Explorable implements DbClientInterface
         $this->user = $databaseInfo['user'];
         $this->pass = $databaseInfo['pass'];
         $this->options = $databaseInfo['options'] ?? [];
-        $this->flags = $databaseInfo['flags'] ?? [];
+
+        $this->characterSetResolve();
     }
 
     /**
@@ -204,6 +222,19 @@ abstract class AbstractDbClient extends Explorable implements DbClientInterface
     {
         $this->disConnect();
     }
+
+
+    // Helpers.-----------------------------------------------------------------
+
+    /**
+     * Resolve character set, for constructor.
+     *
+     * Character set must be available even before any connection,
+     * (at least) for external use.
+     *
+     * @return void
+     */
+    abstract protected function characterSetResolve() /*:void*/;
 
     /**
      * @return string
@@ -273,9 +304,9 @@ abstract class AbstractDbClient extends Explorable implements DbClientInterface
         'port',
         'database',
         'user',
-        'characterSet',
         'options',
-        'flags',
+        'optionsResolved',
+        'characterSet',
         'transactionStarted',
     ];
 

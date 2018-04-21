@@ -17,6 +17,10 @@ namespace SimpleComplex\Database\Interfaces;
 interface DbClientInterface
 {
     /**
+     * Configures database client.
+     *
+     * Connection to the database server is created later, on demand.
+     *
      * @param string $name
      * @param array $databaseInfo
      */

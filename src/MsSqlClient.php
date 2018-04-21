@@ -29,7 +29,7 @@ use SimpleComplex\Database\Exception\DbInterruptionException;
  * @property-read string $database
  * @property-read string $user
  * @property-read array $options
- * @property-read string[] $flags
+ * @property-read array $optionsResolved
  * @property-read string $characterSet
  * @property-read bool $transactionStarted
  *
@@ -78,11 +78,6 @@ class MsSqlClient extends AbstractDbClient
     protected $type = 'mssql';
 
     /**
-     * @var bool
-     */
-    protected $optionsChecked;
-
-    /**
      * @var resource
      */
     protected $connection;
@@ -91,6 +86,10 @@ class MsSqlClient extends AbstractDbClient
      * Attempts to re-connect if connection lost and arg $reConnect.
      *
      * Always sets connection timeout and connection character set.
+     *
+     * Uses standard database user authentication;
+     * - SQL Server Authentication/SqlPassword.
+     * Windows user authentication not supported.
      *
      * @param bool $reConnect
      *
@@ -107,48 +106,47 @@ class MsSqlClient extends AbstractDbClient
                 return false;
             }
 
-            if (!$this->optionsChecked) {
+            if (!$this->optionsResolved) {
+                // Copy.
+                $options = $this->options;
+                
                 // Secure connection timeout.
-                if (!empty($this->options['connect_timeout'])) {
-                    $this->options['LoginTimeout'] = (int) $this->options['connect_timeout'];
-                } elseif (!empty($this->options['LoginTimeout'])) {
-                    $this->options['LoginTimeout'] = (int) $this->options['LoginTimeout'];
-                } else {
-                    $this->options['LoginTimeout'] = static::CONNECT_TIMEOUT;
+                if (!empty($options['connect_timeout'])) {
+                    $options['LoginTimeout'] = (int) $options['connect_timeout'];
                 }
-                unset($this->options['connect_timeout']);
-
-                // Secure character set.
-                if (!empty($this->options['character_set'])) {
-                    $this->options['CharacterSet'] = (int) $this->options['character_set'];
-                } else {
-                    $this->options['CharacterSet'] = static::CHARACTER_SET;
+                elseif (empty($options['LoginTimeout'])) {
+                    $options['LoginTimeout'] = static::CONNECT_TIMEOUT;
                 }
-                unset($this->options['character_set']);
+                unset($options['connect_timeout']);
 
-                // Only two character sets supported.
-                if ($this->options['CharacterSet'] != 'UTF-8') {
-                    $this->options['CharacterSet'] = 'SQLSRV_ENC_CHAR';
-                }
+                /**
+                 * Character set shan't be an option (any longer);
+                 * handled elsewhere.
+                 * @see MsSqlClient::characterSetResolve()
+                 */
+                unset($options['character_set']);
 
-                // Remove possible dupes.
+                // user+pass shan't be recorded in resolved options.
                 unset(
-                    $this->options['Database'], $this->options['Authentication'],
-                    $this->options['UID'], $this->options['PWD']
+                    $options['UID'], $options['PWD']
                 );
 
-                $this->optionsChecked = true;
+                $this->optionsResolved =& $options;
+
+                // Set/overwrite required options.
+                $this->optionsResolved['Database'] = $this->database;
+                $this->optionsResolved['CharacterSet'] = $this->characterSet;
+                // SQL Server Authentication.
+                $this->optionsResolved['Authentication'] = 'SqlPassword';
             }
 
-            $connection_info = [
-                'Database' => $this->database,
-                // SQL Server Authentication.
-                'Authentication' => 'SqlPassword',
-                'UID' => $this->user,
-                'PWD' => $this->pass,
-            ];
-
-            $connection = @sqlsrv_connect($this->host . ', ' . $this->port, $connection_info + $this->options);
+            $connection = @sqlsrv_connect(
+                $this->host . ', ' . $this->port,
+                $this->optionsResolved + [
+                    'UID' => $this->user,
+                    'PWD' => $this->pass,
+                ]
+            );
             if (!$connection) {
                 throw new DbConnectionException(
                     $this->errorMessagePreamble()
@@ -156,7 +154,6 @@ class MsSqlClient extends AbstractDbClient
                     . '] failed, with error: ' . $this->nativeError() . '.'
                 );
             }
-            $this->characterSet = $this->options['CharacterSet'];
             $this->connection = $connection;
         }
 
@@ -177,35 +174,6 @@ class MsSqlClient extends AbstractDbClient
             @sqlsrv_close($this->connection);
             $this->connection = null;
         }
-    }
-
-    /**
-     * NB: An error may not belong to current connection;
-     * Sqlsrv's error getter takes no connection argument.
-     *
-     * @param bool $emptyOnNone
-     *      False: on no error returns message indication just that.
-     *      True: on no error return empty string.
-     *
-     * @return string
-     */
-    public function nativeError(bool $emptyOnNone = false) : string
-    {
-        if (($errors = sqlsrv_errors())) {
-            $list = [];
-            foreach ($errors as $error) {
-                if (!empty($error['SQLSTATE'])) {
-                    $em = '(SQLSTATE: ' . $error['SQLSTATE'] . ') ';
-                } elseif (!empty($error['code'])) {
-                    $em = '(code: ' . $error['code'] . ') ';
-                } else {
-                    $em = '';
-                }
-                $list[] = $em . rtrim($error['message'] ?? '', '.');
-            }
-            return join(' ', $list);
-        }
-        return $emptyOnNone ? '' : '- no native error recorded -';
     }
 
     /**
@@ -291,5 +259,63 @@ class MsSqlClient extends AbstractDbClient
             }
             $this->transactionStarted = false;
         }
+    }
+
+
+    // Helpers.-----------------------------------------------------------------
+
+    /**
+     * Resolve character set, for constructor.
+     *
+     * Character set must be available even before any connection,
+     * (at least) for external use.
+     *
+     * @return void
+     */
+    protected function characterSetResolve()
+    {
+        if (!empty($this->options['character_set'])) {
+            $charset = $this->options['character_set'];
+        } elseif (!empty($this->options['CharacterSet'])) {
+            $charset = $this->options['CharacterSet'];
+        } else {
+            $charset = static::CHARACTER_SET;
+        }
+
+        // Only two character sets supported.
+        if ($charset != 'UTF-8') {
+            $charset = 'SQLSRV_ENC_CHAR';
+        }
+
+        $this->characterSet = $charset;
+    }
+
+    /**
+     * NB: An error may not belong to current connection;
+     * Sqlsrv's error getter takes no connection argument.
+     *
+     * @param bool $emptyOnNone
+     *      False: on no error returns message indication just that.
+     *      True: on no error return empty string.
+     *
+     * @return string
+     */
+    public function nativeError(bool $emptyOnNone = false) : string
+    {
+        if (($errors = sqlsrv_errors())) {
+            $list = [];
+            foreach ($errors as $error) {
+                if (!empty($error['SQLSTATE'])) {
+                    $em = '(SQLSTATE: ' . $error['SQLSTATE'] . ') ';
+                } elseif (!empty($error['code'])) {
+                    $em = '(code: ' . $error['code'] . ') ';
+                } else {
+                    $em = '';
+                }
+                $list[] = $em . rtrim($error['message'] ?? '', '.');
+            }
+            return join(' ', $list);
+        }
+        return $emptyOnNone ? '' : '- no native error recorded -';
     }
 }

@@ -2,6 +2,8 @@ SimpleComplex/Database 1.x, 2018-04-21
 --------------------------------------
 - Check parameter types.
 - Query multi-query features sorted.
+- Client options resolved into separate optionsResolved property.
+  And connection flags is a MariaDb/MySQL-only feature.
 
 SimpleComplex/Database 1.x, 2018-04-20
 --------------------------------------

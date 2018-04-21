@@ -41,9 +41,11 @@ use SimpleComplex\Database\Exception\DbInterruptionException;
  * @property-read string $database
  * @property-read string $user
  * @property-read array $options
- * @property-read string[] $flags
+ * @property-read array $optionsResolved
  * @property-read string $characterSet
  * @property-read bool $transactionStarted
+ * @property-read string[] $flags
+ * @property-read int $flagsResolved
  *
  * @package SimpleComplex\Database
  */
@@ -90,9 +92,22 @@ class MariaDbClient extends AbstractDbClient
     protected $type = 'mariadb';
 
     /**
-     * @var bool
+     * MySQLi connection flags.
+     *
+     * MYSQLI_CLIENT_* constant names, not constant values.
+     *
+     * @var string[]
      */
-    protected $optionsChecked;
+    protected $flags;
+
+    /**
+     * Connection flags resolved.
+     *
+     * Bitmask.
+     *
+     * @var int
+     */
+    protected $flagsResolved;
 
     /**
      * Object representing the connection.
@@ -100,6 +115,43 @@ class MariaDbClient extends AbstractDbClient
      * @var \MySQLi
      */
     protected $mySqlI;
+
+    /**
+     * Configures database client.
+     *
+     * Connection to the database server is created later, on demand.
+     *
+     * @see MariaDbClient::OPTION_SHORTHANDS
+     *
+     * MySQLi connection options:
+     * @see http://php.net/manual/en/mysqli.options.php
+     * MySQLi connection flags:
+     * @see http://php.net/manual/en/mysqli.real-connect.php
+     *
+     * @param string $name
+     * @param array $databaseInfo {
+     *      @var string $host
+     *      @var string $port  Optional, defaults to class constant SERVER_PORT.
+     *      @var string $database
+     *      @var string $user
+     *      @var string $pass
+     *      @var array $options
+     *          Keys are PHP constant names or OPTION_SHORTHANDS keys.
+     *      @var string[] $flags
+     *          Database type specific bitmask flags, by name not value;
+     *          'MYSQLI_CLIENT_COMPRESS', not MYSQLI_CLIENT_COMPRESS.
+     * }
+     */
+    public function __construct(string $name, array $databaseInfo)
+    {
+        // Overrides parent constructor to secure connection flags.
+
+        parent::__construct($name, $databaseInfo);
+
+        $this->flags = $databaseInfo['flags'] ?? [];
+        $this->explorableIndex[] = 'flags';
+        $this->explorableIndex[] = 'flagsResolved';
+    }
 
     /**
      * Attempts to re-connect if connection lost and arg $reConnect.
@@ -113,6 +165,7 @@ class MariaDbClient extends AbstractDbClient
      *      \MySQLi: connection (re-)established.
      *
      * @throws DbOptionException
+     *      Invalid option.
      *      Failure to set option.
      * @throws DbConnectionException
      */
@@ -127,76 +180,78 @@ class MariaDbClient extends AbstractDbClient
 
             $mysqli = mysqli_init();
 
-            if (!$this->optionsChecked) {
+            if (!$this->optionsResolved) {
+                $this->optionsResolved = [];
+                // Copy.
+                $options = $this->options;
+
                 // Secure connection timeout.
-                if (!empty($this->options['connect_timeout'])) {
-                    $this->options['MYSQLI_OPT_CONNECT_TIMEOUT'] = (int) $this->options['connect_timeout'];
-                } elseif (!empty($this->options['MYSQLI_OPT_CONNECT_TIMEOUT'])) {
-                    $this->options['MYSQLI_OPT_CONNECT_TIMEOUT'] = (int) $this->options['MYSQLI_OPT_CONNECT_TIMEOUT'];
-                } else {
-                    $this->options['MYSQLI_OPT_CONNECT_TIMEOUT'] = static::CONNECT_TIMEOUT;
+                if (!empty($options['connect_timeout'])) {
+                    $options['MYSQLI_OPT_CONNECT_TIMEOUT'] = (int) $options['connect_timeout'];
                 }
-                unset($this->options['connect_timeout']);
+                elseif (empty($options['MYSQLI_OPT_CONNECT_TIMEOUT'])) {
+                    $options['MYSQLI_OPT_CONNECT_TIMEOUT'] = static::CONNECT_TIMEOUT;
+                }
+                unset($options['connect_timeout']);
 
-                // Secure character set.
-                if (empty($this->options['character_set'])) {
-                    $this->options['character_set'] = static::CHARACTER_SET;
-                }
+                /**
+                 * Character set shan't be an option (any longer);
+                 * handled elsewhere.
+                 * @see MariaDbClient::characterSetResolve()
+                 */
+                unset($options['character_set']);
 
-                // MySQLi::set_charset() needs other format.
-                if ($this->options['character_set'] == 'UTF-8') {
-                    $this->options['character_set'] = 'utf8';
-                }
-
-                $this->optionsChecked = true;
-            }
-
-            foreach ($this->options as $name => $value) {
-                // Character set shan't be set as option.
-                if ($name == 'character_set') {
-                    continue;
-                }
-                // Name must be (string) name, not constant value.
-                if (ctype_digit('' . $name)) {
-                    throw new DbOptionException(
-                        $this->errorMessagePreamble()
-                        . ' - option[' . $name . '] is integer, must be string name of MYSQLI_* PHP constant.'
-                    );
-                }
-                $constant = constant($name);
-                if (!$constant) {
-                    throw new DbOptionException(
-                        $this->errorMessagePreamble() . ' - failed setting option[' . $name . '] value[' . $value
-                        . '], because there is no PHP constant by that name.'
-                    );
-                }
-                if (!$mysqli->options($constant, $value)) {
-                    throw new DbOptionException(
-                        $this->errorMessagePreamble()
-                        . ' - failed to set ' . $this->type . ' option[' . $name . '] value[' . $value . '].'
-                    );
-                }
-            }
-
-            $flags = 0;
-            if ($this->flags) {
-                foreach ($this->flags as $name) {
+                foreach ($options as $name => $value) {
                     // Name must be (string) name, not constant value.
                     if (ctype_digit('' . $name)) {
                         throw new DbOptionException(
                             $this->errorMessagePreamble()
-                            . ' - flag[' . $name . '] is integer, must be string name of MYSQLI_CLIENT_* PHP constant.'
+                            . ' - option[' . $name . '] is integer, must be string name of PHP constant.'
                         );
                     }
-                    $constant = constant($name);
+                    $constant = @constant($name);
                     if (!$constant) {
                         throw new DbOptionException(
-                            $this->errorMessagePreamble()
-                            . ' - failed setting flag[' . $name . '], because there is no PHP constant by that name.'
+                            $this->errorMessagePreamble() . ' - invalid option[' . $name . '] value[' . $value
+                            . '], there\'s no PHP constant by that name.'
                         );
                     }
-                    // Set if missing; bitwise Or (inclusive or).
-                    $flags = $flags | $constant;
+                    $this->optionsResolved[$constant] = $value;
+                }
+                unset($options);
+
+                $flags = 0;
+                if ($this->flags) {
+                    foreach ($this->flags as $name) {
+                        // Name must be (string) name, not constant value.
+                        if (ctype_digit('' . $name)) {
+                            throw new DbOptionException(
+                                $this->errorMessagePreamble() . ' - flag[' . $name
+                                . '] is integer, must be string name of MYSQLI_CLIENT_* PHP constant.'
+                            );
+                        }
+                        $constant = @constant($name);
+                        if ($constant === null) {
+                            throw new DbOptionException(
+                                $this->errorMessagePreamble()
+                                . ' - invalid flag[' . $name . '], there\'s no PHP constant by that name.'
+                            );
+                        }
+                        // Set if missing; bitwise Or (inclusive or).
+                        $flags = $flags | $constant;
+                    }
+                }
+                $this->flagsResolved = $flags;
+            }
+
+            foreach ($this->optionsResolved as $int => $value) {
+                if (!@$mysqli->options($int, $value)) {
+                    throw new DbOptionException(
+                        $this->errorMessagePreamble()
+                        . ' - failed to set ' . $this->type . ' option[' . $int . '] value[' . $value
+                        // @todo: failure to set MySQLi connect options spell ordinary error or connect_error?
+                        . '], with error: ' . $this->nativeError()
+                    );
                 }
             }
 
@@ -208,7 +263,7 @@ class MariaDbClient extends AbstractDbClient
                     $this->database,
                     $this->port,
                     null,
-                    $flags
+                    $this->flagsResolved
                 )
                 || $mysqli->connect_errno
             ) {
@@ -220,15 +275,13 @@ class MariaDbClient extends AbstractDbClient
             }
             $this->mySqlI = $mysqli;
 
-            if (!@$this->mySqlI->set_charset($this->options['character_set'])) {
+            if (!@$this->mySqlI->set_charset($this->characterSet)) {
                 throw new DbOptionException(
                     $this->errorMessagePreamble()
-                    . ' - setting connection character set[' . $this->options['character_set']
+                    . ' - setting connection character set[' . $this->characterSet
                     . '] failed, with error: ' . $this->nativeError() . '.'
                 );
             }
-
-            $this->characterSet = $this->options['character_set'];
         }
 
         return $this->mySqlI;
@@ -250,21 +303,6 @@ class MariaDbClient extends AbstractDbClient
             @$this->mySqlI->close();
             $this->mySqlI = null;
         }
-    }
-
-    /**
-     * @param bool $emptyOnNone
-     *      False: on no error returns message indication just that.
-     *      True: on no error return empty string.
-     *
-     * @return string
-     */
-    public function nativeError(bool $emptyOnNone = false) : string
-    {
-        if ($this->mySqlI && ($code = $this->mySqlI->errno)) {
-            return '(' . $this->mySqlI->errno . ') ' . rtrim($this->mySqlI->error, '.') . '.';
-        }
-        return $emptyOnNone ? '' : '- no native error recorded -';
     }
 
     /**
@@ -357,5 +395,43 @@ class MariaDbClient extends AbstractDbClient
             }
             $this->transactionStarted = false;
         }
+    }
+
+
+    // Helpers.-----------------------------------------------------------------
+
+    /**
+     * Resolve character set, for constructor.
+     *
+     * Character set must be available even before any connection,
+     * (at least) for external use.
+     *
+     * @return void
+     */
+    protected function characterSetResolve()
+    {
+        $charset = !empty($this->options['character_set']) ? $this->options['character_set'] : static::CHARACTER_SET;
+
+        // MySQLi::set_charset() needs other format.
+        if ($charset == 'UTF-8') {
+            $charset = 'utf8';
+        }
+
+        $this->characterSet = $charset;
+    }
+
+    /**
+     * @param bool $emptyOnNone
+     *      False: on no error returns message indication just that.
+     *      True: on no error return empty string.
+     *
+     * @return string
+     */
+    public function nativeError(bool $emptyOnNone = false) : string
+    {
+        if ($this->mySqlI && ($code = $this->mySqlI->errno)) {
+            return '(' . $this->mySqlI->errno . ') ' . rtrim($this->mySqlI->error, '.') . '.';
+        }
+        return $emptyOnNone ? '' : '- no native error recorded -';
     }
 }
