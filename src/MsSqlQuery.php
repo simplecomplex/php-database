@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace SimpleComplex\Database;
 
+use SimpleComplex\Database\Interfaces\DbClientInterface;
 use SimpleComplex\Database\Interfaces\DbQueryInterface;
 use SimpleComplex\Database\Interfaces\DbResultInterface;
 
@@ -20,6 +21,7 @@ use SimpleComplex\Database\Exception\DbQueryException;
 /**
  * MS SQL query.
  *
+ * Inherited read-onlys:
  * @property-read bool $isPreparedStatement
  * @property-read bool $isMultiQuery
  * @property-read bool $isRepeatStatement
@@ -28,17 +30,15 @@ use SimpleComplex\Database\Exception\DbQueryException;
  * @property-read string $query
  * @property-read string $queryWithArguments
  *
+ * Own read-onlys:
+ * @property-read int $queryTimeout
+ * @property-read string $cursorMode
+ * @property-read bool $sendDataChunked
+ *
  * @package SimpleComplex\Database
  */
 class MsSqlQuery extends AbstractDbQuery
 {
-    /**
-     * MS SQL (Sqlsrv) does not support multi-query.
-     *
-     * @var bool
-     */
-    const MULTI_QUERY_SUPPORT = false;
-
     /**
      * Class name of \SimpleComplex\Database\MsSqlResult or extending class.
      *
@@ -54,6 +54,62 @@ class MsSqlQuery extends AbstractDbQuery
     const CLASS_RESULT = MsSqlResult::class;
 
     /**
+     * MS SQL (Sqlsrv) does not support multi-query.
+     *
+     * @var bool
+     */
+    const MULTI_QUERY_SUPPORT = false;
+
+    /**
+     * Default query timeout.
+     *
+     * Zero means no timeout; waits forever.
+     *
+     * @var int
+     */
+    const QUERY_TIMEOUT = 0;
+
+    /**
+     * Result set cursor modes.
+     *
+     * Scrollable:
+     * @see http://php.net/manual/en/function.sqlsrv-query.php
+     *
+     * Sqlsrv Cursor Types:
+     * @see https://docs.microsoft.com/en-us/sql/connect/php/cursor-types-sqlsrv-driver
+     *
+     * @var int[]
+     */
+    const CURSOR_MODES = [
+        SQLSRV_CURSOR_FORWARD,
+        SQLSRV_CURSOR_STATIC,
+        SQLSRV_CURSOR_DYNAMIC,
+        SQLSRV_CURSOR_KEYSET,
+    ];
+
+    /**
+     * Default result set cursor mode.
+     *
+     * Sqlsrv default is 'forward':
+     * - fast
+     * - reflects changes serverside
+     * - doesn't allow getting number of rows
+     *
+     * This class' default is 'static':
+     * - slower
+     * - we don't want serverside changes to reflect the result set
+     * - we like getting number of rows
+     *
+     * @var string
+     */
+    const CURSOR_MODE_DEFAULT = SQLSRV_CURSOR_STATIC;
+
+    /**
+     * @var int
+     */
+    const SEND_CHUNKS_LIMIT = 1000;
+
+    /**
      * Ought to be protected, but too costly since result instance
      * may use it repetetively; via the query instance.
      *
@@ -64,23 +120,103 @@ class MsSqlQuery extends AbstractDbQuery
     /**
      * @var resource
      */
-    protected $simpleStatement;
+    public $preparedStatement;
 
     /**
      * @var resource
      */
-    protected $preparedStatement;
+    protected $simpleStatement;
 
     /**
      * @var string
      */
     protected $preparedStatementTypes;
 
+    /**
+     * @see MsSqlQuery::QUERY_TIMEOUT
+     *
+     * @var int
+     */
+    protected $queryTimeout;
+
+    /**
+     * @see MsSqlQuery::CURSOR_MODES
+     * @see MsSqlQuery::CURSOR_MODE_DEFAULT
+     *
+     * @var string
+     */
+    protected $cursorMode;
+
+    /**
+     * Send query statement data in chunks instead sending all immediately.
+     *
+     * Relevant if giant query.
+     *
+     * Native setting 'SendStreamParamsAtExec'; opposite boolean value.
+     * @see http://php.net/manual/en/function.sqlsrv-send-stream-data.php
+     *
+     * @var bool
+     */
+    protected $sendDataChunked = false;
+
+    /**
+     * @var int
+     */
+    protected $sendChunksLimit;
+
+    /**
+     * @param DbClientInterface|AbstractDbClient|MsSqlClient $client
+     *      Reference to parent client.
+     * @param string $baseQuery
+     * @param array $options {
+     *      @var int $query_timeout
+     *      @var string $cursor_mode
+     *      @var bool $send_data_chunked
+     *      @var int $send_chunks_limit
+     * }
+     *
+     * @throws \InvalidArgumentException
+     *      Propagated.
+     *      Unsupported 'cursor_mode'.
+     */
+    public function __construct(DbClientInterface $client, string $baseQuery, array $options = [])
+    {
+        parent::__construct($client, $baseQuery, $options);
+
+        if (isset($options['query_timeout'])) {
+            $this->queryTimeout = $options['query_timeout'];
+            if ($this->queryTimeout < 0) {
+                $this->queryTimeout = 0;
+            }
+        } else {
+            $this->queryTimeout = static::QUERY_TIMEOUT;
+        }
+        $this->explorableIndex[] = 'queryTimeout';
+
+        if (!empty($options['cursor_mode'])) {
+            if (!in_array($options['cursor_mode'], static::CURSOR_MODES, true)) {
+                throw new DbLogicalException(
+                    $this->client->errorMessagePreamble()
+                    . ' query option \'cursor_mode\' value[' . $options['cursor_mode'] . '] is invalid.'
+                );
+            }
+            $this->cursorMode = $options['cursor_mode'];
+        } else {
+            $this->cursorMode = static::CURSOR_MODE_DEFAULT;
+        }
+        $this->explorableIndex[] = 'cursorMode';
+
+        if (!empty($options['send_data_chunked'])) {
+            $this->sendDataChunked = true;
+            $this->sendChunksLimit = $options['send_chunks_limit'] ?? static::SEND_CHUNKS_LIMIT;
+        }
+        $this->explorableIndex[] = 'sendDataChunked';
+        $this->explorableIndex[] = 'sendChunksLimit';
+    }
+
     public function __destruct()
     {
-        if ($this->preparedStatement) {
-            @sqlsrv_free_stmt($this->preparedStatement);
-        }
+        $this->closeStatement();
     }
 
     /**
@@ -111,11 +247,6 @@ class MsSqlQuery extends AbstractDbQuery
      *      Ignored if all $arguments are type qualifying arrays.
      * @param array &$arguments
      *      By reference.
-     * @param array $options {
-     *      @var int $QueryTimeout
-     *      @var bool $SendStreamParamsAtExec
-     *      @var bool $Scrollable  May break this library's modus of operation.
-     * }
      *
      * @return $this|DbQueryInterface
      *
@@ -126,7 +257,7 @@ class MsSqlQuery extends AbstractDbQuery
      * @throws DbRuntimeException
      *      Failure to bind $arguments to native layer.
      */
-    public function prepareStatement(string $types, array &$arguments, array $options = []) : DbQueryInterface
+    public function prepareStatement(string $types, array &$arguments) : DbQueryInterface
     {
         if ($this->isPreparedStatement) {
             throw new DbLogicalException(
@@ -251,6 +382,14 @@ class MsSqlQuery extends AbstractDbQuery
         // Allow re-connection.
         $connection = $this->client->getConnection(true);
 
+        $options = [
+            'Scrollable' => $this->cursorMode,
+            'SendStreamParamsAtExec' => !$this->sendDataChunked,
+        ];
+        if ($this->queryTimeout) {
+            $options['QueryTimeout'] = $this->queryTimeout;
+        }
+
         /** @var resource $statement */
         $statement = @sqlsrv_prepare($connection, $this->query, $this->preparedStatementArgs, $options);
         if (!$statement) {
@@ -275,6 +414,8 @@ class MsSqlQuery extends AbstractDbQuery
      * @throws DbLogicalException
      *      Method called without previous call to prepareStatement().
      * @throws DbQueryException
+     * @throws DbRuntimeException
+     *      Failing to complete sending data as chunks.
      */
     public function execute(): DbResultInterface
     {
@@ -302,11 +443,19 @@ class MsSqlQuery extends AbstractDbQuery
             }
         }
         else {
+            $options = [
+                'Scrollable' => $this->cursorMode,
+                'SendStreamParamsAtExec' => !$this->sendDataChunked,
+            ];
+            if ($this->queryTimeout) {
+                $options['QueryTimeout'] = $this->queryTimeout;
+            }
+
             // Allow re-connection.
             /** @var \MySQLi $mysqli */
             $connection = $this->client->getConnection(true);
             /** @var resource|bool $simple_statement */
-            $simple_statement = @sqlsrv_query($connection, $this->queryWithArguments ?? $this->query);
+            $simple_statement = @sqlsrv_query($connection, $this->queryWithArguments ?? $this->query, $options);
             if (!$simple_statement) {
                 $this->client->log(
                     'warning',
@@ -321,26 +470,53 @@ class MsSqlQuery extends AbstractDbQuery
             $this->simpleStatement = $simple_statement;
         }
 
+        if ($this->sendDataChunked) {
+            $chunks = 0;
+            while (
+                $chunks < $this->sendChunksLimit
+                && @sqlsrv_send_stream_data(
+                    $this->isPreparedStatement ? $this->preparedStatement : $this->simpleStatement
+                )
+            ) {
+                ++$chunks;
+            }
+            $error = $this->client->nativeError(true);
+            if ($error) {
+                throw new DbRuntimeException(
+                    $this->client->errorMessagePreamble()
+                    . ' - failed to complete sending data chunked, after chunk[' . $chunks . '], with error: '
+                    . $error . '.'
+                );
+            }
+        }
+
         $class_result = static::CLASS_RESULT;
         /** @var DbResultInterface|MsSqlResult */
-        return new $class_result($this);
+        return new $class_result($this, $this->isPreparedStatement ? $this->preparedStatement : $this->simpleStatement);
     }
 
     /**
      * @return void
      */
-    public function closePreparedStatement()
+    public function closeStatement()
     {
-        unset($this->preparedStatementArgs);
-        if (!$this->isPreparedStatement) {
-            throw new DbLogicalException(
-                $this->client->errorMessagePreamble() . ' - query isn\'t a prepared statement.'
-            );
-        }
-        if ($this->client->isConnected() && $this->preparedStatement) {
+        if ($this->preparedStatement) {
+            unset($this->preparedStatementArgs);
             @sqlsrv_free_stmt($this->preparedStatement);
-            unset($this->preparedStatement);
+        } elseif ($this->simpleStatement) {
+            @sqlsrv_free_stmt($this->simpleStatement);
         }
+    }
+
+    /**
+     * Does nothing, because Sqlsrv statement and result are linked
+     * by the same resource.
+     * Thus a statement could inadvertedly be closed.
+     *
+     * @return void
+     */
+    public function freeResult()
+    {
     }
 
 

@@ -89,8 +89,6 @@ class MariaDbQuery extends AbstractDbQuery
      *      Empty: uses string for all.
      * @param array &$arguments
      *      By reference.
-     * @param array $options
-     *      Ignored.
      *
      * @return $this|DbQueryInterface
      *
@@ -103,7 +101,7 @@ class MariaDbQuery extends AbstractDbQuery
      * @throws DbRuntimeException
      *      Failure to bind $arguments to native layer.
      */
-    public function prepareStatement(string $types, array &$arguments, array $options = []) : DbQueryInterface
+    public function prepareStatement(string $types, array &$arguments) : DbQueryInterface
     {
         if ($this->isPreparedStatement) {
             throw new DbLogicalException(
@@ -249,8 +247,12 @@ class MariaDbQuery extends AbstractDbQuery
     /**
      * @return void
      */
-    public function closePreparedStatement()
+    public function closeStatement()
     {
+        /**
+         * @todo: see MsSqlQuery::closeStatement()
+         * @see MsSqlQuery::closeStatement()
+         */
         unset($this->preparedStatementArgs);
         if (!$this->isPreparedStatement) {
             throw new DbLogicalException(
@@ -261,6 +263,14 @@ class MariaDbQuery extends AbstractDbQuery
             @$this->preparedStatement->close();
             unset($this->preparedStatement);
         }
+    }
+
+    /**
+     * @return void
+     */
+    public function freeResult()
+    {
+         // @todo: free_result()
     }
 
 

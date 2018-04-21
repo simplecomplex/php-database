@@ -88,15 +88,17 @@ abstract class AbstractDbQuery extends Explorable implements DbQueryInterface
      * @param DbClientInterface|AbstractDbClient $client
      *      Reference to parent client.
      * @param string $baseQuery
-     * @param bool $isMulti
-     *      True: arg $baseQuery contains multiple queries.
+     * @param array $options {
+     *      @var bool $is_multi_query
+     *          True: arg $baseQuery contains multiple queries.
+     * }
      *
      * @throws \InvalidArgumentException
      *      Arg $query empty.
      * @throws DbLogicalException
-     *      True arg $isMulti and query class doesn't support multi-query.
+     *      True $options['is_multi_query'] and query class doesn't support it.
      */
-    public function __construct(DbClientInterface $client, string $baseQuery, bool $isMulti = false)
+    public function __construct(DbClientInterface $client, string $baseQuery, array $options = [])
     {
         $this->client = $client;
 
@@ -106,14 +108,14 @@ abstract class AbstractDbQuery extends Explorable implements DbQueryInterface
             );
         }
         // Remove trailing (and leading) semicolon; for multi-query.
-        $this->query = trim($baseQuery, ' \t\n\r\0\x0B;');
+        $this->query = trim($baseQuery, " \t\n\r\0\x0B;");
 
         // The $isMulti parameter is needed because we cannot safely deduct
         // that a query is multi-query contains semicolon.
         // False positive if the query contains literal parameter value
         // and that value contains semicolon.
 
-        if ($isMulti) {
+        if (!empty($options['is_multi_query'])) {
             if (!static::MULTI_QUERY_SUPPORT) {
                 throw new DbLogicalException(
                     $this->client->errorMessagePreamble() . ' doesn\'t support multi-query.'
@@ -136,7 +138,6 @@ abstract class AbstractDbQuery extends Explorable implements DbQueryInterface
      *      Empty: uses string for all.
      * @param array &$arguments
      *      By reference.
-     * @param array $options
      *
      * @return $this|DbQueryInterface
      *
@@ -144,7 +145,7 @@ abstract class AbstractDbQuery extends Explorable implements DbQueryInterface
      *      Propagated.
      * @throws \SimpleComplex\Database\Exception\DbRuntimeException
      */
-    abstract public function prepareStatement(string $types, array &$arguments, array $options = []) : DbQueryInterface;
+    abstract public function prepareStatement(string $types, array &$arguments) : DbQueryInterface;
 
     /**
      * Substitute base query ?-parameters by arguments.

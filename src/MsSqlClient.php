@@ -22,6 +22,7 @@ use SimpleComplex\Database\Exception\DbInterruptionException;
  * Options:
  * @see https://docs.microsoft.com/en-us/sql/connect/php/connection-option
  *
+ * Inherited read-onlys:
  * @property-read string $type
  * @property-read string $name
  * @property-read string $host

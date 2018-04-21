@@ -34,6 +34,7 @@ use SimpleComplex\Database\Exception\DbInterruptionException;
  * - MYSQLI_CLIENT_SSL
  * @see http://php.net/manual/en/mysqli.real-connect.php
  *
+ * Inherited read-onlys:
  * @property-read string $type
  * @property-read string $name
  * @property-read string $host
@@ -44,6 +45,8 @@ use SimpleComplex\Database\Exception\DbInterruptionException;
  * @property-read array $optionsResolved
  * @property-read string $characterSet
  * @property-read bool $transactionStarted
+ *
+ * Own read-onlys:
  * @property-read string[] $flags
  * @property-read int $flagsResolved
  *

@@ -11,6 +11,10 @@ namespace SimpleComplex\Database;
 
 use SimpleComplex\Database\Interfaces\DbResultInterface;
 
+use SimpleComplex\Database\Exception\DbLogicalException;
+use SimpleComplex\Database\Exception\DbRuntimeException;
+use SimpleComplex\Database\Exception\DbResultException;
+
 /**
  * MS SQL result.
  *
@@ -18,38 +22,246 @@ use SimpleComplex\Database\Interfaces\DbResultInterface;
  */
 class MsSqlResult implements DbResultInterface
 {
+    const FETCH_ASSOC = 2;
+
+    const FETCH_NUMERIC = 1;
+
+    const FETCH_OBJECT = 4;
+
+
     /**
      * @var MsSqlQuery
      */
     protected $query;
 
     /**
-     * @var bool
+     * @var resource
      */
-    protected $isPreparedStatement;
+    protected $statement;
 
     /**
      * @param MsSqlQuery $query
+     * @param resource $statement
+     *
+     * @throws DbRuntimeException
+     *      Arg statement not (no longer?) resource.
      */
-    public function __construct(MsSqlQuery $query)
+    public function __construct(MsSqlQuery $query, $statement)
     {
         $this->query = $query;
-
-        $this->isPreparedStatement = $this->query->isPreparedStatement;
+        if (!$statement) {
+            throw new DbRuntimeException(
+                $this->query->client->errorMessagePreamble()
+                . ' - can\'t initialize result because arg $statement is not (no longer?) a resource.'
+            );
+        }
+        $this->statement = $statement;
     }
 
-    public function nextRow()
+    /**
+     * @return int
+     *
+     * @throws DbResultException
+     */
+    public function rowsAffected() : int
     {
-        // @todo
+        $count = @sqlsrv_rows_affected(
+            $this->statement
+        );
+        if (!$count) {
+            if ($count === 0) {
+                return 0;
+            }
+            throw new DbResultException(
+                $this->query->client->errorMessagePreamble() . ' - failed counting rows affected, with error: '
+                . $this->query->client->nativeError() . '.'
+            );
+        }
+        if ($count > -1) {
+            return $count;
+        }
+        $error = $this->query->client->nativeError(true);
+        throw new DbLogicalException(
+            $this->query->client->errorMessagePreamble()
+            . ' - rejected counting rows affected, probably not a CRUD query'
+            . (!$error ? '' : (', with error: ' . $error)) . '.'
+        );
     }
 
-    public function numRows()
+    /**
+     * @return int
+     *
+     * @throws DbResultException
+     */
+    public function numRows() : int
     {
+        switch ($this->query->cursorMode) {
+            case SQLSRV_CURSOR_STATIC:
+            case SQLSRV_CURSOR_KEYSET:
+                break;
+            default:
+                throw new DbLogicalException(
+                    $this->query->client->errorMessagePreamble() . ' - cursor mode[' . $this->query->cursorMode
+                    . '] forbids getting number of rows.'
+                );
+        }
+        $count = @sqlsrv_num_rows(
+            $this->statement
+        );
+        if (!$count && $count !== 0) {
+            throw new DbResultException(
+                $this->query->client->errorMessagePreamble() . ' - failed getting number of rows, with error: '
+                . $this->query->client->nativeError() . '.'
+            );
 
+        }
+        return $count;
     }
 
-    public function rowsAffected()
+    /**
+     * Associative (column-keyed) or numerically indexed array.
+     *
+     * @param int $as
+     *      Default: column-keyed.
+     *
+     * @return array|null
+     *      No more rows.
+     */
+    public function fetchArray(int $as = MsSqlResult::FETCH_ASSOC)
     {
+        $row = @sqlsrv_fetch_array($this->statement, $as);
+        if ($row) {
+            return $row;
+        }
+        if ($row === null) {
+            return null;
+        }
+        $em = $as = MsSqlResult::FETCH_NUMERIC ? 'numeric array' : 'assoc array';
+        throw new DbResultException(
+            $this->query->client->errorMessagePreamble()
+            . ' - failed fetching row as ' . $em . ', with error: ' . $this->query->client->nativeError() . '.'
+        );
+    }
 
+    /**
+     * Column-keyed object.
+     *
+     * @param string $class
+     *      Optional class name.
+     * @param array $args
+     *      Optional constructor args.
+     *
+     * @return object|null
+     *      No more rows.
+     */
+    public function fetchObject(string $class = '', array $args = [])
+    {
+        $row = @sqlsrv_fetch_object($this->statement, $class, $args);
+        if ($row) {
+            return $row;
+        }
+        if ($row === null) {
+            return null;
+        }
+        throw new DbResultException(
+            $this->query->client->errorMessagePreamble()
+            . ' - failed fetching row as object, with error: ' . $this->query->client->nativeError() . '.'
+        );
+    }
+
+    /**
+     * Fetch all rows into a list.
+     *
+     * Option 'list_by_column' is not supported when fetching as numerically
+     * indexed arrays.
+     *
+     * @param int $as
+     *      Default: column-keyed.
+     * @param array $options {
+     *      @var string $list_by_column  Key list by that column's values.
+     *      @var string $class  Object class name.
+     *      @var array $args  Object constructor args.
+     * }
+     *
+     * @return array
+     */
+    public function fetchAll(int $as = MsSqlResult::FETCH_ASSOC, array $options = []) : array
+    {
+        $column_keyed = !empty($options['list_by_column']);
+        $key_column = !$column_keyed ? null : $options['list_by_column'];
+        $list = [];
+        $first = true;
+        switch ($as) {
+            case MsSqlResult::FETCH_NUMERIC:
+                if ($column_keyed) {
+                    throw new \InvalidArgumentException(
+                        $this->query->client->errorMessagePreamble()
+                        . ' - arg $options \'list_by_column\' is not supported when fetching as numeric arrays.'
+                    );
+                }
+                while (($row = @sqlsrv_fetch_array($this->statement, SQLSRV_FETCH_NUMERIC))) {
+                    $list[] = $row;
+                }
+                break;
+            case MsSqlResult::FETCH_OBJECT:
+                while (
+                    ($row = @sqlsrv_fetch_object($this->statement, $options['class'] ?? '', $options['args'] ?? []))
+                ) {
+                    if (!$column_keyed) {
+                        $list[] = $row;
+                    }
+                    else {
+                        if ($first) {
+                            $first = false;
+                            if (!property_exists($row, $key_column)) {
+                                throw new DbResultException(
+                                    $this->query->client->errorMessagePreamble()
+                                    . ' - failed fetching all rows as objects keyed by column[' . $key_column
+                                    . '], non-existent column.'
+                                );
+                            }
+                        }
+                        $list[$row->{$key_column}] = $row;
+                    }
+                }
+                break;
+            default:
+                while (($row = @sqlsrv_fetch_array($this->statement, SQLSRV_FETCH_ASSOC))) {
+                    if (!$column_keyed) {
+                        $list[] = $row;
+                    }
+                    else {
+                        if ($first) {
+                            $first = false;
+                            if (!array_key_exists($key_column, $row)) {
+                                throw new DbResultException(
+                                    $this->query->client->errorMessagePreamble()
+                                    . ' - failed fetching all rows as assoc arrays keyed by column[' . $key_column
+                                    . '], non-existent column.'
+                                );
+                            }
+                        }
+                        $list[$row[$key_column]] = $row;
+                    }
+                }
+        }
+        if ($row !== null) {
+            switch ($as) {
+                case MsSqlResult::FETCH_NUMERIC:
+                    $em = 'numeric array';
+                    break;
+                case MsSqlResult::FETCH_OBJECT:
+                    $em = 'object';
+                    break;
+                default:
+                    $em = 'assoc array';
+            }
+            throw new DbResultException(
+                $this->query->client->errorMessagePreamble()
+                . ' - failed fetching all rows as ' . $em . ', with error: '
+                . $this->query->client->nativeError() . '.'
+            );
+        }
+        return $list;
     }
 }

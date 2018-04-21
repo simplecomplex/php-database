@@ -20,13 +20,15 @@ interface DbQueryInterface
      * @param \SimpleComplex\Database\Interfaces\DbClientInterface $client
      *      Reference to parent client.
      * @param string $baseQuery
-     * @param bool $isMulti
-     *      True: arg $baseQuery contains multiple queries.
+     * @param array $options {
+     *      @var bool $is_multi_query
+     *          True: arg $baseQuery contains multiple queries.
+     * }
      *
      * @throws \InvalidArgumentException
      *      Arg $query empty.
      */
-    public function __construct(DbClientInterface $client, string $baseQuery, bool $isMulti = false);
+    public function __construct(DbClientInterface $client, string $baseQuery, array $options = []);
 
     /**
      * Turn query into prepared statement and bind parameters.
@@ -41,7 +43,6 @@ interface DbQueryInterface
      *      Empty: uses string for all.
      * @param array &$arguments
      *      By reference.
-     * @param array $options
      *
      * @return $this|DbQueryInterface
      *
@@ -49,7 +50,7 @@ interface DbQueryInterface
      *      Propagated.
      * @throws \SimpleComplex\Database\Exception\DbRuntimeException
      */
-    public function prepareStatement(string $types, array &$arguments, array $options = []) : DbQueryInterface;
+    public function prepareStatement(string $types, array &$arguments) : DbQueryInterface;
 
     /**
      * Substitute base query ?-parameters by arguments.
@@ -82,5 +83,13 @@ interface DbQueryInterface
     /**
      * @return void
      */
-    public function closePreparedStatement();
+    public function closeStatement();
+
+    /**
+     * Implementation is allowed to do nothing, if query statement and result
+     * are linked by one and only resource (like for Sqlsrv).
+     *
+     * @return void
+     */
+    public function freeResult();
 }
