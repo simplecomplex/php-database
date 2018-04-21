@@ -52,7 +52,7 @@ interface DbClientInterface
      *
      * @return string
      */
-    public function getNativeError(bool $emptyOnNone = false) : string;
+    public function nativeError(bool $emptyOnNone = false) : string;
 
     /**
      * @param string $baseQuery

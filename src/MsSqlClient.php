@@ -153,7 +153,7 @@ class MsSqlClient extends AbstractDbClient
                 throw new DbConnectionException(
                     $this->errorMessagePreamble()
                     . ' connect to host[' . $this->host . '] port[' . $this->port
-                    . '] failed, with error: ' . $this->getNativeError() . '.'
+                    . '] failed, with error: ' . $this->nativeError() . '.'
                 );
             }
             $this->characterSet = $this->options['CharacterSet'];
@@ -189,7 +189,7 @@ class MsSqlClient extends AbstractDbClient
      *
      * @return string
      */
-    public function getNativeError(bool $emptyOnNone = false) : string
+    public function nativeError(bool $emptyOnNone = false) : string
     {
         if (($errors = sqlsrv_errors())) {
             $list = [];
@@ -230,7 +230,7 @@ class MsSqlClient extends AbstractDbClient
         if (!@sqlsrv_begin_transaction($this->connection)) {
             throw new DbRuntimeException(
                 $this->errorMessagePreamble()
-                . ' - failed to start transaction, with error: ' . $this->getNativeError() . '.'
+                . ' - failed to start transaction, with error: ' . $this->nativeError() . '.'
             );
         }
     }
@@ -257,7 +257,7 @@ class MsSqlClient extends AbstractDbClient
             if (!@sqlsrv_commit($this->connection)) {
                 throw new DbRuntimeException(
                     $this->errorMessagePreamble()
-                    . ' - failed to commit transaction, with error: ' . $this->getNativeError() . '.'
+                    . ' - failed to commit transaction, with error: ' . $this->nativeError() . '.'
                 );
             }
             $this->transactionStarted = false;
@@ -286,7 +286,7 @@ class MsSqlClient extends AbstractDbClient
             if (!@sqlsrv_rollback($this->connection)) {
                 throw new DbRuntimeException(
                     $this->errorMessagePreamble()
-                    . ' - failed to rollback transaction, with error: ' . $this->getNativeError() . '.'
+                    . ' - failed to rollback transaction, with error: ' . $this->nativeError() . '.'
                 );
             }
             $this->transactionStarted = false;

@@ -73,7 +73,7 @@ interface DbQueryInterface
     public function parameters(string $types, array $arguments) : DbQueryInterface;
 
     /**
-     * Execute simple query, multi-query or prepared statement.
+     * Any query must be executed, even non-prepared statement.
      *
      * @return DbResultInterface
      */

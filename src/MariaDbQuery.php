@@ -144,12 +144,12 @@ class MariaDbQuery extends AbstractDbQuery
         // Allow re-connection.
         $mysqli = $this->client->getConnection(true);
 
-        /** @var \mysqli_stmt $mysqli_stmt */
+        /** @var \mysqli_stmt|bool $mysqli_stmt */
         $mysqli_stmt = @$mysqli->prepare($this->query);
         if (!$mysqli_stmt) {
             throw new DbRuntimeException(
                 $this->client->errorMessagePreamble()
-                . ' - query failed to prepare statement, with error: ' . $this->client->getNativeError() . '.'
+                . ' - query failed to prepare statement, with error: ' . $this->client->nativeError() . '.'
             );
         }
 
@@ -161,7 +161,7 @@ class MariaDbQuery extends AbstractDbQuery
                 throw new DbRuntimeException(
                     $this->client->errorMessagePreamble()
                     . ' - query failed to bind parameters prepare statement, with error: '
-                    . $this->client->getNativeError() . '.'
+                    . $this->client->nativeError() . '.'
                 );
             }
         }
@@ -172,6 +172,8 @@ class MariaDbQuery extends AbstractDbQuery
     }
 
     /**
+     * Any query must be executed, even non-prepared statement.
+     *
      * @return DbResultInterface|MariaDbResult
      *
      * @throws DbInterruptionException
@@ -183,12 +185,15 @@ class MariaDbQuery extends AbstractDbQuery
         if ($this->isPreparedStatement) {
             // Require unbroken connection.
             if (!$this->client->isConnected()) {
+                unset($this->preparedStatementArgs);
                 throw new DbInterruptionException(
                     $this->client->errorMessagePreamble()
                     . ' - query can\'t execute prepared statement when connection lost.'
                 );
             }
+            // bool.
             if (!@$this->preparedStatement->execute()) {
+                unset($this->preparedStatementArgs);
                 $this->client->log(
                     'warning',
                     $this->client->errorMessagePreamble() . ' - failed executing prepared statement, query',
@@ -196,7 +201,7 @@ class MariaDbQuery extends AbstractDbQuery
                 );
                 throw new DbQueryException(
                     $this->client->errorMessagePreamble()
-                    . ' - failed executing prepared statement, with error: ' . $this->client->getNativeError() . '.'
+                    . ' - failed executing prepared statement, with error: ' . $this->client->nativeError() . '.'
                 );
             }
         }
@@ -204,6 +209,7 @@ class MariaDbQuery extends AbstractDbQuery
             // Allow re-connection.
             /** @var \MySQLi $mysqli */
             $mysqli = $this->client->getConnection(true);
+            // bool.
             if (!@$mysqli->multi_query($this->queryWithArguments ?? $this->query)) {
                 $this->client->log(
                     'warning',
@@ -212,7 +218,7 @@ class MariaDbQuery extends AbstractDbQuery
                 );
                 throw new DbQueryException(
                     $this->client->errorMessagePreamble()
-                    . ' - failed executing multi-query, with error: ' . $this->client->getNativeError() . '.'
+                    . ' - failed executing multi-query, with error: ' . $this->client->nativeError() . '.'
                 );
             }
         }
@@ -220,9 +226,7 @@ class MariaDbQuery extends AbstractDbQuery
             // Allow re-connection.
             /** @var \MySQLi $mysqli */
             $mysqli = $this->client->getConnection(true);
-
-            // @todo: use \MySQLi->query() if change and no result set required.
-
+            // bool.
             if (!@$mysqli->real_query($this->queryWithArguments ?? $this->query)) {
                 $this->client->log(
                     'warning',
@@ -231,7 +235,7 @@ class MariaDbQuery extends AbstractDbQuery
                 );
                 throw new DbQueryException(
                     $this->client->errorMessagePreamble()
-                    . ' - failed executing simple query, with error: ' . $this->client->getNativeError() . '.'
+                    . ' - failed executing simple query, with error: ' . $this->client->nativeError() . '.'
                 );
             }
         }
@@ -246,6 +250,7 @@ class MariaDbQuery extends AbstractDbQuery
      */
     public function closePreparedStatement()
     {
+        unset($this->preparedStatementArgs);
         if (!$this->isPreparedStatement) {
             throw new DbLogicalException(
                 $this->client->errorMessagePreamble() . ' - query isn\'t a prepared statement.'
@@ -253,7 +258,7 @@ class MariaDbQuery extends AbstractDbQuery
         }
         if ($this->client->isConnected() && $this->preparedStatement) {
             @$this->preparedStatement->close();
-            unset($this->preparedStatement, $this->preparedStatementArgs);
+            unset($this->preparedStatement);
         }
     }
 

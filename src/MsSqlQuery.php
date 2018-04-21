@@ -91,7 +91,7 @@ class MsSqlQuery extends AbstractDbQuery
      *
      * Optimal argument array structure:
      * - 0: (mixed) value
-     * - 1: (int|null) SQLSRV_PARAM_IN|SQLSRV_PARAM_INOUT|null
+     * - 1: (int|null) SQLSRV_PARAM_IN|SQLSRV_PARAM_INOUT|null; null ~ SQLSRV_PARAM_IN
      * - 2: (int|null) SQLSRV_PHPTYPE_*; out type
      * - 3: (int|null) SQLSRV_SQLTYPE_*; in type
      *
@@ -146,20 +146,23 @@ class MsSqlQuery extends AbstractDbQuery
             $this->preparedStatementArgs = [];
         }
         else {
+            // Use arg $arguments directly if all args have type flags.
+            // Otherwise build new arguments list, securing type flags.
+
             $args_typed = true;
             /**
              * Check that all arguments are arrays, indicating (in) type, like:
              * - 0: (mixed) value
-             * - 1: (int|null) SQLSRV_PARAM_IN|SQLSRV_PARAM_INOUT|null
+             * - 1: (int|null) SQLSRV_PARAM_IN|SQLSRV_PARAM_INOUT|null; null ~ SQLSRV_PARAM_IN
              * - 2: (int|null) SQLSRV_PHPTYPE_*; out type
              * - 3: (int|null) SQLSRV_SQLTYPE_*; in type
-             *
              * @see http://php.net/manual/en/function.sqlsrv-prepare.php
              */
             $i = -1;
             foreach ($arguments as $arg) {
                 ++$i;
                 if (!is_array($arg)) {
+                    // Argumment is arg value only.
                     $args_typed = false;
                     break;
                 }
@@ -169,6 +172,8 @@ class MsSqlQuery extends AbstractDbQuery
                         $this->client->errorMessagePreamble() . ' - arg $arguments bucket ' . $i . ' is empty array.'
                     );
                 }
+                // An 'in' parameter must have 4th bucket,
+                // containing SQLSRV_SQLTYPE_* constant.
                 if (
                     $count == 1
                     || ($arg[1] != SQLSRV_PARAM_OUT && ($count < 4 || !$arg[3]))
@@ -182,6 +187,7 @@ class MsSqlQuery extends AbstractDbQuery
                 $this->preparedStatementArgs =& $arguments;
             }
             else {
+                // Use arg $types to establish types.
                 $tps = $types;
                 if ($tps === '') {
                     // Be friendly, all strings.
@@ -205,6 +211,7 @@ class MsSqlQuery extends AbstractDbQuery
                 foreach ($arguments as $arg) {
                     ++$i;
                     if (!is_array($arg)) {
+                        // Argumment is arg value only.
                         $this->preparedStatementArgs[] = [
                             &$arg,
                             SQLSRV_PARAM_IN,
@@ -219,7 +226,7 @@ class MsSqlQuery extends AbstractDbQuery
                                 &$arg[0],
                                 $arg[1],
                                 $arg[2],
-                                $arg[3]
+                                $arg[3] ?? ($arg[1] == SQLSRV_PARAM_OUT ? null : $this->nativeType($arg, $tps[$i]))
                             ];
                         }
                         else {
@@ -245,7 +252,7 @@ class MsSqlQuery extends AbstractDbQuery
             throw new DbRuntimeException(
                 $this->client->errorMessagePreamble()
                 . ' - query failed to prepare statement and bind parameters, with error: '
-                . $this->client->getNativeError() . '.'
+                . $this->client->nativeError() . '.'
             );
         }
         $this->preparedStatement = $statement;
@@ -255,7 +262,7 @@ class MsSqlQuery extends AbstractDbQuery
     }
 
     /**
-     * Only
+     * Any query must be executed, even non-prepared statement.
      *
      * @return DbResultInterface|MsSqlResult
      *
@@ -268,12 +275,15 @@ class MsSqlQuery extends AbstractDbQuery
         if ($this->isPreparedStatement) {
             // Require unbroken connection.
             if (!$this->client->isConnected()) {
+                unset($this->preparedStatementArgs);
                 throw new DbInterruptionException(
                     $this->client->errorMessagePreamble()
                     . ' - query can\'t execute prepared statement when connection lost.'
                 );
             }
+            // bool.
             if (!@sqlsrv_execute($this->preparedStatement)) {
+                unset($this->preparedStatementArgs);
                 $this->client->log(
                     'warning',
                     $this->client->errorMessagePreamble() . ' - failed executing prepared statement, query',
@@ -281,7 +291,7 @@ class MsSqlQuery extends AbstractDbQuery
                 );
                 throw new DbQueryException(
                     $this->client->errorMessagePreamble()
-                    . ' - failed executing prepared statement, with error: ' . $this->client->getNativeError() . '.'
+                    . ' - failed executing prepared statement, with error: ' . $this->client->nativeError() . '.'
                 );
             }
         }
@@ -289,6 +299,7 @@ class MsSqlQuery extends AbstractDbQuery
             // Allow re-connection.
             /** @var \MySQLi $mysqli */
             $connection = $this->client->getConnection(true);
+            /** @var resource|bool $simple_statement */
             $simple_statement = @sqlsrv_query($connection, $this->queryWithArguments ?? $this->query);
             if (!$simple_statement) {
                 $this->client->log(
@@ -298,7 +309,7 @@ class MsSqlQuery extends AbstractDbQuery
                 );
                 throw new DbQueryException(
                     $this->client->errorMessagePreamble()
-                    . ' - failed executing simple query, with error: ' . $this->client->getNativeError() . '.'
+                    . ' - failed executing simple query, with error: ' . $this->client->nativeError() . '.'
                 );
             }
             $this->simpleStatement = $simple_statement;
@@ -314,6 +325,7 @@ class MsSqlQuery extends AbstractDbQuery
      */
     public function closePreparedStatement()
     {
+        unset($this->preparedStatementArgs);
         if (!$this->isPreparedStatement) {
             throw new DbLogicalException(
                 $this->client->errorMessagePreamble() . ' - query isn\'t a prepared statement.'
@@ -321,7 +333,7 @@ class MsSqlQuery extends AbstractDbQuery
         }
         if ($this->client->isConnected() && $this->preparedStatement) {
             @sqlsrv_free_stmt($this->preparedStatement);
-            unset($this->preparedStatement, $this->preparedStatementArgs);
+            unset($this->preparedStatement);
         }
     }
 
@@ -346,6 +358,7 @@ class MsSqlQuery extends AbstractDbQuery
      *      Values: i, d, s, b.
      *
      * @return int
+     *      SQLSRV_SQLTYPE_* constant.
      *
      * @throws \InvalidArgumentException
      *      Non-empty arg $typeChar isn't one of i, d, s, b.

@@ -148,6 +148,8 @@ abstract class AbstractDbQuery extends Explorable implements DbQueryInterface
     /**
      * Substitute base query ?-parameters by arguments.
      *
+     * Makes the base query reusable.
+     *
      * Non-prepared statement only.
      *
      * Types:
@@ -175,6 +177,9 @@ abstract class AbstractDbQuery extends Explorable implements DbQueryInterface
      */
     public function parameters(string $types, array $arguments) : DbQueryInterface
     {
+        // Reset; secure base query reusability.
+        $this->queryWithArguments = null;
+
         if ($this->isRepeatStatement) {
             throw new DbLogicalException(
                 $this->client->errorMessagePreamble()
