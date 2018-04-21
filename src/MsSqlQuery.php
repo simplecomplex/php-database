@@ -85,11 +85,19 @@ class MsSqlQuery extends AbstractDbQuery
     /**
      * Turn query into prepared statement and bind parameters.
      *
-     * Executes far quicker if all arguments are arrays, qualifying:
+     * Preferable all $arguments are type qualifying arrays.
+     * Secures safer behaviour and far quicker execution.
+     *
+     * Otherwise - literal argument value - the only types are
+     * integer, float, string (and binary, if non-empty arg $types).
+     *
+     * Type qualifying argument
+     * ------------------------
+     * Must have numerical and consecutive keys, starting with zero.
+     * Qualifies:
      * - 'in' and/or 'out' nature of the argument
      * - SQLSRV_SQLTYPE_* if 'in' parameter
-     *
-     * Optimal argument array structure:
+     * Array structure:
      * - 0: (mixed) value
      * - 1: (int|null) SQLSRV_PARAM_IN|SQLSRV_PARAM_INOUT|null; null ~ SQLSRV_PARAM_IN
      * - 2: (int|null) SQLSRV_PHPTYPE_*; out type
@@ -97,15 +105,9 @@ class MsSqlQuery extends AbstractDbQuery
      *
      * @see http://php.net/manual/en/function.sqlsrv-prepare.php
      *
-     * Types:
-     * - i: integer.
-     * - d: float (double).
-     * - s: string.
-     * - b: blob.
-     *
      * @param string $types
      *      Empty: uses string for all.
-     *      Ignored if all $arguments are arrays.
+     *      Ignored if all $arguments are type qualifying arrays.
      * @param array &$arguments
      *      By reference.
      * @param array $options {
@@ -151,7 +153,7 @@ class MsSqlQuery extends AbstractDbQuery
 
             $args_typed = true;
             /**
-             * Check that all arguments are arrays, indicating (in) type, like:
+             * Type qualifying array argument:
              * - 0: (mixed) value
              * - 1: (int|null) SQLSRV_PARAM_IN|SQLSRV_PARAM_INOUT|null; null ~ SQLSRV_PARAM_IN
              * - 2: (int|null) SQLSRV_PHPTYPE_*; out type
@@ -220,6 +222,9 @@ class MsSqlQuery extends AbstractDbQuery
                         ];
                     }
                     else {
+                        // Expect numerical and consecutive keys,
+                        // starting with zero.
+                        // And don't check, too costly performance-wise.
                         $count = count($arg);
                         if ($count > 3) {
                             $this->preparedStatementArgs[] = [
