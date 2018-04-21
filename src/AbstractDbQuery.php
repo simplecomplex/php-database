@@ -153,6 +153,8 @@ abstract class AbstractDbQuery extends Explorable implements DbQueryInterface
      *
      * Non-prepared statement only.
      *
+     * An $arguments bucket must be integer|float|string|binary.
+     *
      * Types:
      * - i: integer.
      * - d: float (double).
@@ -424,6 +426,8 @@ abstract class AbstractDbQuery extends Explorable implements DbQueryInterface
     /**
      * Substitute query ?-parameters by arguments.
      *
+     * An $arguments bucket must be integer|float|string|binary.
+     *
      * Types:
      * - i: integer.
      * - d: float (double).
@@ -476,6 +480,20 @@ abstract class AbstractDbQuery extends Explorable implements DbQueryInterface
         $query_with_args = '';
         for ($i = 0; $i < $n_params; ++$i) {
             $value = $args[$i];
+
+            /**
+             * Reject attempt to use array value.
+             * No compatibility with Sqlsrv type qualifying array.
+             * @see MsSqlQuery::prepareStatement()
+             */
+            if (!is_scalar($value) || is_bool($value)) {
+                // Unlikely when checked via parameterTypesCheck().
+                throw new \InvalidArgumentException(
+                    $this->client->errorMessagePreamble() . ' - arg $arguments index[' . $i
+                    . '] type[' . gettype($value) . '] is not integer|float|string|binary.'
+                );
+            }
+
             switch ($tps{$i}) {
                 case 's':
                 case 'b':
