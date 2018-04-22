@@ -265,117 +265,22 @@ class MsSqlQuery extends DatabaseQuery
      */
     public function prepareStatement(string $types, array &$arguments) : DbQueryInterface
     {
+        unset($this->preparedStatementArgs);
+        $this->preparedStatementArgs = null;
+
         if ($this->isPreparedStatement) {
             throw new DbLogicalException(
                 $this->client->errorMessagePreamble() . ' - query cannot prepare statement more than once.'
             );
         }
 
+        $this->isPreparedStatement = true;
+
+        // Checks for parameters/arguments count mismatch.
         $query_fragments = $this->queryFragments($this->query, $arguments);
-        $n_params = count($query_fragments) - 1;
-        unset($query_fragments);
-
-        if (!$n_params) {
-            $this->preparedStatementArgs = [];
-        }
-        else {
-            // Use arg $arguments directly if all args have type flags.
-            // Otherwise build new arguments list, securing type flags.
-
-            $args_typed = true;
-            /**
-             * Type qualifying array argument:
-             * - 0: (mixed) value
-             * - 1: (int|null) SQLSRV_PARAM_IN|SQLSRV_PARAM_INOUT|null; null ~ SQLSRV_PARAM_IN
-             * - 2: (int|null) SQLSRV_PHPTYPE_*; out type
-             * - 3: (int|null) SQLSRV_SQLTYPE_*; in type
-             * @see http://php.net/manual/en/function.sqlsrv-prepare.php
-             */
-            $i = -1;
-            foreach ($arguments as $arg) {
-                ++$i;
-                if (!is_array($arg)) {
-                    // Argumment is arg value only.
-                    $args_typed = false;
-                    break;
-                }
-                $count = count($arg);
-                if (!$count) {
-                    throw new \InvalidArgumentException(
-                        $this->client->errorMessagePreamble() . ' - arg $arguments bucket ' . $i . ' is empty array.'
-                    );
-                }
-                // An 'in' parameter must have 4th bucket,
-                // containing SQLSRV_SQLTYPE_* constant.
-                if (
-                    $count == 1
-                    || ($arg[1] != SQLSRV_PARAM_OUT && ($count < 4 || !$arg[3]))
-                ) {
-                    $args_typed = false;
-                    break;
-                }
-            }
-
-            if ($args_typed) {
-                $this->preparedStatementArgs =& $arguments;
-            }
-            else {
-                // Use arg $types to establish types.
-                $tps = $types;
-                if ($tps === '') {
-                    // Be friendly, all strings.
-                    $tps = str_repeat('s', $n_params);
-                }
-                elseif (strlen($types) != $n_params) {
-                    throw new \InvalidArgumentException(
-                        $this->client->errorMessagePreamble() . ' - arg $types length[' . strlen($types)
-                        . '] doesn\'t match query\'s ?-parameters count[' . $n_params . '].'
-                    );
-                }
-                elseif (($type_illegals = $this->parameterTypesCheck($types))) {
-                    throw new \InvalidArgumentException(
-                        $this->client->errorMessagePreamble()
-                        . ' - arg $types contains illegal char(s) ' . $type_illegals . '.'
-                    );
-                }
-
-                $this->preparedStatementArgs = [];
-                $i = -1;
-                foreach ($arguments as $arg) {
-                    ++$i;
-                    if (!is_array($arg)) {
-                        // Argumment is arg value only.
-                        $this->preparedStatementArgs[] = [
-                            &$arg,
-                            SQLSRV_PARAM_IN,
-                            null,
-                            $this->nativeType($arg, $tps[$i])
-                        ];
-                    }
-                    else {
-                        // Expect numerical and consecutive keys,
-                        // starting with zero.
-                        // And don't check, too costly performance-wise.
-                        $count = count($arg);
-                        if ($count > 3) {
-                            $this->preparedStatementArgs[] = [
-                                &$arg[0],
-                                $arg[1],
-                                $arg[2],
-                                $arg[3] ?? ($arg[1] == SQLSRV_PARAM_OUT ? null : $this->nativeType($arg, $tps[$i]))
-                            ];
-                        }
-                        else {
-                            $this->preparedStatementArgs[] = [
-                                &$arg[0],
-                                $count > 1 ? $arg[1] : null,
-                                $count > 2 ? $arg[2] : null,
-                                $count > 1 && $arg[1] == SQLSRV_PARAM_OUT ? null : $this->nativeType($arg, $tps[$i])
-                            ];
-                        }
-                    }
-                }
-            }
+        if ($query_fragments) {
+            unset($query_fragments);
+            $this->adaptArguments($types, $arguments);
         }
 
         // Allow re-connection.
@@ -390,9 +295,10 @@ class MsSqlQuery extends DatabaseQuery
         }
 
         /** @var resource $statement */
-        $statement = @sqlsrv_prepare($connection, $this->query, $this->preparedStatementArgs, $options);
+        $statement = @sqlsrv_prepare($connection, $this->query, $this->preparedStatementArgs ?? [], $options);
         if (!$statement) {
             unset($this->preparedStatementArgs);
+            $this->preparedStatementArgs = null;
             throw new DbRuntimeException(
                 $this->client->errorMessagePreamble()
                 . ' - query failed to prepare statement and bind parameters, with error: '
@@ -400,7 +306,66 @@ class MsSqlQuery extends DatabaseQuery
             );
         }
         $this->preparedStatement = $statement;
-        $this->isPreparedStatement = true;
+
+        return $this;
+    }
+
+    /**
+     * Set query arguments for native automated parameter marker substitution.
+     *
+     * @todo: not exactly, base query remains reusable because isn't tampered with at all
+     * Secures that the base query remains reusable.
+     *
+     * Non-prepared statement only.
+     *
+     * Query parameter marker is question mark.
+     *
+     * Arg $types type:
+     * - i: integer.
+     * - d: float (double).
+     * - s: string.
+     * - b: blob.
+     *
+     * @param string $types
+     *      Ignored if all arguments are type qualified arrays.
+     *      Otherwise empty: uses string for all.
+     * @param array $arguments
+     *      Values to substitute query ?-parameters with.
+     *      Arguments are consumed once, not referred.
+     *
+     * @return $this|DbQueryInterface
+     *
+     * @throws DbLogicalException
+     *      Base query has been repeated.
+     *      Another query has been appended to base query.
+     *      Query is prepared statement.
+     * @throws \InvalidArgumentException
+     *      Propagated; parameters/arguments count mismatch.
+     *      Arg $types contains illegal char(s).
+     *      Arg $types length (unless empty) doesn't match number of parameters.
+     *      Arg $arguments length doesn't match number of parameters.
+     */
+    public function parameters(string $types, array $arguments) : DbQueryInterface
+    {
+        if ($this->queryAppended) {
+            throw new DbLogicalException(
+                $this->client->errorMessagePreamble()
+                . ' - passing parameters to base query is illegal after another query has been appended.'
+            );
+        }
+        if ($this->isPreparedStatement) {
+            throw new DbLogicalException(
+                $this->client->errorMessagePreamble()
+                . ' - passing parameters to prepared statement is illegal except via call to prepareStatement().'
+            );
+        }
+
+        // Checks for parameters/arguments count mismatch.
+        $query_fragments = $this->queryFragments($this->query, $arguments);
+        if ($query_fragments) {
+            unset($query_fragments);
+            $this->adaptArguments($types, $arguments);
+        }
 
         return $this;
     }
@@ -422,6 +387,7 @@ class MsSqlQuery extends DatabaseQuery
             // Require unbroken connection.
             if (!$this->client->isConnected()) {
                 unset($this->preparedStatementArgs);
+                $this->preparedStatementArgs = null;
                 throw new DbInterruptionException(
                     $this->client->errorMessagePreamble()
                     . ' - query can\'t execute prepared statement when connection lost.'
@@ -430,6 +396,7 @@ class MsSqlQuery extends DatabaseQuery
             // bool.
             if (!@sqlsrv_execute($this->preparedStatement)) {
                 unset($this->preparedStatementArgs);
+                $this->preparedStatementArgs = null;
                 $this->client->log(
                     'warning',
                     $this->client->errorMessagePreamble() . ' - failed executing prepared statement, query',
@@ -454,12 +421,14 @@ class MsSqlQuery extends DatabaseQuery
             /** @var \MySQLi $mysqli */
             $connection = $this->client->getConnection(true);
             /** @var resource|bool $simple_statement */
-            $simple_statement = @sqlsrv_query($connection, $this->queryWithArguments ?? $this->query, $options);
+            $simple_statement = @sqlsrv_query(
+                $connection, $this->queryTampered ?? $this->query, $this->simpleStatementArgs ?? [], $options
+            );
             if (!$simple_statement) {
                 $this->client->log(
                     'warning',
                     $this->client->errorMessagePreamble() . ' - failed executing simple query, query',
-                    $this->queryWithArguments ?? $this->query
+                    $this->queryTampered ?? $this->query
                 );
                 throw new DbQueryException(
                     $this->client->errorMessagePreamble()
@@ -501,6 +470,7 @@ class MsSqlQuery extends DatabaseQuery
     {
         if ($this->preparedStatement) {
             unset($this->preparedStatementArgs);
+            $this->preparedStatementArgs = null;
             @sqlsrv_free_stmt($this->preparedStatement);
         } elseif ($this->simpleStatement) {
             @sqlsrv_free_stmt($this->simpleStatement);
@@ -622,5 +592,155 @@ class MsSqlQuery extends DatabaseQuery
             return SQLSRV_SQLTYPE_INT;
         }
         return SQLSRV_SQLTYPE_BIGINT;
+    }
+
+    /**
+     * @param string $types
+     * @param &$arguments
+     *      By reference, for prepared statement's sake.
+     *
+     * @return void
+     *      Number of parameters/arguments.
+     *
+     * @throws \InvalidArgumentException
+     *      Propagated; parameters/arguments count mismatch.
+     */
+    protected function adaptArguments(string $types, array &$arguments) /*:void*/
+    {
+        // Checks for parameters/arguments count mismatch.
+        $query_fragments = $this->queryFragments($this->query, $arguments);
+        $n_params = count($query_fragments) - 1;
+
+        if (!$n_params) {
+
+            return;
+        }
+
+        // Use arg $arguments directly if all args have type flags.
+        // Otherwise build new arguments list, securing type flags.
+
+        $args_typed = true;
+        /**
+         * Type qualifying array argument:
+         * - 0: (mixed) value
+         * - 1: (int|null) SQLSRV_PARAM_IN|SQLSRV_PARAM_INOUT|null; null ~ SQLSRV_PARAM_IN
+         * - 2: (int|null) SQLSRV_PHPTYPE_*; out type
+         * - 3: (int|null) SQLSRV_SQLTYPE_*; in type
+         * @see http://php.net/manual/en/function.sqlsrv-prepare.php
+         */
+        $i = -1;
+        foreach ($arguments as $arg) {
+            ++$i;
+            if (!is_array($arg)) {
+                // Argumment is arg value only.
+                $args_typed = false;
+                break;
+            }
+            $count = count($arg);
+            if (!$count) {
+                throw new \InvalidArgumentException(
+                    $this->client->errorMessagePreamble() . ' - arg $arguments bucket ' . $i . ' is empty array.'
+                );
+            }
+            // An 'in' parameter must have 4th bucket,
+            // containing SQLSRV_SQLTYPE_* constant.
+            if (
+                $count == 1
+                || ($arg[1] != SQLSRV_PARAM_OUT && ($count < 4 || !$arg[3]))
+            ) {
+                $args_typed = false;
+                break;
+            }
+        }
+
+        if ($args_typed) {
+            if ($this->isPreparedStatement) {
+                $this->preparedStatementArgs =& $arguments;
+            } else {
+                $this->simpleStatementArgs =& $arguments;
+            }
+
+            return;
+        }
+
+        // Use arg $types to establish types.
+        $tps = $types;
+        if ($tps === '') {
+            // Be friendly, all strings.
+            $tps = str_repeat('s', $n_params);
+        }
+        elseif (strlen($types) != $n_params) {
+            throw new \InvalidArgumentException(
+                $this->client->errorMessagePreamble() . ' - arg $types length[' . strlen($types)
+                . '] doesn\'t match query\'s ?-parameters count[' . $n_params . '].'
+            );
+        }
+        elseif (($type_illegals = $this->parameterTypesCheck($types))) {
+            throw new \InvalidArgumentException(
+                $this->client->errorMessagePreamble()
+                . ' - arg $types contains illegal char(s) ' . $type_illegals . '.'
+            );
+        }
+
+        $is_prep_stat = $this->isPreparedStatement;
+        $type_qualifieds = [];
+        $i = -1;
+        foreach ($arguments as &$arg) {
+            ++$i;
+            if (!is_array($arg)) {
+                // Argumment is arg value only.
+                $type_qualifieds[] = [
+                    null,
+                    SQLSRV_PARAM_IN,
+                    null,
+                    $this->nativeType($arg, $tps[$i])
+                ];
+                if ($is_prep_stat) {
+                    $type_qualifieds[$i][0] = &$arg;
+                } else {
+                    $type_qualifieds[$i][0] = $arg;
+                }
+            }
+            else {
+                // Expect numerical and consecutive keys,
+                // starting with zero.
+                // And don't check, too costly performance-wise.
+                $count = count($arg);
+                if ($count > 3) {
+                    $type_qualifieds[] = [
+                        null,
+                        $arg[1],
+                        $arg[2],
+                        $arg[3] ?? ($arg[1] == SQLSRV_PARAM_OUT ? null : $this->nativeType($arg, $tps[$i]))
+                    ];
+                    if ($is_prep_stat) {
+                        $type_qualifieds[$i][0] = &$arg;
+                    } else {
+                        $type_qualifieds[$i][0] = $arg;
+                    }
+                }
+                else {
+                    $type_qualifieds[] = [
+                        null,
+                        $count > 1 ? $arg[1] : null,
+                        $count > 2 ? $arg[2] : null,
+                        $count > 1 && $arg[1] == SQLSRV_PARAM_OUT ? null : $this->nativeType($arg, $tps[$i])
+                    ];
+                    if ($is_prep_stat) {
+                        $type_qualifieds[$i][0] = &$arg;
+                    } else {
+                        $type_qualifieds[$i][0] = $arg;
+                    }
+                }
+            }
+        }
+        // Iteration ref.
+        unset($arg);
+        
+        if ($this->isPreparedStatement) {
+            $this->preparedStatementArgs =& $type_qualifieds;
+        } else {
+            $this->simpleStatementArgs =& $type_qualifieds;
+        }
     }
 }

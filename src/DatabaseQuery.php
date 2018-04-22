@@ -83,14 +83,19 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
     protected $query;
 
     /**
-     * Copy of instance var $query with ?-parameters substituted
-     * by literal arguments.
+     * Copy of instance var $query with parameter markers substituted
+     * by arguments and/or.
+     *
+     * Copy of instance var $query manipulated in one more ways:
+     * - parameter markers substituted by arguments
+     * - another query has been appended
+     * - the base query repeated (with parameter markers substituted)
      *
      * Must be null when empty (not used).
      *
      * @var string|null
      */
-    protected $queryWithArguments;
+    protected $queryTampered;
 
     /**
      * @var bool
@@ -118,9 +123,14 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
     protected $hasLikeClause = false;
 
     /**
-     * @var array
+     * @var array|null
      */
     protected $preparedStatementArgs;
+
+    /**
+     * @var array|null
+     */
+    protected $simpleStatementArgs;
 
     /**
      * @param DbClientInterface|DatabaseClient $client
@@ -186,20 +196,25 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
     abstract public function prepareStatement(string $types, array &$arguments) : DbQueryInterface;
 
     /**
-     * Substitute base query ?-parameters by arguments.
+     * Set query arguments, for native automated parameter marker substitution
+     * or direct substition in the query.
      *
-     * Makes the base query reusable.
+     * // @todo: still correct?
+     * Secures that the base query remains reusable.
      *
      * Non-prepared statement only.
      *
      * An $arguments bucket must be integer|float|string|binary;
      * unless database-specific behaviour (Sqlsrv type qualifying array).
      *
-     * Types:
+     * Arg $types type:
      * - i: integer.
      * - d: float (double).
      * - s: string.
      * - b: blob.
+     *
+     * Query parameter marker is typically question mark:
+     * @see DatabaseQuery::QUERY_PARAMETER
      *
      * @param string $types
      *      Empty: uses string for all.
@@ -222,7 +237,7 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
     public function parameters(string $types, array $arguments) : DbQueryInterface
     {
         // Reset; secure base query reusability.
-        $this->queryWithArguments = null;
+        $this->queryTampered = null;
 
         if ($this->isRepeatStatement) {
             throw new DbLogicalException(
@@ -250,9 +265,10 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
             );
         }
 
+        // Checks for parameters/arguments count mismatch.
         $query_fragments = $this->queryFragments($this->query, $arguments);
         if ($query_fragments) {
-            $this->queryWithArguments = $this->substituteParametersByArgs($query_fragments, $types, $arguments);
+            $this->queryTampered = $this->substituteParametersByArgs($query_fragments, $types, $arguments);
         }
 
         return $this;
@@ -302,13 +318,14 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
 
         $this->isMultiQuery = $this->queryAppended = true;
 
-        if (!$this->queryWithArguments) {
+        if (!$this->queryTampered) {
             // First time appending.
-            $this->queryWithArguments = $this->query;
+            $this->queryTampered = $this->query;
         }
 
+        // Checks for parameters/arguments count mismatch.
         $query_fragments = $this->queryFragments($query, $arguments);
-        $this->queryWithArguments .= '; ' . (
+        $this->queryTampered .= '; ' . (
             !$query_fragments ? $query :
                 $this->substituteParametersByArgs($query_fragments, $types, $arguments)
             );
@@ -362,19 +379,21 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
             );
         }
 
+        // Checks for parameters/arguments count mismatch.
         $query_fragments = $this->queryFragments($this->query, $arguments);
+
         $repeated_query = !$query_fragments ? $this->query :
             $this->substituteParametersByArgs($query_fragments, $types, $arguments);
 
-        if (!$this->queryWithArguments) {
+        if (!$this->queryTampered) {
             // Not necessarily multi-query yet.
 
-            $this->queryWithArguments = $repeated_query;
+            $this->queryTampered = $repeated_query;
         }
         else {
             $this->isMultiQuery = $this->isRepeatStatement = true;
 
-            $this->queryWithArguments .= '; ' . $repeated_query;
+            $this->queryTampered .= '; ' . $repeated_query;
         }
 
         return $this;
@@ -612,7 +631,7 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
         'queryAppended',
         'hasLikeClause',
         'query',
-        'queryWithArguments',
+        'queryTampered',
     ];
 
     /**

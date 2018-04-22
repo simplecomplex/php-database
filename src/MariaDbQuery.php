@@ -114,6 +114,7 @@ class MariaDbQuery extends DatabaseQuery
             );
         }
 
+        // Checks for parameters/arguments count mismatch.
         $query_fragments = $this->queryFragments($this->query, $arguments);
         $n_params = count($query_fragments) - 1;
         unset($query_fragments);
@@ -155,6 +156,7 @@ class MariaDbQuery extends DatabaseQuery
 
             if (!@$mysqli_stmt->bind_param($tps, ...$this->preparedStatementArgs)) {
                 unset($this->preparedStatementArgs);
+                $this->preparedStatementArgs = null;
                 throw new DbRuntimeException(
                     $this->client->errorMessagePreamble()
                     . ' - query failed to bind parameters prepare statement, with error: '
@@ -183,6 +185,7 @@ class MariaDbQuery extends DatabaseQuery
             // Require unbroken connection.
             if (!$this->client->isConnected()) {
                 unset($this->preparedStatementArgs);
+                $this->preparedStatementArgs = null;
                 throw new DbInterruptionException(
                     $this->client->errorMessagePreamble()
                     . ' - query can\'t execute prepared statement when connection lost.'
@@ -191,6 +194,7 @@ class MariaDbQuery extends DatabaseQuery
             // bool.
             if (!@$this->preparedStatement->execute()) {
                 unset($this->preparedStatementArgs);
+                $this->preparedStatementArgs = null;
                 $this->client->log(
                     'warning',
                     $this->client->errorMessagePreamble() . ' - failed executing prepared statement, query',
@@ -207,11 +211,11 @@ class MariaDbQuery extends DatabaseQuery
             /** @var \MySQLi $mysqli */
             $mysqli = $this->client->getConnection(true);
             // bool.
-            if (!@$mysqli->multi_query($this->queryWithArguments ?? $this->query)) {
+            if (!@$mysqli->multi_query($this->queryTampered ?? $this->query)) {
                 $this->client->log(
                     'warning',
                     $this->client->errorMessagePreamble() . ' - failed executing multi-query, query',
-                    $this->queryWithArguments ?? $this->query
+                    $this->queryTampered ?? $this->query
                 );
                 throw new DbQueryException(
                     $this->client->errorMessagePreamble()
@@ -224,11 +228,11 @@ class MariaDbQuery extends DatabaseQuery
             /** @var \MySQLi $mysqli */
             $mysqli = $this->client->getConnection(true);
             // bool.
-            if (!@$mysqli->real_query($this->queryWithArguments ?? $this->query)) {
+            if (!@$mysqli->real_query($this->queryTampered ?? $this->query)) {
                 $this->client->log(
                     'warning',
                     $this->client->errorMessagePreamble() . ' - failed executing simple query, query',
-                    $this->queryWithArguments ?? $this->query
+                    $this->queryTampered ?? $this->query
                 );
                 throw new DbQueryException(
                     $this->client->errorMessagePreamble()
@@ -252,6 +256,7 @@ class MariaDbQuery extends DatabaseQuery
          * @see MsSqlQuery::closeStatement()
          */
         unset($this->preparedStatementArgs);
+        $this->preparedStatementArgs = null;
         if (!$this->isPreparedStatement) {
             throw new DbLogicalException(
                 $this->client->errorMessagePreamble() . ' - query isn\'t a prepared statement.'
@@ -259,7 +264,7 @@ class MariaDbQuery extends DatabaseQuery
         }
         if ($this->client->isConnected() && $this->preparedStatement) {
             @$this->preparedStatement->close();
-            unset($this->preparedStatement);
+            $this->preparedStatement = null;
         }
     }
 
