@@ -60,6 +60,16 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
     const MULTI_QUERY_SUPPORT = true;
 
     /**
+     * Char or string flagging a parameter a query,
+     * to be substituted by an argument.
+     *
+     * Typically question mark (Postgresql uses dollar sign).
+     *
+     * @var string
+     */
+    const QUERY_PARAMETER = '?';
+
+    /**
      * Ought to be protected, but too costly since result instance
      * may use it repetetively; via the query instance.
      *
@@ -204,6 +214,7 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
      *      Another query has been appended to base query.
      *      Query is prepared statement.
      * @throws \InvalidArgumentException
+     *      Propagated; parameters/arguments count mismatch.
      *      Arg $types contains illegal char(s).
      *      Arg $types length (unless empty) doesn't match number of parameters.
      *      Arg $arguments length doesn't match number of parameters.
@@ -239,7 +250,10 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
             );
         }
 
-        $this->queryWithArguments = $this->substituteParametersByArgs($this->query, $types, $arguments);
+        $query_fragments = $this->queryFragments($this->query, $arguments);
+        if ($query_fragments) {
+            $this->queryWithArguments = $this->substituteParametersByArgs($query_fragments, $types, $arguments);
+        }
 
         return $this;
     }
@@ -265,6 +279,7 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
      *      Query is prepared statement.
      * @throws \InvalidArgumentException
      *      Arg $query empty.
+     *      Propagated; parameters/arguments count mismatch.
      */
     public function appendQuery(string $query, string $types, array $arguments) : DbQueryInterface
     {
@@ -288,9 +303,15 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
         $this->isMultiQuery = $this->queryAppended = true;
 
         if (!$this->queryWithArguments) {
+            // First time appending.
             $this->queryWithArguments = $this->query;
         }
-        $this->queryWithArguments .= '; ' . $this->substituteParametersByArgs($query, $types, $arguments);
+
+        $query_fragments = $this->queryFragments($query, $arguments);
+        $this->queryWithArguments .= '; ' . (
+            !$query_fragments ? $query :
+                $this->substituteParametersByArgs($query_fragments, $types, $arguments)
+            );
 
         return $this;
     }
@@ -319,6 +340,8 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
      *      Query class doesn't support multi-query.
      *      Another query has been appended to base query.
      *      Query is prepared statement.
+     * @throws \InvalidArgumentException
+     *      Propagated; parameters/arguments count mismatch.
      */
     public function repeatStatement(string $types, array $arguments) : DbQueryInterface
     {
@@ -339,7 +362,9 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
             );
         }
 
-        $repeated_query = $this->substituteParametersByArgs($this->query, $types, $arguments);
+        $query_fragments = $this->queryFragments($this->query, $arguments);
+        $repeated_query = !$query_fragments ? $this->query :
+            $this->substituteParametersByArgs($query_fragments, $types, $arguments);
 
         if (!$this->queryWithArguments) {
             // Not necessarily multi-query yet.
@@ -411,6 +436,35 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
     }
 
     /**
+     * Splits a query by parameter flags and checks that number of arguments
+     * matches number of parameters.
+     *
+     * @see DatabaseQuery::QUERY_PARAMETER
+     *
+     * @param string $query
+     * @param array $arguments
+     *
+     * @return array
+     *      Empty: query contains no parameter flags.
+     *
+     * @throws \InvalidArgumentException
+     *      Arg $arguments length doesn't match number of parameters.
+     */
+    public function queryFragments(string $query, array $arguments) : array
+    {
+        $fragments = explode(static::QUERY_PARAMETER, $query);
+        $n_params = count($fragments) - 1;
+        $n_args = count($arguments);
+        if ($n_args != $n_params) {
+            throw new \InvalidArgumentException(
+                $this->client->errorMessagePreamble() . ' - arg $arguments length[' . $n_args
+                . '] doesn\'t match query\'s ?-parameters count[' . $n_params . '].'
+            );
+        }
+        return $n_params ? $fragments : [];
+    }
+
+    /**
      * Types:
      * - i: integer.
      * - d: float (double).
@@ -454,7 +508,7 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
     }
 
     /**
-     * Substitute query ?-parameters by arguments.
+     * Substitute query parameters markers by arguments.
      *
      * An $arguments bucket must be integer|float|string|binary.
      *
@@ -464,7 +518,10 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
      * - s: string.
      * - b: blob.
      *
-     * @param string $query
+     * @see DatabaseQuery::QUERY_PARAMETER
+     *
+     * @param array $queryFragments
+     *      A query string split by parameter marker.
      * @param string $types
      * @param array $arguments
      *
@@ -474,22 +531,9 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
      *      Arg $types length (unless empty) doesn't match number of parameters.
      *      Arg $arguments length doesn't match number of parameters.
      */
-    protected function substituteParametersByArgs(string $query, string $types, array $arguments) : string
+    protected function substituteParametersByArgs(array $queryFragments, string $types, array $arguments) : string
     {
-        $fragments = explode('?', $query);
-        $n_params = count($fragments) - 1;
-        $n_args = count($arguments);
-        if ($n_args != $n_params) {
-            throw new \InvalidArgumentException(
-                $this->client->errorMessagePreamble() . ' - arg $arguments length[' . $n_args
-                . '] doesn\'t match query\'s ?-parameters count[' . $n_params . '].'
-            );
-        }
-
-        if (!$n_params) {
-            // No work to do.
-            return $query;
-        }
+        $n_params = count($queryFragments) - 1;
 
         $tps = $types;
         if ($tps === '') {
@@ -539,10 +583,10 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
                         . ' - arg $types[' . $types . '] index[' . $i . '] char[' . $tps{$i} . '] is not i|d|s|b.'
                     );
             }
-            $query_with_args .= $fragments[$i] . $value;
+            $query_with_args .= $queryFragments[$i] . $value;
         }
 
-        return $query_with_args . $fragments[$i];
+        return $query_with_args . $queryFragments[$i];
     }
 
 

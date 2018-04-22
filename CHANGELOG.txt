@@ -1,6 +1,9 @@
 SimpleComplex/Database 1.x, 2018-04-22
 --------------------------------------
 - MS SQL client info.
+- The parameter marker is now a constant; not necessarily question mark.
+- Splitting query by parameter marker - and checking for parameters/arguments
+  count mismatch - moved to decidated method.
 
 SimpleComplex/Database 1.x, 2018-04-21
 --------------------------------------

@@ -101,6 +101,7 @@ class MariaDbQuery extends DatabaseQuery
      * @throws DbLogicalException
      *      Method called more than once for this query.
      * @throws \InvalidArgumentException
+     *      Propagated; parameters/arguments count mismatch.
      *      Arg $types contains illegal char(s).
      * @throws DbRuntimeException
      *      Failure to bind $arguments to native layer.
@@ -113,16 +114,9 @@ class MariaDbQuery extends DatabaseQuery
             );
         }
 
-        $fragments = explode('?', $this->query);
-        $n_params = count($fragments) - 1;
-        unset($fragments);
-        $n_args = count($arguments);
-        if ($n_args != $n_params) {
-            throw new \InvalidArgumentException(
-                $this->client->errorMessagePreamble() . ' - arg $arguments length[' . $n_args
-                . '] doesn\'t match query\'s ?-parameters count[' . $n_params . '].'
-            );
-        }
+        $query_fragments = $this->queryFragments($this->query, $arguments);
+        $n_params = count($query_fragments) - 1;
+        unset($query_fragments);
 
         $tps = $types;
         if ($n_params) {
