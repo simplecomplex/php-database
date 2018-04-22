@@ -32,7 +32,7 @@ use SimpleComplex\Database\Exception\DbQueryException;
  * @property-read bool $queryAppended
  * @property-read bool $hasLikeClause
  * @property-read string $query
- * @property-read string $queryWithArguments
+ * @property-read string $queryTampered
  *
  * Own read-onlys:
  * @property-read int $queryTimeout
@@ -265,8 +265,9 @@ class MsSqlQuery extends DatabaseQuery
      */
     public function prepareStatement(string $types, array &$arguments) : DbQueryInterface
     {
-        unset($this->preparedStatementArgs);
-        $this->preparedStatementArgs = null;
+        if ($this->instanceInert) {
+            throw new DbLogicalException($this->client->errorMessagePreamble() . ' - query instance inert.');
+        }
 
         if ($this->isPreparedStatement) {
             throw new DbLogicalException(
@@ -295,10 +296,9 @@ class MsSqlQuery extends DatabaseQuery
         }
 
         /** @var resource $statement */
-        $statement = @sqlsrv_prepare($connection, $this->query, $this->preparedStatementArgs ?? [], $options);
+        $statement = @sqlsrv_prepare($connection, $this->query, $this->preparedStmtArgs ?? [], $options);
         if (!$statement) {
-            unset($this->preparedStatementArgs);
-            $this->preparedStatementArgs = null;
+            $this->unsetReferences();
             throw new DbRuntimeException(
                 $this->client->errorMessagePreamble()
                 . ' - query failed to prepare statement and bind parameters, with error: '
@@ -313,8 +313,8 @@ class MsSqlQuery extends DatabaseQuery
     /**
      * Set query arguments for native automated parameter marker substitution.
      *
-     * @todo: not exactly, base query remains reusable because isn't tampered with at all
-     * Secures that the base query remains reusable.
+     * The base query remains reusable allowing more ->parameters()->execute(),
+     * much like a prepared statement (except arguments aren't referred).
      *
      * Non-prepared statement only.
      *
@@ -343,10 +343,13 @@ class MsSqlQuery extends DatabaseQuery
      *      Propagated; parameters/arguments count mismatch.
      *      Arg $types contains illegal char(s).
      *      Arg $types length (unless empty) doesn't match number of parameters.
-     *      Arg $arguments length doesn't match number of parameters.
      */
     public function parameters(string $types, array $arguments) : DbQueryInterface
     {
+        if ($this->instanceInert) {
+            throw new DbLogicalException($this->client->errorMessagePreamble() . ' - query instance inert.');
+        }
+
         if ($this->queryAppended) {
             throw new DbLogicalException(
                 $this->client->errorMessagePreamble()
@@ -383,11 +386,14 @@ class MsSqlQuery extends DatabaseQuery
      */
     public function execute(): DbResultInterface
     {
+        if ($this->instanceInert) {
+            throw new DbLogicalException($this->client->errorMessagePreamble() . ' - query instance inert.');
+        }
+
         if ($this->isPreparedStatement) {
             // Require unbroken connection.
             if (!$this->client->isConnected()) {
-                unset($this->preparedStatementArgs);
-                $this->preparedStatementArgs = null;
+                $this->unsetReferences();
                 throw new DbInterruptionException(
                     $this->client->errorMessagePreamble()
                     . ' - query can\'t execute prepared statement when connection lost.'
@@ -395,8 +401,7 @@ class MsSqlQuery extends DatabaseQuery
             }
             // bool.
             if (!@sqlsrv_execute($this->preparedStatement)) {
-                unset($this->preparedStatementArgs);
-                $this->preparedStatementArgs = null;
+                $this->unsetReferences();
                 $this->client->log(
                     'warning',
                     $this->client->errorMessagePreamble() . ' - failed executing prepared statement, query',
@@ -422,7 +427,7 @@ class MsSqlQuery extends DatabaseQuery
             $connection = $this->client->getConnection(true);
             /** @var resource|bool $simple_statement */
             $simple_statement = @sqlsrv_query(
-                $connection, $this->queryTampered ?? $this->query, $this->simpleStatementArgs ?? [], $options
+                $connection, $this->queryTampered ?? $this->query, $this->simpleStmtArgs ?? [], $options
             );
             if (!$simple_statement) {
                 $this->client->log(
@@ -469,8 +474,7 @@ class MsSqlQuery extends DatabaseQuery
     public function closeStatement()
     {
         if ($this->preparedStatement) {
-            unset($this->preparedStatementArgs);
-            $this->preparedStatementArgs = null;
+            $this->unsetReferences();
             @sqlsrv_free_stmt($this->preparedStatement);
         } elseif ($this->simpleStatement) {
             @sqlsrv_free_stmt($this->simpleStatement);
@@ -655,9 +659,11 @@ class MsSqlQuery extends DatabaseQuery
 
         if ($args_typed) {
             if ($this->isPreparedStatement) {
-                $this->preparedStatementArgs =& $arguments;
+                $this->preparedStmtArgs =& $arguments;
             } else {
-                $this->simpleStatementArgs =& $arguments;
+                // Don't refer; cannot unset the reference on later execute()
+                // because setting to an unset instance var is PHP illegal.
+                $this->simpleStmtArgs = $arguments;
             }
 
             return;
@@ -738,9 +744,11 @@ class MsSqlQuery extends DatabaseQuery
         unset($arg);
         
         if ($this->isPreparedStatement) {
-            $this->preparedStatementArgs =& $type_qualifieds;
+            $this->preparedStmtArgs =& $type_qualifieds;
         } else {
-            $this->simpleStatementArgs =& $type_qualifieds;
+            // Don't refer; cannot unset the reference on later execute()
+            // because setting to an unset instance var is PHP illegal.
+            $this->simpleStmtArgs = $type_qualifieds;
         }
     }
 }

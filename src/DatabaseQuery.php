@@ -10,8 +10,10 @@ declare(strict_types=1);
 namespace SimpleComplex\Database;
 
 use SimpleComplex\Utils\Explorable;
+
 use SimpleComplex\Database\Interfaces\DbClientInterface;
 use SimpleComplex\Database\Interfaces\DbQueryInterface;
+
 use SimpleComplex\Database\Exception\DbLogicalException;
 
 /**
@@ -46,7 +48,9 @@ use SimpleComplex\Database\Exception\DbLogicalException;
  * @property-read bool $queryAppended
  * @property-read bool $hasLikeClause
  * @property-read string $query
- * @property-read string $queryWithArguments
+ * @property-read string $queryTampered
+ * @property-read array|null $preparedStmtArgs
+ * @property-read array|null $simpleStmtArgs
  *
  * @package SimpleComplex\Database
  */
@@ -78,14 +82,22 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
     public $client;
 
     /**
+     * Query object useless.
+     *
+     * The prepared statement arguments instance var is a reference.
+     * On error the var gets unset() to clear the reference.
+     * Setting an instance upon unset() is PHP illegal.
+     *
+     * @var bool
+     */
+    protected $instanceInert;
+
+    /**
      * @var string
      */
     protected $query;
 
     /**
-     * Copy of instance var $query with parameter markers substituted
-     * by arguments and/or.
-     *
      * Copy of instance var $query manipulated in one more ways:
      * - parameter markers substituted by arguments
      * - another query has been appended
@@ -123,14 +135,19 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
     protected $hasLikeClause = false;
 
     /**
+     * Refers arguments, from outside, beware.
+     *
      * @var array|null
      */
-    protected $preparedStatementArgs;
+    protected $preparedStmtArgs;
 
     /**
+     * Must not refer, because may be set multiple times
+     * and one cannot unset+set and instance var (PHP illegal).
+     *
      * @var array|null
      */
-    protected $simpleStatementArgs;
+    protected $simpleStmtArgs;
 
     /**
      * @param DbClientInterface|DatabaseClient $client
@@ -199,15 +216,15 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
      * Set query arguments, for native automated parameter marker substitution
      * or direct substition in the query.
      *
-     * // @todo: still correct?
-     * Secures that the base query remains reusable.
+     * The base query remains reusable allowing more ->parameters()->execute(),
+     * much like a prepared statement (except arguments aren't referred).
      *
      * Non-prepared statement only.
      *
-     * An $arguments bucket must be integer|float|string|binary;
+     * An $arguments bucket must be integer|float|string|binary,
      * unless database-specific behaviour (Sqlsrv type qualifying array).
      *
-     * Arg $types type:
+     * Arg $types types:
      * - i: integer.
      * - d: float (double).
      * - s: string.
@@ -232,10 +249,13 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
      *      Propagated; parameters/arguments count mismatch.
      *      Arg $types contains illegal char(s).
      *      Arg $types length (unless empty) doesn't match number of parameters.
-     *      Arg $arguments length doesn't match number of parameters.
      */
     public function parameters(string $types, array $arguments) : DbQueryInterface
     {
+        if ($this->instanceInert) {
+            throw new DbLogicalException($this->client->errorMessagePreamble() . ' - query instance inert.');
+        }
+
         // Reset; secure base query reusability.
         $this->queryTampered = null;
 
@@ -267,6 +287,7 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
 
         // Checks for parameters/arguments count mismatch.
         $query_fragments = $this->queryFragments($this->query, $arguments);
+
         if ($query_fragments) {
             $this->queryTampered = $this->substituteParametersByArgs($query_fragments, $types, $arguments);
         }
@@ -299,6 +320,10 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
      */
     public function appendQuery(string $query, string $types, array $arguments) : DbQueryInterface
     {
+        if ($this->instanceInert) {
+            throw new DbLogicalException($this->client->errorMessagePreamble() . ' - query instance inert.');
+        }
+
         if (!static::MULTI_QUERY_SUPPORT) {
             throw new DbLogicalException(
                 $this->client->errorMessagePreamble() . ' doesn\'t support multi-query.'
@@ -325,6 +350,7 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
 
         // Checks for parameters/arguments count mismatch.
         $query_fragments = $this->queryFragments($query, $arguments);
+
         $this->queryTampered .= '; ' . (
             !$query_fragments ? $query :
                 $this->substituteParametersByArgs($query_fragments, $types, $arguments)
@@ -362,6 +388,10 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
      */
     public function repeatStatement(string $types, array $arguments) : DbQueryInterface
     {
+        if ($this->instanceInert) {
+            throw new DbLogicalException($this->client->errorMessagePreamble() . ' - query instance inert.');
+        }
+
         if (!static::MULTI_QUERY_SUPPORT) {
             throw new DbLogicalException(
                 $this->client->errorMessagePreamble() . ' doesn\'t support multi-query.'
@@ -548,7 +578,6 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
      *
      * @throws \InvalidArgumentException
      *      Arg $types length (unless empty) doesn't match number of parameters.
-     *      Arg $arguments length doesn't match number of parameters.
      */
     protected function substituteParametersByArgs(array $queryFragments, string $types, array $arguments) : string
     {
@@ -608,6 +637,23 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
         return $query_with_args . $queryFragments[$i];
     }
 
+    /**
+     * Unsets instance vars that are references.
+     *
+     * If any such, the object becomes inert (useless) because one cannot
+     * (later) set an instance var that previously was unset; spells error
+     * "Cannot assign by reference to overloaded object".
+     *
+     * @return void
+     */
+    protected function unsetReferences() /*:void*/
+    {
+        if (isset($this->preparedStmtArgs)) {
+            $this->instanceInert = true;
+            unset($this->preparedStmtArgs);
+        }
+    }
+
 
     // Explorable.--------------------------------------------------------------
 
@@ -632,6 +678,8 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
         'hasLikeClause',
         'query',
         'queryTampered',
+        'preparedStmtArgs',
+        'simpleStmtArgs',
     ];
 
     /**
@@ -647,6 +695,11 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
     public function __get(string $name)
     {
         if (in_array($name, $this->explorableIndex, true)) {
+            // Handle instance var which was unset to clear reference.
+            if (!isset($this->{$name})) {
+                return null;
+            }
+
             return $this->{$name};
         }
         throw new \OutOfBoundsException(get_class($this) . ' instance exposes no property[' . $name . '].');

@@ -4,6 +4,10 @@ SimpleComplex/Database 1.x, 2018-04-22
 - The parameter marker is now a constant; not necessarily question mark.
 - Splitting query by parameter marker - and checking for parameters/arguments
   count mismatch - moved to decidated method.
+- MS SQL query use automated parameter substitution even when non-prepared
+  statement.
+- Handle that query instance var prepared-statement-arguments is a reference,
+  and that unsetting it renders the query object useless.
 
 SimpleComplex/Database 1.x, 2018-04-21
 --------------------------------------

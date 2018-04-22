@@ -35,7 +35,7 @@ use SimpleComplex\Database\Exception\DbQueryException;
  * @property-read bool $queryAppended
  * @property-read bool $hasLikeClause
  * @property-read string $query
- * @property-read string $queryWithArguments
+ * @property-read string $queryTampered
  *
  * @package SimpleComplex\Database
  */
@@ -108,6 +108,10 @@ class MariaDbQuery extends DatabaseQuery
      */
     public function prepareStatement(string $types, array &$arguments) : DbQueryInterface
     {
+        if ($this->instanceInert) {
+            throw new DbLogicalException($this->client->errorMessagePreamble() . ' - query instance inert.');
+        }
+
         if ($this->isPreparedStatement) {
             throw new DbLogicalException(
                 $this->client->errorMessagePreamble() . ' - query cannot prepare statement more than once.'
@@ -152,11 +156,10 @@ class MariaDbQuery extends DatabaseQuery
         }
 
         if ($n_params) {
-            $this->preparedStatementArgs =& $arguments;
+            $this->preparedStmtArgs =& $arguments;
 
-            if (!@$mysqli_stmt->bind_param($tps, ...$this->preparedStatementArgs)) {
-                unset($this->preparedStatementArgs);
-                $this->preparedStatementArgs = null;
+            if (!@$mysqli_stmt->bind_param($tps, ...$this->preparedStmtArgs)) {
+                $this->unsetReferences();
                 throw new DbRuntimeException(
                     $this->client->errorMessagePreamble()
                     . ' - query failed to bind parameters prepare statement, with error: '
@@ -181,11 +184,14 @@ class MariaDbQuery extends DatabaseQuery
      */
     public function execute(): DbResultInterface
     {
+        if ($this->instanceInert) {
+            throw new DbLogicalException($this->client->errorMessagePreamble() . ' - query instance inert.');
+        }
+
         if ($this->isPreparedStatement) {
             // Require unbroken connection.
             if (!$this->client->isConnected()) {
-                unset($this->preparedStatementArgs);
-                $this->preparedStatementArgs = null;
+                $this->unsetReferences();
                 throw new DbInterruptionException(
                     $this->client->errorMessagePreamble()
                     . ' - query can\'t execute prepared statement when connection lost.'
@@ -193,8 +199,7 @@ class MariaDbQuery extends DatabaseQuery
             }
             // bool.
             if (!@$this->preparedStatement->execute()) {
-                unset($this->preparedStatementArgs);
-                $this->preparedStatementArgs = null;
+                $this->unsetReferences();
                 $this->client->log(
                     'warning',
                     $this->client->errorMessagePreamble() . ' - failed executing prepared statement, query',
@@ -255,14 +260,8 @@ class MariaDbQuery extends DatabaseQuery
          * @todo: see MsSqlQuery::closeStatement()
          * @see MsSqlQuery::closeStatement()
          */
-        unset($this->preparedStatementArgs);
-        $this->preparedStatementArgs = null;
-        if (!$this->isPreparedStatement) {
-            throw new DbLogicalException(
-                $this->client->errorMessagePreamble() . ' - query isn\'t a prepared statement.'
-            );
-        }
-        if ($this->client->isConnected() && $this->preparedStatement) {
+        $this->unsetReferences();
+        if (!$this->isPreparedStatement && $this->client->isConnected() && $this->preparedStatement) {
             @$this->preparedStatement->close();
             $this->preparedStatement = null;
         }
