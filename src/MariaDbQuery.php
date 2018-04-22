@@ -35,7 +35,7 @@ use SimpleComplex\Database\Exception\DbQueryException;
  *
  * @package SimpleComplex\Database
  */
-class MariaDbQuery extends AbstractDbQuery
+class MariaDbQuery extends DatabaseQuery
 {
     /**
      * Class name of \SimpleComplex\Database\MariaDbResult or extending class.

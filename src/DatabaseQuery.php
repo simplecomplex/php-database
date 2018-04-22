@@ -25,7 +25,7 @@ use SimpleComplex\Database\Exception\DbLogicalException;
  *
  * @package SimpleComplex\Database
  */
-abstract class AbstractDbQuery extends Explorable implements DbQueryInterface
+abstract class DatabaseQuery extends Explorable implements DbQueryInterface
 {
     /**
      * Whether the database type supports multi-query.
@@ -38,7 +38,7 @@ abstract class AbstractDbQuery extends Explorable implements DbQueryInterface
      * Ought to be protected, but too costly since result instance
      * may use it repetetively; via the query instance.
      *
-     * @var AbstractDbClient
+     * @var DatabaseClient
      */
     public $client;
 
@@ -85,7 +85,7 @@ abstract class AbstractDbQuery extends Explorable implements DbQueryInterface
     protected $preparedStatementArgs;
 
     /**
-     * @param DbClientInterface|AbstractDbClient $client
+     * @param DbClientInterface|DatabaseClient $client
      *      Reference to parent client.
      * @param string $baseQuery
      * @param array $options {
@@ -330,7 +330,7 @@ abstract class AbstractDbQuery extends Explorable implements DbQueryInterface
      * Flag that the query contains LIKE clause(s).
      *
      * Affects parameter escaping: chars %_ won't be escaped.
-     * @see AbstractDbQuery::escapeString()
+     * @see DatabaseQuery::escapeString()
      *
      * @return $this|DbQueryInterface
      */
@@ -525,7 +525,7 @@ abstract class AbstractDbQuery extends Explorable implements DbQueryInterface
      *
      * Private/protected members are also be readable via 'magic' __get().
      *
-     * @see AbstractDbQuery::__get()
+     * @see DatabaseQuery::__get()
      *
      * @internal
      *

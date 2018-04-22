@@ -52,7 +52,7 @@ use SimpleComplex\Database\Exception\DbInterruptionException;
  *
  * @package SimpleComplex\Database
  */
-class MariaDbClient extends AbstractDbClient
+class MariaDbClient extends DatabaseClient
 {
     /**
      * Class name of \SimpleComplex\Database\MariaDbQuery or extending class.

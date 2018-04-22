@@ -34,9 +34,12 @@ use SimpleComplex\Database\Exception\DbInterruptionException;
  * @property-read string $characterSet
  * @property-read bool $transactionStarted
  *
+ * Own read-onlys:
+ * @property-read array|string $info  Driver info, string if not connected.
+ *
  * @package SimpleComplex\Database
  */
-class MsSqlClient extends AbstractDbClient
+class MsSqlClient extends DatabaseClient
 {
     /**
      * Class name of \SimpleComplex\Database\MsSqlQuery or extending class.
@@ -92,6 +95,18 @@ class MsSqlClient extends AbstractDbClient
      * @var resource
      */
     protected $connection;
+
+    /**
+     * @inheritdoc
+     *
+     * @see DatabaseClient::__construct()
+     */
+    public function __construct(string $name, array $databaseInfo)
+    {
+        parent::__construct($name, $databaseInfo);
+
+        $this->explorableIndex[] = 'info';
+    }
 
     /**
      * Attempts to re-connect if connection lost and arg $reConnect.
@@ -361,5 +376,32 @@ class MsSqlClient extends AbstractDbClient
             return rtrim(join(' | ', $list), '.');
         }
         return $emptyOnNone ? '' : '- no native error recorded -';
+    }
+
+
+    // Explorable.--------------------------------------------------------------
+
+    /**
+     * Get a read-only property.
+     *
+     * @see DatabaseClient::__get()
+     *
+     * @param string $name
+     *
+     * @return mixed
+     *
+     * @throws \OutOfBoundsException
+     *      Propagated.
+     */
+    public function __get(string $name)
+    {
+        if ($name == 'info') {
+            $connection = $this->getConnection();
+            if (!$connection) {
+                return 'Not connected to server.';
+            }
+            return @sqlsrv_server_info($connection);
+        }
+        return parent::__get($name);
     }
 }

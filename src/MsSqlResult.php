@@ -22,13 +22,6 @@ use SimpleComplex\Database\Exception\DbResultException;
  */
 class MsSqlResult implements DbResultInterface
 {
-    const FETCH_ASSOC = 2;
-
-    const FETCH_NUMERIC = 1;
-
-    const FETCH_OBJECT = 4;
-
-
     /**
      * @var MsSqlQuery
      */
@@ -59,6 +52,8 @@ class MsSqlResult implements DbResultInterface
     }
 
     /**
+     * Number of rows affected by a CRUD statement.
+     *
      * @return int
      *
      * @throws DbResultException
@@ -89,8 +84,12 @@ class MsSqlResult implements DbResultInterface
     }
 
     /**
+     * Number of rows in a result set.
+     *
      * @return int
      *
+     * @throws DbLogicalException
+     *      Statement cursor mode not 'static' or 'keyset'.
      * @throws DbResultException
      */
     public function numRows() : int
@@ -119,6 +118,28 @@ class MsSqlResult implements DbResultInterface
     }
 
     /**
+     * Number of columns in a result row.
+     *
+     * @return int
+     *
+     * @throws DbResultException
+     */
+    public function numColumns() : int
+    {
+        $count = @sqlsrv_num_fields(
+            $this->statement
+        );
+        if (!$count && $count !== 0) {
+            throw new DbResultException(
+                $this->query->client->errorMessagePreamble() . ' - failed getting number of columns, with error: '
+                . $this->query->client->nativeError() . '.'
+            );
+
+        }
+        return $count;
+    }
+
+    /**
      * Associative (column-keyed) or numerically indexed array.
      *
      * @param int $as
@@ -127,19 +148,22 @@ class MsSqlResult implements DbResultInterface
      * @return array|null
      *      No more rows.
      */
-    public function fetchArray(int $as = MsSqlResult::FETCH_ASSOC)
+    public function fetchArray(int $as = Database::FETCH_ASSOC)
     {
-        $row = @sqlsrv_fetch_array($this->statement, $as);
+        $row = @sqlsrv_fetch_array(
+            $this->statement,
+            $as == Database::FETCH_ASSOC ? SQLSRV_FETCH_ASSOC : SQLSRV_FETCH_NUMERIC
+        );
         if ($row) {
             return $row;
         }
         if ($row === null) {
             return null;
         }
-        $em = $as = MsSqlResult::FETCH_NUMERIC ? 'numeric array' : 'assoc array';
         throw new DbResultException(
             $this->query->client->errorMessagePreamble()
-            . ' - failed fetching row as ' . $em . ', with error: ' . $this->query->client->nativeError() . '.'
+            . ' - failed fetching row as ' . (Database::FETCH_NUMERIC ? 'numeric' : 'assoc') . ' array, with error: '
+            . $this->query->client->nativeError() . '.'
         );
     }
 
@@ -184,17 +208,23 @@ class MsSqlResult implements DbResultInterface
      * }
      *
      * @return array
+     *
+     * @throws DbLogicalException
+     *      Providing 'list_by_column' option when fetching as numeric array.
+     * @throws \InvalidArgumentException
+     *      Providing 'list_by_column' option and no such column in result row.
+     * @throws DbResultException
      */
-    public function fetchAll(int $as = MsSqlResult::FETCH_ASSOC, array $options = []) : array
+    public function fetchAll(int $as = Database::FETCH_ASSOC, array $options = []) : array
     {
         $column_keyed = !empty($options['list_by_column']);
         $key_column = !$column_keyed ? null : $options['list_by_column'];
         $list = [];
         $first = true;
         switch ($as) {
-            case MsSqlResult::FETCH_NUMERIC:
+            case Database::FETCH_NUMERIC:
                 if ($column_keyed) {
-                    throw new \InvalidArgumentException(
+                    throw new DbLogicalException(
                         $this->query->client->errorMessagePreamble()
                         . ' - arg $options \'list_by_column\' is not supported when fetching as numeric arrays.'
                     );
@@ -203,7 +233,7 @@ class MsSqlResult implements DbResultInterface
                     $list[] = $row;
                 }
                 break;
-            case MsSqlResult::FETCH_OBJECT:
+            case Database::FETCH_OBJECT:
                 while (
                     ($row = @sqlsrv_fetch_object($this->statement, $options['class'] ?? '', $options['args'] ?? []))
                 ) {
@@ -214,7 +244,7 @@ class MsSqlResult implements DbResultInterface
                         if ($first) {
                             $first = false;
                             if (!property_exists($row, $key_column)) {
-                                throw new DbResultException(
+                                throw new \InvalidArgumentException(
                                     $this->query->client->errorMessagePreamble()
                                     . ' - failed fetching all rows as objects keyed by column[' . $key_column
                                     . '], non-existent column.'
@@ -234,7 +264,7 @@ class MsSqlResult implements DbResultInterface
                         if ($first) {
                             $first = false;
                             if (!array_key_exists($key_column, $row)) {
-                                throw new DbResultException(
+                                throw new \InvalidArgumentException(
                                     $this->query->client->errorMessagePreamble()
                                     . ' - failed fetching all rows as assoc arrays keyed by column[' . $key_column
                                     . '], non-existent column.'
@@ -247,10 +277,10 @@ class MsSqlResult implements DbResultInterface
         }
         if ($row !== null) {
             switch ($as) {
-                case MsSqlResult::FETCH_NUMERIC:
+                case Database::FETCH_NUMERIC:
                     $em = 'numeric array';
                     break;
-                case MsSqlResult::FETCH_OBJECT:
+                case Database::FETCH_OBJECT:
                     $em = 'object';
                     break;
                 default:

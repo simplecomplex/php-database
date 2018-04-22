@@ -37,7 +37,7 @@ use SimpleComplex\Database\Exception\DbQueryException;
  *
  * @package SimpleComplex\Database
  */
-class MsSqlQuery extends AbstractDbQuery
+class MsSqlQuery extends DatabaseQuery
 {
     /**
      * Class name of \SimpleComplex\Database\MsSqlResult or extending class.
@@ -165,7 +165,7 @@ class MsSqlQuery extends AbstractDbQuery
     protected $sendChunksLimit;
 
     /**
-     * @param DbClientInterface|AbstractDbClient|MsSqlClient $client
+     * @param DbClientInterface|DatabaseClient|MsSqlClient $client
      *      Reference to parent client.
      * @param string $baseQuery
      * @param array $options {

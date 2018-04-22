@@ -28,7 +28,7 @@ use SimpleComplex\Database\Interfaces\DbQueryInterface;
  *
  * @package SimpleComplex\Database
  */
-abstract class AbstractDbClient extends Explorable implements DbClientInterface
+abstract class DatabaseClient extends Explorable implements DbClientInterface
 {
     /**
      * Class name of DbQueryInterface class.
@@ -141,7 +141,7 @@ abstract class AbstractDbClient extends Explorable implements DbClientInterface
     protected $optionsResolved;
 
     /**
-     * @see AbstractDbClient::characterSetResolve()
+     * @see DatabaseClient::characterSetResolve()
      *
      * @var string
      */
@@ -157,9 +157,9 @@ abstract class AbstractDbClient extends Explorable implements DbClientInterface
      *
      * Connection to the database server is created later, on demand.
      *
-     * @see AbstractDbClient::OPTION_SHORTHANDS
+     * @see DatabaseClient::OPTION_SHORTHANDS
      *
-     * @see AbstractDbClient::characterSetResolve()
+     * @see DatabaseClient::characterSetResolve()
      *
      * @param string $name
      * @param array $databaseInfo {
@@ -218,7 +218,7 @@ abstract class AbstractDbClient extends Explorable implements DbClientInterface
     }
 
     /**
-     * @see AbstractDbClient::disConnect()
+     * @see DatabaseClient::disConnect()
      */
     public function __destruct()
     {
@@ -245,8 +245,8 @@ abstract class AbstractDbClient extends Explorable implements DbClientInterface
      * Public to facilitate option debugging prior to attempt to connect.
      *
      * @see DbClientInterface::getConnection()
-     * @see AbstractDbClient::OPTION_SHORTHANDS
-     * @see AbstractDbClient::$optionsResolved
+     * @see DatabaseClient::OPTION_SHORTHANDS
+     * @see DatabaseClient::$optionsResolved
      *
      * @return void
      *      Throws exception on error.
@@ -307,7 +307,7 @@ abstract class AbstractDbClient extends Explorable implements DbClientInterface
      *
      * Private/protected members are also be readable via 'magic' __get().
      *
-     * @see AbstractDbClient::__get()
+     * @see DatabaseClient::__get()
      *
      * @internal
      *

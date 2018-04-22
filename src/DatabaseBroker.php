@@ -144,8 +144,8 @@ class DatabaseBroker extends Explorable
      */
     public function __get(string $name)
     {
-        if (isset($this->stores[$name])) {
-            return $this->stores[$name];
+        if (isset($this->clients[$name])) {
+            return $this->clients[$name];
         }
         throw new \OutOfBoundsException(get_class($this) . ' instance has no database client[' . $name . '].');
     }
