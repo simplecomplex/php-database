@@ -15,6 +15,31 @@ use SimpleComplex\Database\Interfaces\DbQueryInterface;
 use SimpleComplex\Database\Exception\DbLogicalException;
 
 /**
+ *
+ * Multi-query
+ * -----------
+ * A multi query (here) consists of multiple non-CRUD statements.
+ * @todo: is this correct?
+ * MySQL supports them, MS SQL doesn't.
+ * A query containing 'CRUD; non-CRUD' (INSERT...; SELECT...) is not considered
+ * a multi-query. And MS SQL supports such.
+ *
+ * Prepared statement vs. simple statement
+ * ---------------------------------------
+ * A prepared statement's arguments are referred and therefore changes will
+ * reflect in later execution of the the statement.
+ * A simple statement's arguments get consumed and one has to pass new arguments
+ * for later execution of the statement.
+ * Normally simple statements don't support automated (and safe) ?-parameter
+ * substitution (argument value parsed into query string). However this library
+ * does support that.
+ * @see DatabaseQuery::parameters()
+ *
+ * CRUD vs non-CRUD statements
+ * ---------------
+ * CRUD: (at least) INSERT, UPDATE, REPLACE, DELETE.
+ * Non-CRUD: (at least) SELECT, DESCRIBE, EXPLAIN, HELP, USE.
+ *
  * @property-read bool $isPreparedStatement
  * @property-read bool $isMultiQuery
  * @property-read bool $isRepeatStatement
@@ -48,6 +73,9 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
     protected $query;
 
     /**
+     * Copy of instance var $query with ?-parameters substituted
+     * by literal arguments.
+     *
      * Must be null when empty (not used).
      *
      * @var string|null
@@ -154,7 +182,8 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
      *
      * Non-prepared statement only.
      *
-     * An $arguments bucket must be integer|float|string|binary.
+     * An $arguments bucket must be integer|float|string|binary;
+     * unless database-specific behaviour (Sqlsrv type qualifying array).
      *
      * Types:
      * - i: integer.

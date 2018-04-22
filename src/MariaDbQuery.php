@@ -20,6 +20,10 @@ use SimpleComplex\Database\Exception\DbQueryException;
 /**
  * Maria DB query.
  *
+ * Multi-query is supported by Maria DB.
+ * @see DatabaseQuery
+ *
+ *
  * NB: Prepared statement requires the mysqlnd driver.
  * Because a result set will eventually be handled as \mysqli_result
  * via mysqli_stmt::get_result(); only available with mysqlnd.

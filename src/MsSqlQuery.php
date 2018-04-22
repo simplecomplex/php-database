@@ -21,6 +21,10 @@ use SimpleComplex\Database\Exception\DbQueryException;
 /**
  * MS SQL query.
  *
+ * Multi-query - multiple non-CRUD statements - is NOT supported by MS SQL.
+ * @todo: is this correct?
+ * @see DatabaseQuery
+ *
  * Inherited read-onlys:
  * @property-read bool $isPreparedStatement
  * @property-read bool $isMultiQuery
@@ -120,7 +124,7 @@ class MsSqlQuery extends DatabaseQuery
     /**
      * @var resource
      */
-    public $preparedStatement;
+    protected $preparedStatement;
 
     /**
      * @var resource
