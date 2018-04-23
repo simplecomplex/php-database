@@ -217,13 +217,11 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
     abstract public function prepare(string $types, array &$arguments) : DbQueryInterface;
 
     /**
-     * Set query arguments, for native automated parameter marker substitution
-     * or direct substition in the query.
+     * Non-prepared statement: set query arguments, for native automated
+     * parameter marker substitution or direct substition in the query.
      *
      * The base query remains reusable allowing more ->parameters()->execute(),
      * much like a prepared statement (except arguments aren't referred).
-     *
-     * Non-prepared statement only.
      *
      * An $arguments bucket must be integer|float|string|binary,
      * unless database-specific behaviour (Sqlsrv type qualifying array).

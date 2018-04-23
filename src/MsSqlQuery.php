@@ -302,12 +302,11 @@ class MsSqlQuery extends DatabaseQuery
     }
 
     /**
-     * Set query arguments for native automated parameter marker substitution.
+     * Non-prepared statement: set query arguments for native automated
+     * parameter marker substitution.
      *
      * The base query remains reusable allowing more ->parameters()->execute(),
      * much like a prepared statement (except arguments aren't referred).
-     *
-     * Non-prepared statement only.
      *
      * Query parameter marker is question mark.
      *
