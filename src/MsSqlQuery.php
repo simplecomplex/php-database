@@ -33,11 +33,13 @@ use SimpleComplex\Database\Exception\DbQueryException;
  * @property-read bool $hasLikeClause
  * @property-read string $query
  * @property-read string $queryTampered
+ * @property-read array $arguments
  *
  * Own read-onlys:
  * @property-read int $queryTimeout
  * @property-read string $cursorMode
  * @property-read bool $sendDataChunked
+ * @property-read int $sendChunksLimit
  *
  * @package SimpleComplex\Database
  */
@@ -122,19 +124,11 @@ class MsSqlQuery extends DatabaseQuery
     public $client;
 
     /**
-     * @var resource
+     * Prepared or simple statement.
+     *
+     * @var resource|null
      */
-    protected $preparedStatement;
-
-    /**
-     * @var resource
-     */
-    protected $simpleStatement;
-
-    /**
-     * @var string
-     */
-    protected $preparedStatementTypes;
+    protected $statement;
 
     /**
      * @see MsSqlQuery::QUERY_TIMEOUT
@@ -220,11 +214,13 @@ class MsSqlQuery extends DatabaseQuery
 
     public function __destruct()
     {
-        $this->closeStatement();
+        if ($this->statement) {
+            @sqlsrv_free_stmt($this->statement);
+        }
     }
 
     /**
-     * Turn query into prepared statement and bind parameters.
+     * Turn query into server-side prepared statement and bind parameters.
      *
      * Preferable all $arguments are type qualifying arrays.
      * Secures safer behaviour and far quicker execution.
@@ -263,18 +259,13 @@ class MsSqlQuery extends DatabaseQuery
      * @throws DbRuntimeException
      *      Failure to bind $arguments to native layer.
      */
-    public function prepareStatement(string $types, array &$arguments) : DbQueryInterface
+    public function prepare(string $types, array &$arguments) : DbQueryInterface
     {
-        if ($this->instanceInert) {
-            throw new DbLogicalException($this->client->errorMessagePreamble() . ' - query instance inert.');
-        }
-
         if ($this->isPreparedStatement) {
             throw new DbLogicalException(
                 $this->client->errorMessagePreamble() . ' - query cannot prepare statement more than once.'
             );
         }
-
         $this->isPreparedStatement = true;
 
         // Checks for parameters/arguments count mismatch.
@@ -296,7 +287,7 @@ class MsSqlQuery extends DatabaseQuery
         }
 
         /** @var resource $statement */
-        $statement = @sqlsrv_prepare($connection, $this->query, $this->preparedStmtArgs ?? [], $options);
+        $statement = @sqlsrv_prepare($connection, $this->query, $this->arguments['prepared'] ?? [], $options);
         if (!$statement) {
             $this->unsetReferences();
             throw new DbRuntimeException(
@@ -305,7 +296,7 @@ class MsSqlQuery extends DatabaseQuery
                 . $this->client->nativeError() . '.'
             );
         }
-        $this->preparedStatement = $statement;
+        $this->statement = $statement;
 
         return $this;
     }
@@ -346,10 +337,6 @@ class MsSqlQuery extends DatabaseQuery
      */
     public function parameters(string $types, array $arguments) : DbQueryInterface
     {
-        if ($this->instanceInert) {
-            throw new DbLogicalException($this->client->errorMessagePreamble() . ' - query instance inert.');
-        }
-
         if ($this->queryAppended) {
             throw new DbLogicalException(
                 $this->client->errorMessagePreamble()
@@ -359,7 +346,7 @@ class MsSqlQuery extends DatabaseQuery
         if ($this->isPreparedStatement) {
             throw new DbLogicalException(
                 $this->client->errorMessagePreamble()
-                . ' - passing parameters to prepared statement is illegal except via call to prepareStatement().'
+                . ' - passing parameters to prepared statement is illegal except via call to prepare().'
             );
         }
 
@@ -379,15 +366,21 @@ class MsSqlQuery extends DatabaseQuery
      * @return DbResultInterface|MsSqlResult
      *
      * @throws DbLogicalException
-     *      Method called without previous call to prepareStatement().
+     *      Query statement previously closed.
+     * @throws DbInterruptionException
+     *      Is prepared statement and connection lost.
      * @throws DbQueryException
      * @throws DbRuntimeException
      *      Failing to complete sending data as chunks.
      */
     public function execute(): DbResultInterface
     {
-        if ($this->instanceInert) {
-            throw new DbLogicalException($this->client->errorMessagePreamble() . ' - query instance inert.');
+        // (Sqlsrv) Even a simple statement is a 'statement'.
+        if ($this->statementClosed) {
+            throw new DbLogicalException(
+                $this->client->errorMessagePreamble()
+                . ' - query can\'t execute previously closed statement.'
+            );
         }
 
         if ($this->isPreparedStatement) {
@@ -400,7 +393,7 @@ class MsSqlQuery extends DatabaseQuery
                 );
             }
             // bool.
-            if (!@sqlsrv_execute($this->preparedStatement)) {
+            if (!@sqlsrv_execute($this->statement)) {
                 $this->unsetReferences();
                 $this->client->log(
                     'warning',
@@ -425,14 +418,14 @@ class MsSqlQuery extends DatabaseQuery
             // Allow re-connection.
             /** @var \MySQLi $mysqli */
             $connection = $this->client->getConnection(true);
-            /** @var resource|bool $simple_statement */
-            $simple_statement = @sqlsrv_query(
-                $connection, $this->queryTampered ?? $this->query, $this->simpleStmtArgs ?? [], $options
+            /** @var resource|bool $statement */
+            $statement = @sqlsrv_query(
+                $connection, $this->queryTampered ?? $this->query, $this->arguments['simple'] ?? [], $options
             );
-            if (!$simple_statement) {
+            if (!$statement) {
                 $this->client->log(
                     'warning',
-                    $this->client->errorMessagePreamble() . ' - failed executing simple query, query',
+                    $this->client->errorMessagePreamble() . ' - failed executing simple query',
                     $this->queryTampered ?? $this->query
                 );
                 throw new DbQueryException(
@@ -440,16 +433,14 @@ class MsSqlQuery extends DatabaseQuery
                     . ' - failed executing simple query, with error: ' . $this->client->nativeError() . '.'
                 );
             }
-            $this->simpleStatement = $simple_statement;
+            $this->statement = $statement;
         }
 
         if ($this->sendDataChunked) {
             $chunks = 0;
             while (
                 $chunks < $this->sendChunksLimit
-                && @sqlsrv_send_stream_data(
-                    $this->isPreparedStatement ? $this->preparedStatement : $this->simpleStatement
-                )
+                && @sqlsrv_send_stream_data($this->statement)
             ) {
                 ++$chunks;
             }
@@ -465,19 +456,20 @@ class MsSqlQuery extends DatabaseQuery
 
         $class_result = static::CLASS_RESULT;
         /** @var DbResultInterface|MsSqlResult */
-        return new $class_result($this, $this->isPreparedStatement ? $this->preparedStatement : $this->simpleStatement);
+        return new $class_result($this, $this->statement);
     }
 
     /**
+     * @see DatabaseQuery::$statementClosed
+     *
      * @return void
      */
     public function closeStatement()
     {
-        if ($this->preparedStatement) {
-            $this->unsetReferences();
-            @sqlsrv_free_stmt($this->preparedStatement);
-        } elseif ($this->simpleStatement) {
-            @sqlsrv_free_stmt($this->simpleStatement);
+        $this->statementClosed = true;
+        $this->unsetReferences();
+        if ($this->statement) {
+            @sqlsrv_free_stmt($this->statement);
         }
     }
 
@@ -659,11 +651,11 @@ class MsSqlQuery extends DatabaseQuery
 
         if ($args_typed) {
             if ($this->isPreparedStatement) {
-                $this->preparedStmtArgs =& $arguments;
+                $this->arguments['prepared'] =& $arguments;
             } else {
                 // Don't refer; cannot unset the reference on later execute()
                 // because setting to an unset instance var is PHP illegal.
-                $this->simpleStmtArgs = $arguments;
+                $this->arguments['simple'] = $arguments;
             }
 
             return;
@@ -744,11 +736,13 @@ class MsSqlQuery extends DatabaseQuery
         unset($arg);
         
         if ($this->isPreparedStatement) {
-            $this->preparedStmtArgs =& $type_qualifieds;
+            $this->arguments['prepared'] =& $type_qualifieds;
         } else {
-            // Don't refer; cannot unset the reference on later execute()
-            // because setting to an unset instance var is PHP illegal.
-            $this->simpleStmtArgs = $type_qualifieds;
+            // Don't refer; the prospect of a slight performance gain isn't
+            // worth the risk.
+            // A simple query's arguments shan't refer to the outside;
+            // new arguments list before every execute().
+            $this->arguments['simple'] = $type_qualifieds;
         }
     }
 }

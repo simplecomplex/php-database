@@ -50,7 +50,7 @@ interface DbQueryInterface
      *      Propagated.
      * @throws \SimpleComplex\Database\Exception\DbRuntimeException
      */
-    public function prepareStatement(string $types, array &$arguments) : DbQueryInterface;
+    public function prepare(string $types, array &$arguments) : DbQueryInterface;
 
     /**
      * Substitute base query ?-parameters by arguments.

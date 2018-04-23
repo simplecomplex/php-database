@@ -49,8 +49,8 @@ use SimpleComplex\Database\Exception\DbLogicalException;
  * @property-read bool $hasLikeClause
  * @property-read string $query
  * @property-read string $queryTampered
- * @property-read array|null $preparedStmtArgs
- * @property-read array|null $simpleStmtArgs
+ * @property-read array $arguments
+ * @property-read bool|null $statementClosed
  *
  * @package SimpleComplex\Database
  */
@@ -80,17 +80,6 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
      * @var DatabaseClient
      */
     public $client;
-
-    /**
-     * Query object useless.
-     *
-     * The prepared statement arguments instance var is a reference.
-     * On error the var gets unset() to clear the reference.
-     * Setting an instance upon unset() is PHP illegal.
-     *
-     * @var bool
-     */
-    protected $instanceInert;
 
     /**
      * @var string
@@ -135,19 +124,34 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
     protected $hasLikeClause = false;
 
     /**
-     * Refers arguments, from outside, beware.
+     * Prepared or simple statement.
      *
-     * @var array|null
+     * A simple statement might not be linked at all (MySQLi).
+     *
+     * @var mixed|null
      */
-    protected $preparedStmtArgs;
+    protected $statement;
 
     /**
-     * Must not refer, because may be set multiple times
-     * and one cannot unset+set and instance var (PHP illegal).
+     * Will only have a single bucket, 'prepared' or 'simple'.
+     * Array because that allows unsetting.
      *
-     * @var array|null
+     * Prepared statement arguments are referred, to reflect changes
+     * (from outside).
+     *
+     * Simple statement arguments may not be linked at all (MySQLi).
+     *
+     * @var array {
+     *      @var array &$prepared  If prepared statement.
+     *      @var array $simple  If simple statement.
+     * }
      */
-    protected $simpleStmtArgs;
+    protected $arguments = [];
+
+    /**
+     * @var boolean|null
+     */
+    protected $statementClosed;
 
     /**
      * @param DbClientInterface|DatabaseClient $client
@@ -191,7 +195,7 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
     }
 
     /**
-     * Turn query into prepared statement and bind parameters.
+     * Turn query into server-side prepared statement and bind parameters.
      *
      * Types:
      * - i: integer.
@@ -210,7 +214,7 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
      *      Propagated.
      * @throws \SimpleComplex\Database\Exception\DbRuntimeException
      */
-    abstract public function prepareStatement(string $types, array &$arguments) : DbQueryInterface;
+    abstract public function prepare(string $types, array &$arguments) : DbQueryInterface;
 
     /**
      * Set query arguments, for native automated parameter marker substitution
@@ -252,10 +256,6 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
      */
     public function parameters(string $types, array $arguments) : DbQueryInterface
     {
-        if ($this->instanceInert) {
-            throw new DbLogicalException($this->client->errorMessagePreamble() . ' - query instance inert.');
-        }
-
         // Reset; secure base query reusability.
         $this->queryTampered = null;
 
@@ -274,7 +274,7 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
         if ($this->isPreparedStatement) {
             throw new DbLogicalException(
                 $this->client->errorMessagePreamble()
-                . ' - passing parameters to prepared statement is illegal except via call to prepareStatement().'
+                . ' - passing parameters to prepared statement is illegal except via call to prepare().'
             );
         }
 
@@ -320,10 +320,6 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
      */
     public function appendQuery(string $query, string $types, array $arguments) : DbQueryInterface
     {
-        if ($this->instanceInert) {
-            throw new DbLogicalException($this->client->errorMessagePreamble() . ' - query instance inert.');
-        }
-
         if (!static::MULTI_QUERY_SUPPORT) {
             throw new DbLogicalException(
                 $this->client->errorMessagePreamble() . ' doesn\'t support multi-query.'
@@ -388,10 +384,6 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
      */
     public function repeatStatement(string $types, array $arguments) : DbQueryInterface
     {
-        if ($this->instanceInert) {
-            throw new DbLogicalException($this->client->errorMessagePreamble() . ' - query instance inert.');
-        }
-
         if (!static::MULTI_QUERY_SUPPORT) {
             throw new DbLogicalException(
                 $this->client->errorMessagePreamble() . ' doesn\'t support multi-query.'
@@ -606,7 +598,7 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
             /**
              * Reject attempt to use array value.
              * No compatibility with Sqlsrv type qualifying array.
-             * @see MsSqlQuery::prepareStatement()
+             * @see MsSqlQuery::prepare()
              */
             if (!is_scalar($value) || is_bool($value)) {
                 // Unlikely when checked via parameterTypesCheck().
@@ -648,9 +640,8 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
      */
     protected function unsetReferences() /*:void*/
     {
-        if (isset($this->preparedStmtArgs)) {
-            $this->instanceInert = true;
-            unset($this->preparedStmtArgs);
+        if (isset($this->arguments['prepared'])) {
+            unset($this->arguments['prepared']);
         }
     }
 
@@ -678,8 +669,8 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
         'hasLikeClause',
         'query',
         'queryTampered',
-        'preparedStmtArgs',
-        'simpleStmtArgs',
+        'arguments',
+        'statementClosed',
     ];
 
     /**

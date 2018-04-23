@@ -1,3 +1,10 @@
+SimpleComplex/Database 1.x, 2018-04-23
+--------------------------------------
+- Prepared statement arguments reference unsetting problem solved by setting
+  the reference on an array bucket of an instance var; instead of on the
+  instance var itself.
+- Err on attempt to execute() closed statement.
+
 SimpleComplex/Database 1.x, 2018-04-22
 --------------------------------------
 - MS SQL client info.

@@ -36,6 +36,7 @@ use SimpleComplex\Database\Exception\DbQueryException;
  * @property-read bool $hasLikeClause
  * @property-read string $query
  * @property-read string $queryTampered
+ * @property-read array $arguments
  *
  * @package SimpleComplex\Database
  */
@@ -64,19 +65,23 @@ class MariaDbQuery extends DatabaseQuery
     public $client;
 
     /**
-     * @var \mysqli_stmt
+     * Prepared or simple statement.
+     *
+     * A simple statement might not be linked at all (MySQLi).
+     *
+     * @var \mysqli_stmt|null
      */
-    protected $preparedStatement;
+    protected $statement;
 
     public function __destruct()
     {
-        if ($this->preparedStatement) {
-            @$this->preparedStatement->close();
+        if ($this->statement) {
+            @$this->statement->close();
         }
     }
 
     /**
-     * Turn query into prepared statement and bind parameters.
+     * Turn query into server-side prepared statement and bind parameters.
      *
      * NB: Requires the mysqlnd driver.
      * Because a result set will eventually be handled as \mysqli_result
@@ -106,17 +111,14 @@ class MariaDbQuery extends DatabaseQuery
      * @throws DbRuntimeException
      *      Failure to bind $arguments to native layer.
      */
-    public function prepareStatement(string $types, array &$arguments) : DbQueryInterface
+    public function prepare(string $types, array &$arguments) : DbQueryInterface
     {
-        if ($this->instanceInert) {
-            throw new DbLogicalException($this->client->errorMessagePreamble() . ' - query instance inert.');
-        }
-
         if ($this->isPreparedStatement) {
             throw new DbLogicalException(
                 $this->client->errorMessagePreamble() . ' - query cannot prepare statement more than once.'
             );
         }
+        $this->isPreparedStatement = true;
 
         // Checks for parameters/arguments count mismatch.
         $query_fragments = $this->queryFragments($this->query, $arguments);
@@ -156,9 +158,9 @@ class MariaDbQuery extends DatabaseQuery
         }
 
         if ($n_params) {
-            $this->preparedStmtArgs =& $arguments;
+            $this->arguments['prepared'] =& $arguments;
 
-            if (!@$mysqli_stmt->bind_param($tps, ...$this->preparedStmtArgs)) {
+            if (!@$mysqli_stmt->bind_param($tps, ...$this->arguments['prepared'])) {
                 $this->unsetReferences();
                 throw new DbRuntimeException(
                     $this->client->errorMessagePreamble()
@@ -167,8 +169,7 @@ class MariaDbQuery extends DatabaseQuery
                 );
             }
         }
-        $this->preparedStatement = $mysqli_stmt;
-        $this->isPreparedStatement = true;
+        $this->statement = $mysqli_stmt;
 
         return $this;
     }
@@ -178,17 +179,22 @@ class MariaDbQuery extends DatabaseQuery
      *
      * @return DbResultInterface|MariaDbResult
      *
+     * @throws DbLogicalException
+     *      Is prepared statement and the statement is previously closed.
      * @throws DbInterruptionException
      *      Is prepared statement and connection lost.
      * @throws DbQueryException
      */
     public function execute(): DbResultInterface
     {
-        if ($this->instanceInert) {
-            throw new DbLogicalException($this->client->errorMessagePreamble() . ' - query instance inert.');
-        }
-
         if ($this->isPreparedStatement) {
+            // (MySQLi) Only a prepared statement is a 'statement'.
+            if ($this->statementClosed) {
+                throw new DbLogicalException(
+                    $this->client->errorMessagePreamble()
+                    . ' - query can\'t execute previously closed prepared statement.'
+                );
+            }
             // Require unbroken connection.
             if (!$this->client->isConnected()) {
                 $this->unsetReferences();
@@ -198,7 +204,7 @@ class MariaDbQuery extends DatabaseQuery
                 );
             }
             // bool.
-            if (!@$this->preparedStatement->execute()) {
+            if (!@$this->statement->execute()) {
                 $this->unsetReferences();
                 $this->client->log(
                     'warning',
@@ -219,7 +225,7 @@ class MariaDbQuery extends DatabaseQuery
             if (!@$mysqli->multi_query($this->queryTampered ?? $this->query)) {
                 $this->client->log(
                     'warning',
-                    $this->client->errorMessagePreamble() . ' - failed executing multi-query, query',
+                    $this->client->errorMessagePreamble() . ' - failed executing multi-query',
                     $this->queryTampered ?? $this->query
                 );
                 throw new DbQueryException(
@@ -236,7 +242,7 @@ class MariaDbQuery extends DatabaseQuery
             if (!@$mysqli->real_query($this->queryTampered ?? $this->query)) {
                 $this->client->log(
                     'warning',
-                    $this->client->errorMessagePreamble() . ' - failed executing simple query, query',
+                    $this->client->errorMessagePreamble() . ' - failed executing simple query',
                     $this->queryTampered ?? $this->query
                 );
                 throw new DbQueryException(
@@ -252,18 +258,17 @@ class MariaDbQuery extends DatabaseQuery
     }
 
     /**
+     * @see DatabaseQuery::$statementClosed
+     *
      * @return void
      */
     public function closeStatement()
     {
-        /**
-         * @todo: see MsSqlQuery::closeStatement()
-         * @see MsSqlQuery::closeStatement()
-         */
+        $this->statementClosed = true;
         $this->unsetReferences();
-        if (!$this->isPreparedStatement && $this->client->isConnected() && $this->preparedStatement) {
-            @$this->preparedStatement->close();
-            $this->preparedStatement = null;
+        if ($this->statement) {
+            @$this->statement->close();
+            $this->statement = null;
         }
     }
 
