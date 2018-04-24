@@ -76,6 +76,13 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
     const QUERY_PARAMETER = '?';
 
     /**
+     * Truncate query to that length when logging.
+     *
+     * @int
+     */
+    const LOG_QUERY_TRUNCATE = 8192;
+
+    /**
      * Ought to be protected, but too costly since result instance
      * may use it repetetively; via the query instance.
      *
@@ -642,6 +649,16 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
 
 
     // Package protected.-------------------------------------------------------
+
+    /**
+     * @internal Package protected.
+     *
+     * @return string
+     */
+    public function errorMessagePrefix() : string
+    {
+        return $this->client->errorMessagePrefix() . '[' . $this->__get('id') . ']';
+    }
 
     /**
      * Unset external references.

@@ -4,6 +4,8 @@ SimpleComplex/Database 1.x, 2018-04-24
 - Order sequence of methods in code by relevance to user.
 - More exceptions must be preceded by unsetting prepared statement arguments
   reference.
+- Log query in more situations. Use a random query ID to correlate log warnings
+  with exceptions.
 
 SimpleComplex/Database 1.x, 2018-04-23
 --------------------------------------

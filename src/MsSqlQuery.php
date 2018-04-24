@@ -296,8 +296,12 @@ class MsSqlQuery extends DatabaseQuery
         if (!$statement) {
             // Unset prepared statement arguments reference.
             $this->unsetReferences();
+            $this->client->log(
+                $this->errorMessagePrefix() . ' - ' . __FUNCTION__ . '(), query',
+                substr($this->query, 0, static::LOG_QUERY_TRUNCATE)
+            );
             throw new DbRuntimeException(
-                $this->client->errorMessagePrefix()
+                $this->errorMessagePrefix()
                 . ' - query failed to prepare statement and bind parameters, with error: '
                 . $this->client->nativeError() . '.'
             );
@@ -395,8 +399,12 @@ class MsSqlQuery extends DatabaseQuery
             if (!$this->client->isConnected()) {
                 // Unset prepared statement arguments reference.
                 $this->unsetReferences();
+                $this->client->log(
+                    $this->errorMessagePrefix() . ' - ' . __FUNCTION__ . '(), query',
+                    substr($this->query, 0, static::LOG_QUERY_TRUNCATE)
+                );
                 throw new DbInterruptionException(
-                    $this->client->errorMessagePrefix()
+                    $this->errorMessagePrefix()
                     . ' - query can\'t execute prepared statement when connection lost.'
                 );
             }
@@ -405,12 +413,11 @@ class MsSqlQuery extends DatabaseQuery
                 // Unset prepared statement arguments reference.
                 $this->unsetReferences();
                 $this->client->log(
-                    'warning',
-                    $this->client->errorMessagePrefix() . ' - failed executing prepared statement, query',
-                    $this->query
+                    $this->errorMessagePrefix() . ' - ' . __FUNCTION__ . '(), query',
+                    substr($this->query, 0, static::LOG_QUERY_TRUNCATE)
                 );
                 throw new DbQueryException(
-                    $this->client->errorMessagePrefix()
+                    $this->errorMessagePrefix()
                     . ' - failed executing prepared statement, with error: ' . $this->client->nativeError() . '.'
                 );
             }
@@ -433,12 +440,11 @@ class MsSqlQuery extends DatabaseQuery
             );
             if (!$statement) {
                 $this->client->log(
-                    'warning',
-                    $this->client->errorMessagePrefix() . ' - failed executing simple query',
-                    $this->queryTampered ?? $this->query
+                    $this->errorMessagePrefix() . ' - ' . __FUNCTION__ . '(), query',
+                    substr($this->queryTampered ?? $this->query, 0, static::LOG_QUERY_TRUNCATE)
                 );
                 throw new DbQueryException(
-                    $this->client->errorMessagePrefix()
+                    $this->errorMessagePrefix()
                     . ' - failed executing simple query, with error: ' . $this->client->nativeError() . '.'
                 );
             }
@@ -457,8 +463,12 @@ class MsSqlQuery extends DatabaseQuery
             if ($error) {
                 // Unset prepared statement arguments reference.
                 $this->unsetReferences();
+                $this->client->log(
+                    $this->errorMessagePrefix() . ' - ' . __FUNCTION__ . '(), query',
+                    substr($this->queryTampered ?? $this->query, 0, static::LOG_QUERY_TRUNCATE)
+                );
                 throw new DbRuntimeException(
-                    $this->client->errorMessagePrefix()
+                    $this->errorMessagePrefix()
                     . ' - failed to complete sending data chunked, after chunk[' . $chunks . '], with error: '
                     . $error . '.'
                 );

@@ -71,8 +71,13 @@ class MsSqlResult implements DbResultInterface
             }
             // Unset prepared statement arguments reference.
             $this->query->closeStatement();
+            $this->query->client->log(
+                $this->query->errorMessagePrefix() . ' - ' . __FUNCTION__ . '(), query',
+                substr($this->query->queryTampered ?? $this->query->query, 0,
+                    constant(get_class($this->query) . '::LOG_QUERY_TRUNCATE'))
+            );
             throw new DbResultException(
-                $this->query->client->errorMessagePrefix() . ' - failed counting rows affected, with error: '
+                $this->query->errorMessagePrefix() . ' - failed counting rows affected, with error: '
                 . $this->query->client->nativeError() . '.'
             );
         }
@@ -82,8 +87,13 @@ class MsSqlResult implements DbResultInterface
         $error = $this->query->client->nativeError(true);
         // Unset prepared statement arguments reference.
         $this->query->closeStatement();
+        $this->query->client->log(
+            $this->query->errorMessagePrefix() . ' - ' . __FUNCTION__ . '(), query',
+            substr($this->query->queryTampered ?? $this->query->query, 0,
+                constant(get_class($this->query) . '::LOG_QUERY_TRUNCATE'))
+        );
         throw new DbLogicalException(
-            $this->query->client->errorMessagePrefix()
+            $this->query->errorMessagePrefix()
             . ' - rejected counting rows affected, probably not a CRUD query'
             . (!$error ? '' : (', with error: ' . $error)) . '.'
         );
@@ -118,8 +128,13 @@ class MsSqlResult implements DbResultInterface
         if (!$count && $count !== 0) {
             // Unset prepared statement arguments reference.
             $this->query->closeStatement();
+            $this->query->client->log(
+                $this->query->errorMessagePrefix() . ' - ' . __FUNCTION__ . '(), query',
+                substr($this->query->queryTampered ?? $this->query->query, 0,
+                    constant(get_class($this->query) . '::LOG_QUERY_TRUNCATE'))
+            );
             throw new DbResultException(
-                $this->query->client->errorMessagePrefix() . ' - failed getting number of rows, with error: '
+                $this->query->errorMessagePrefix() . ' - failed getting number of rows, with error: '
                 . $this->query->client->nativeError() . '.'
             );
 
@@ -143,12 +158,12 @@ class MsSqlResult implements DbResultInterface
             // Unset prepared statement arguments reference.
             $this->query->closeStatement();
             $this->query->client->log(
-                'warning',
-                $this->query->client->errorMessagePrefix() . ' - failed fetching all rows, query',
-                $this->query->queryTampered ?? $this->query->query
+                $this->query->errorMessagePrefix() . ' - ' . __FUNCTION__ . '(), query',
+                substr($this->query->queryTampered ?? $this->query->query, 0,
+                    constant(get_class($this->query) . '::LOG_QUERY_TRUNCATE'))
             );
             throw new DbResultException(
-                $this->query->client->errorMessagePrefix() . ' - failed getting number of columns, with error: '
+                $this->query->errorMessagePrefix() . ' - failed getting number of columns, with error: '
                 . $this->query->client->nativeError() . '.'
             );
 
@@ -180,12 +195,12 @@ class MsSqlResult implements DbResultInterface
         // Unset prepared statement arguments reference.
         $this->query->closeStatement();
         $this->query->client->log(
-            'warning',
-            $this->query->client->errorMessagePrefix() . ' - failed fetching all rows, query',
-            $this->query->queryTampered ?? $this->query->query
+            $this->query->errorMessagePrefix() . ' - ' . __FUNCTION__ . '(), query',
+            substr($this->query->queryTampered ?? $this->query->query, 0,
+                constant(get_class($this->query) . '::LOG_QUERY_TRUNCATE'))
         );
         throw new DbResultException(
-            $this->query->client->errorMessagePrefix()
+            $this->query->errorMessagePrefix()
             . ' - failed fetching row as ' . (Database::FETCH_NUMERIC ? 'numeric' : 'assoc') . ' array, with error: '
             . $this->query->client->nativeError() . '.'
         );
@@ -214,12 +229,12 @@ class MsSqlResult implements DbResultInterface
         // Unset prepared statement arguments reference.
         $this->query->closeStatement();
         $this->query->client->log(
-            'warning',
-            $this->query->client->errorMessagePrefix() . ' - ' . __FUNCTION__ . '(), query',
-            $this->query->queryTampered ?? $this->query->query
+            $this->query->errorMessagePrefix() . ' - ' . __FUNCTION__ . '(), query',
+            substr($this->query->queryTampered ?? $this->query->query, 0,
+                constant(get_class($this->query) . '::LOG_QUERY_TRUNCATE'))
         );
         throw new DbResultException(
-            $this->query->client->errorMessagePrefix()
+            $this->query->errorMessagePrefix()
             . ' - failed fetching row as object, with error: ' . $this->query->client->nativeError() . '.'
         );
     }
@@ -280,12 +295,12 @@ class MsSqlResult implements DbResultInterface
                                 // Unset prepared statement arguments reference.
                                 $this->query->closeStatement();
                                 $this->query->client->log(
-                                    'warning',
-                                    $this->query->client->errorMessagePrefix() . ' - ' . __FUNCTION__ . '(), query',
-                                    $this->query->queryTampered ?? $this->query->query
+                                    $this->query->errorMessagePrefix() . ' - ' . __FUNCTION__ . '(), query',
+                                    substr($this->query->queryTampered ?? $this->query->query, 0,
+                                        constant(get_class($this->query) . '::LOG_QUERY_TRUNCATE'))
                                 );
                                 throw new \InvalidArgumentException(
-                                    $this->query->client->errorMessagePrefix()
+                                    $this->query->errorMessagePrefix()
                                     . ' - failed fetching all rows as objects keyed by column[' . $key_column
                                     . '], non-existent column.'
                                 );
@@ -307,12 +322,12 @@ class MsSqlResult implements DbResultInterface
                                 // Unset prepared statement arguments reference.
                                 $this->query->closeStatement();
                                 $this->query->client->log(
-                                    'warning',
-                                    $this->query->client->errorMessagePrefix() . ' - ' . __FUNCTION__ . '(), query',
-                                    $this->query->queryTampered ?? $this->query->query
+                                    $this->query->errorMessagePrefix() . ' - ' . __FUNCTION__ . '(), query',
+                                    substr($this->query->queryTampered ?? $this->query->query, 0,
+                                        constant(get_class($this->query) . '::LOG_QUERY_TRUNCATE'))
                                 );
                                 throw new \InvalidArgumentException(
-                                    $this->query->client->errorMessagePrefix()
+                                    $this->query->errorMessagePrefix()
                                     . ' - failed fetching all rows as assoc arrays keyed by column[' . $key_column
                                     . '], non-existent column.'
                                 );
@@ -336,12 +351,12 @@ class MsSqlResult implements DbResultInterface
             // Unset prepared statement arguments reference.
             $this->query->closeStatement();
             $this->query->client->log(
-                'warning',
-                $this->query->client->errorMessagePrefix() . ' - ' . __FUNCTION__ . '(), query',
-                $this->query->queryTampered ?? $this->query->query
+                $this->query->errorMessagePrefix() . ' - ' . __FUNCTION__ . '(), query',
+                substr($this->query->queryTampered ?? $this->query->query, 0,
+                    constant(get_class($this->query) . '::LOG_QUERY_TRUNCATE'))
             );
             throw new DbResultException(
-                $this->query->client->errorMessagePrefix()
+                $this->query->errorMessagePrefix()
                 . ' - failed fetching all rows as ' . $em . ', with error: '
                 . $this->query->client->nativeError() . '.'
             );

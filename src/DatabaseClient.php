@@ -40,6 +40,13 @@ abstract class DatabaseClient extends Explorable implements DbClientInterface
     const CLASS_QUERY = '';
 
     /**
+     * PSR-4 LogLevel.
+     *
+     * @var string
+     */
+    const LOG_LEVEL = 'warning';
+
+    /**
      * Default database server port.
      *
      * @var int
@@ -273,20 +280,17 @@ abstract class DatabaseClient extends Explorable implements DbClientInterface
     /**
      * @internal Package protected.
      *
-     * @see \Psr\Log\LogLevel.
      * @see \SimpleComplex\Inspect\Inspect::variable().
      *
-     * @param string $level
-     *      PSR-4 LogLevel.
-     *      Empty defaults to 'warning'.
      * @param string $message
      * @param null $variable
-     *      Ignored if number of arguments indicates not-used,
-     *      or dependency injection container has no 'inspect'.
+     *      Ignored if no argument or dependency injection container
+     *      has no 'inspect'.
+     *
+     * @return void
      */
-    public function log(string $level, string $message, $variable = null)
+    public function log(string $message, $variable = null) /*:void*/
     {
-        $lvl = $level ? $level : 'warning';
         /** @var \Psr\Container\ContainerInterface $container */
         $container = Dependency::container();
         if (!$container->has('logger')) {
@@ -295,15 +299,15 @@ abstract class DatabaseClient extends Explorable implements DbClientInterface
         /** @var \Psr\Log\LoggerInterface $logger */
         $logger = $container->get('logger');
 
-        if (func_num_args() < 3 || !$container->has('inspect')) {
-            $logger->log($lvl, $message, [
+        if (func_num_args() < 2 || !$container->has('inspect')) {
+            $logger->log(static::LOG_LEVEL, $message, [
                 'subType' => 'database',
             ]);
         }
         else {
             /** @var \SimpleComplex\Inspect\Inspect $inspect */
             $inspect = $container->get('inspect');
-            $logger->log($lvl, $message . "\n" . $inspect->variable($variable), [
+            $logger->log(static::LOG_LEVEL, $message . "\n" . $inspect->variable($variable), [
                 'subType' => 'database',
             ]);
         }
