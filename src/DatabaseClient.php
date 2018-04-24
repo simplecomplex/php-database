@@ -141,6 +141,8 @@ abstract class DatabaseClient extends Explorable implements DbClientInterface
     protected $optionsResolved;
 
     /**
+     * Final character set, in driver native format (UTF-8/utf8).
+     *
      * @see DatabaseClient::characterSetResolve()
      *
      * @var string
@@ -199,6 +201,8 @@ abstract class DatabaseClient extends Explorable implements DbClientInterface
     }
 
     /**
+     * Create a query.
+     *
      * @param string $baseQuery
      * @param array $options {
      *      @var bool $is_multi_query
@@ -217,27 +221,8 @@ abstract class DatabaseClient extends Explorable implements DbClientInterface
         );
     }
 
-    /**
-     * @see DatabaseClient::disConnect()
-     */
-    public function __destruct()
-    {
-        $this->disConnect();
-    }
-
 
     // Helpers.-----------------------------------------------------------------
-
-    /**
-     * Resolve character set, for constructor.
-     *
-     * Character set must be available even before any connection,
-     * (at least) for external use.
-     *
-     * @return void
-     *      Throws exception on error.
-     */
-    abstract protected function characterSetResolve() /*:void*/;
 
     /**
      * Resolve options.
@@ -254,14 +239,40 @@ abstract class DatabaseClient extends Explorable implements DbClientInterface
     abstract public function optionsResolve() /*:void*/;
 
     /**
+     * Resolve character set, for constructor.
+     *
+     * Character set must be available even before any connection,
+     * (at least) for external use.
+     *
+     * @return void
+     *      Throws exception on error.
+     */
+    abstract protected function characterSetResolve() /*:void*/;
+
+    /**
+     * @see DatabaseClient::disConnect()
+     */
+    public function __destruct()
+    {
+        $this->disConnect();
+    }
+
+
+    // Package protected.-------------------------------------------------------
+
+    /**
+     * @internal Package protected.
+     *
      * @return string
      */
-    public function errorMessagePreamble() : string
+    public function errorMessagePrefix() : string
     {
-        return 'Database type[' . $this->type . '] name[' . $this->name . ']';
+        return 'Database[' . $this->type . '][' . $this->name . '][' . $this->database . ']';
     }
 
     /**
+     * @internal Package protected.
+     *
      * @see \Psr\Log\LogLevel.
      * @see \SimpleComplex\Inspect\Inspect::variable().
      *

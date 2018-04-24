@@ -63,14 +63,6 @@ class MsSqlClient extends DatabaseClient
     const SERVER_PORT = 1433;
 
     /**
-     * Whether to trust self-signed TLS certificate.
-     *
-     * @var int
-     *      0|1.
-     */
-    const TLS_TRUST_SELF_SIGNED = 0;
-
-    /**
      * Shorthand name to PHP Sqlsrv native option name.
      *
      * @see MsSqlClient::getConnection()
@@ -85,6 +77,16 @@ class MsSqlClient extends DatabaseClient
         // int. default: TLS_TRUST_SELF_SIGNED
         'tls_trust_self_signed' => 'TrustServerCertificate',
     ];
+
+    /**
+     * Whether to trust self-signed TLS certificate.
+     *
+     * Constructor $databaseInfo option (bool) tls_trust_self_signed.
+     *
+     * @var int
+     *      0|1.
+     */
+    const TLS_TRUST_SELF_SIGNED = 0;
 
     /**
      * @var string
@@ -109,75 +111,6 @@ class MsSqlClient extends DatabaseClient
     }
 
     /**
-     * Attempts to re-connect if connection lost and arg $reConnect.
-     *
-     * Always sets:
-     * - connection timeout; (int) LoginTimeout
-     * - connection character set; (str) CharacterSet
-     * - whether to trust self-signed TLS certificate; (int) TrustServerCertificate
-     *
-     * Uses standard database user authentication;
-     * - SQL Server Authentication/SqlPassword.
-     * Windows user authentication not supported.
-     *
-     * @see MsSqlClient::optionsResolve()
-     *
-     * @param bool $reConnect
-     *
-     * @return resource|bool
-     *      False: no connection and not arg $reConnect.
-     *      Resource: connection (re-)established.
-     *
-     * @throws DbConnectionException
-     */
-    public function getConnection(bool $reConnect = false)
-    {
-        if (!$this->connection) {
-            if (!$reConnect) {
-                return false;
-            }
-
-            if (!$this->optionsResolved) {
-                $this->optionsResolve();
-            }
-
-            $connection = @sqlsrv_connect(
-                $this->host . ', ' . $this->port,
-                $this->optionsResolved + [
-                    'UID' => $this->user,
-                    'PWD' => $this->pass,
-                ]
-            );
-            if (!$connection) {
-                throw new DbConnectionException(
-                    $this->errorMessagePreamble()
-                    . ' connect to host[' . $this->host . '] port[' . $this->port
-                    . '] failed, with error: ' . $this->nativeError() . '.'
-                );
-            }
-            $this->connection = $connection;
-        }
-
-        return $this->connection;
-    }
-
-    /**
-     * @return bool
-     */
-    public function isConnected() : bool
-    {
-        return !!$this->connection;
-    }
-
-    public function disConnect()
-    {
-        if ($this->connection) {
-            @sqlsrv_close($this->connection);
-            $this->connection = null;
-        }
-    }
-
-    /**
      * Errs if previously started transaction isn't committed/rolled-back.
      *
      * @return void
@@ -191,14 +124,14 @@ class MsSqlClient extends DatabaseClient
     {
         if ($this->transactionStarted) {
             throw new DbLogicalException(
-                $this->errorMessagePreamble() . ' - previously started transaction isn\'t committed/rolled-back.'
+                $this->errorMessagePrefix() . ' - previously started transaction isn\'t committed/rolled-back.'
             );
         }
         // Allow re-connection.
         $this->getConnection(true);
         if (!@sqlsrv_begin_transaction($this->connection)) {
             throw new DbRuntimeException(
-                $this->errorMessagePreamble()
+                $this->errorMessagePrefix()
                 . ' - failed to start transaction, with error: ' . $this->nativeError() . '.'
             );
         }
@@ -220,12 +153,12 @@ class MsSqlClient extends DatabaseClient
             // Require unbroken connection.
             if (!$this->isConnected()) {
                 throw new DbInterruptionException(
-                    $this->errorMessagePreamble() . ' - can\'t commit, connection lost.'
+                    $this->errorMessagePrefix() . ' - can\'t commit, connection lost.'
                 );
             }
             if (!@sqlsrv_commit($this->connection)) {
                 throw new DbRuntimeException(
-                    $this->errorMessagePreamble()
+                    $this->errorMessagePrefix()
                     . ' - failed to commit transaction, with error: ' . $this->nativeError() . '.'
                 );
             }
@@ -249,12 +182,12 @@ class MsSqlClient extends DatabaseClient
             // Require unbroken connection.
             if (!$this->isConnected()) {
                 throw new DbInterruptionException(
-                    $this->errorMessagePreamble() . ' - can\'t rollback, connection lost.'
+                    $this->errorMessagePrefix() . ' - can\'t rollback, connection lost.'
                 );
             }
             if (!@sqlsrv_rollback($this->connection)) {
                 throw new DbRuntimeException(
-                    $this->errorMessagePreamble()
+                    $this->errorMessagePrefix()
                     . ' - failed to rollback transaction, with error: ' . $this->nativeError() . '.'
                 );
             }
@@ -262,33 +195,57 @@ class MsSqlClient extends DatabaseClient
         }
     }
 
+    /**
+     * @return bool
+     */
+    public function isConnected() : bool
+    {
+        return !!$this->connection;
+    }
+
+    /**
+     * @see DatabaseClient::__destruct()
+     *
+     * @return void
+     */
+    public function disConnect()
+    {
+        if ($this->connection) {
+            @sqlsrv_close($this->connection);
+            $this->connection = null;
+        }
+    }
+
 
     // Helpers.-----------------------------------------------------------------
 
     /**
-     * Resolve character set, for constructor.
+     * NB: An error may not belong to current connection;
+     * Sqlsrv's error getter takes no connection argument.
      *
-     * Character set must be available even before any connection,
-     * (at least) for external use.
+     * @param bool $emptyOnNone
+     *      False: on no error returns message indication just that.
+     *      True: on no error return empty string.
      *
-     * @return void
+     * @return string
      */
-    protected function characterSetResolve()
+    public function nativeError(bool $emptyOnNone = false) : string
     {
-        if (!empty($this->options['character_set'])) {
-            $charset = $this->options['character_set'];
-        } elseif (!empty($this->options['CharacterSet'])) {
-            $charset = $this->options['CharacterSet'];
-        } else {
-            $charset = static::CHARACTER_SET;
+        if (($errors = sqlsrv_errors())) {
+            $list = [];
+            foreach ($errors as $error) {
+                if (!empty($error['SQLSTATE'])) {
+                    $em = '(SQLSTATE: ' . $error['SQLSTATE'] . ') ';
+                } elseif (!empty($error['code'])) {
+                    $em = '(code: ' . $error['code'] . ') ';
+                } else {
+                    $em = '';
+                }
+                $list[] = $em . $error['message'] ?? '';
+            }
+            return rtrim(join(' | ', $list), '.');
         }
-
-        // Only two character sets supported.
-        if ($charset != 'UTF-8') {
-            $charset = 'SQLSRV_ENC_CHAR';
-        }
-
-        $this->characterSet = $charset;
+        return $emptyOnNone ? '' : '- no native error recorded -';
     }
 
     /**
@@ -350,32 +307,87 @@ class MsSqlClient extends DatabaseClient
     }
 
     /**
-     * NB: An error may not belong to current connection;
-     * Sqlsrv's error getter takes no connection argument.
+     * Resolve character set, for constructor.
      *
-     * @param bool $emptyOnNone
-     *      False: on no error returns message indication just that.
-     *      True: on no error return empty string.
+     * Character set must be available even before any connection,
+     * (at least) for external use.
      *
-     * @return string
+     * @return void
      */
-    public function nativeError(bool $emptyOnNone = false) : string
+    protected function characterSetResolve()
     {
-        if (($errors = sqlsrv_errors())) {
-            $list = [];
-            foreach ($errors as $error) {
-                if (!empty($error['SQLSTATE'])) {
-                    $em = '(SQLSTATE: ' . $error['SQLSTATE'] . ') ';
-                } elseif (!empty($error['code'])) {
-                    $em = '(code: ' . $error['code'] . ') ';
-                } else {
-                    $em = '';
-                }
-                $list[] = $em . $error['message'] ?? '';
-            }
-            return rtrim(join(' | ', $list), '.');
+        if (!empty($this->options['character_set'])) {
+            $charset = $this->options['character_set'];
+        } elseif (!empty($this->options['CharacterSet'])) {
+            $charset = $this->options['CharacterSet'];
+        } else {
+            $charset = static::CHARACTER_SET;
         }
-        return $emptyOnNone ? '' : '- no native error recorded -';
+
+        // Only two character sets supported.
+        if ($charset != 'UTF-8') {
+            $charset = 'SQLSRV_ENC_CHAR';
+        }
+
+        $this->characterSet = $charset;
+    }
+
+
+    // Package protected.-------------------------------------------------------
+
+    /**
+     * Attempts to re-connect if connection lost and arg $reConnect.
+     *
+     * Always sets:
+     * - connection timeout; (int) LoginTimeout
+     * - connection character set; (str) CharacterSet
+     * - whether to trust self-signed TLS certificate; (int) TrustServerCertificate
+     *
+     * Uses standard database user authentication;
+     * - SQL Server Authentication/SqlPassword.
+     * Windows user authentication not supported.
+     *
+     * @internal Package protected; for MsSqlQuery|DbQueryInterface.
+     *
+     * @see MsSqlClient::optionsResolve()
+     *
+     * @param bool $reConnect
+     *
+     * @return resource|bool
+     *      False: no connection and not arg $reConnect.
+     *      Resource: connection (re-)established.
+     *
+     * @throws DbConnectionException
+     */
+    public function getConnection(bool $reConnect = false)
+    {
+        if (!$this->connection) {
+            if (!$reConnect) {
+                return false;
+            }
+
+            if (!$this->optionsResolved) {
+                $this->optionsResolve();
+            }
+
+            $connection = @sqlsrv_connect(
+                $this->host . ', ' . $this->port,
+                $this->optionsResolved + [
+                    'UID' => $this->user,
+                    'PWD' => $this->pass,
+                ]
+            );
+            if (!$connection) {
+                throw new DbConnectionException(
+                    $this->errorMessagePrefix()
+                    . ' connect to host[' . $this->host . '] port[' . $this->port
+                    . '] failed, with error: ' . $this->nativeError() . '.'
+                );
+            }
+            $this->connection = $connection;
+        }
+
+        return $this->connection;
     }
 
 

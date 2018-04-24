@@ -27,29 +27,8 @@ interface DbClientInterface
     public function __construct(string $name, array $databaseInfo);
 
     /**
-     * Attempts to re-connect if connection lost and arg $reConnect.
+     * Create a query.
      *
-     * @param bool $reConnect.
-     *
-     * @return mixed|bool
-     *      False: no connection and not arg $reConnect.
-     *      Mixed: connection (re-)established.
-     *
-     * throws \SimpleComplex\Database\Exception\DbConnectionException
-     */
-    public function getConnection(bool $reConnect = false);
-
-    /**
-     * @return bool
-     */
-    public function isConnected() : bool;
-
-    /**
-     * Close database server connection.
-     */
-    public function disConnect();
-
-    /**
      * @param string $baseQuery
      * @param array $options {
      *      @var bool $is_multi_query
@@ -85,6 +64,21 @@ interface DbClientInterface
     public function transactionRollback();
 
     /**
+     * @return bool
+     */
+    public function isConnected() : bool;
+
+    /**
+     * Close database server connection.
+     */
+    public function disConnect();
+
+
+    // Helpers.-----------------------------------------------------------------
+
+    /**
+     * Get last driver native error(s) recorded.
+     *
      * @param bool $emptyOnNone
      *      False: on no error returns message indication just that.
      *      True: on no error return empty string.
@@ -92,4 +86,24 @@ interface DbClientInterface
      * @return string
      */
     public function nativeError(bool $emptyOnNone = false) : string;
+
+
+    // Package protected.-------------------------------------------------------
+
+    /**
+     * Used by query instance, on demand.
+     *
+     * Attempts to re-connect if connection lost and arg $reConnect.
+     *
+     * @internal Package protected; for DbQueryInterface.
+     *
+     * @param bool $reConnect.
+     *
+     * @return mixed|bool
+     *      False: no connection and not arg $reConnect.
+     *      Mixed: connection (re-)established.
+     *
+     * throws \SimpleComplex\Database\Exception\DbConnectionException
+     */
+    public function getConnection(bool $reConnect = false);
 }

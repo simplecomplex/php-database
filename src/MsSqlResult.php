@@ -43,8 +43,10 @@ class MsSqlResult implements DbResultInterface
     {
         $this->query = $query;
         if (!$statement) {
+            // Unset prepared statement arguments reference.
+            $this->query->unsetReferences();
             throw new DbRuntimeException(
-                $this->query->client->errorMessagePreamble()
+                $this->query->client->errorMessagePrefix()
                 . ' - can\'t initialize result because arg $statement is not (no longer?) a resource.'
             );
         }
@@ -67,8 +69,10 @@ class MsSqlResult implements DbResultInterface
             if ($count === 0) {
                 return 0;
             }
+            // Unset prepared statement arguments reference.
+            $this->query->closeStatement();
             throw new DbResultException(
-                $this->query->client->errorMessagePreamble() . ' - failed counting rows affected, with error: '
+                $this->query->client->errorMessagePrefix() . ' - failed counting rows affected, with error: '
                 . $this->query->client->nativeError() . '.'
             );
         }
@@ -76,8 +80,10 @@ class MsSqlResult implements DbResultInterface
             return $count;
         }
         $error = $this->query->client->nativeError(true);
+        // Unset prepared statement arguments reference.
+        $this->query->closeStatement();
         throw new DbLogicalException(
-            $this->query->client->errorMessagePreamble()
+            $this->query->client->errorMessagePrefix()
             . ' - rejected counting rows affected, probably not a CRUD query'
             . (!$error ? '' : (', with error: ' . $error)) . '.'
         );
@@ -99,8 +105,10 @@ class MsSqlResult implements DbResultInterface
             case SQLSRV_CURSOR_KEYSET:
                 break;
             default:
+                // Unset prepared statement arguments reference.
+                $this->query->closeStatement();
                 throw new DbLogicalException(
-                    $this->query->client->errorMessagePreamble() . ' - cursor mode[' . $this->query->cursorMode
+                    $this->query->client->errorMessagePrefix() . ' - cursor mode[' . $this->query->cursorMode
                     . '] forbids getting number of rows.'
                 );
         }
@@ -108,8 +116,10 @@ class MsSqlResult implements DbResultInterface
             $this->statement
         );
         if (!$count && $count !== 0) {
+            // Unset prepared statement arguments reference.
+            $this->query->closeStatement();
             throw new DbResultException(
-                $this->query->client->errorMessagePreamble() . ' - failed getting number of rows, with error: '
+                $this->query->client->errorMessagePrefix() . ' - failed getting number of rows, with error: '
                 . $this->query->client->nativeError() . '.'
             );
 
@@ -130,8 +140,15 @@ class MsSqlResult implements DbResultInterface
             $this->statement
         );
         if (!$count && $count !== 0) {
+            // Unset prepared statement arguments reference.
+            $this->query->closeStatement();
+            $this->query->client->log(
+                'warning',
+                $this->query->client->errorMessagePrefix() . ' - failed fetching all rows, query',
+                $this->query->queryTampered ?? $this->query->query
+            );
             throw new DbResultException(
-                $this->query->client->errorMessagePreamble() . ' - failed getting number of columns, with error: '
+                $this->query->client->errorMessagePrefix() . ' - failed getting number of columns, with error: '
                 . $this->query->client->nativeError() . '.'
             );
 
@@ -160,8 +177,15 @@ class MsSqlResult implements DbResultInterface
         if ($row === null) {
             return null;
         }
+        // Unset prepared statement arguments reference.
+        $this->query->closeStatement();
+        $this->query->client->log(
+            'warning',
+            $this->query->client->errorMessagePrefix() . ' - failed fetching all rows, query',
+            $this->query->queryTampered ?? $this->query->query
+        );
         throw new DbResultException(
-            $this->query->client->errorMessagePreamble()
+            $this->query->client->errorMessagePrefix()
             . ' - failed fetching row as ' . (Database::FETCH_NUMERIC ? 'numeric' : 'assoc') . ' array, with error: '
             . $this->query->client->nativeError() . '.'
         );
@@ -187,8 +211,15 @@ class MsSqlResult implements DbResultInterface
         if ($row === null) {
             return null;
         }
+        // Unset prepared statement arguments reference.
+        $this->query->closeStatement();
+        $this->query->client->log(
+            'warning',
+            $this->query->client->errorMessagePrefix() . ' - ' . __FUNCTION__ . '(), query',
+            $this->query->queryTampered ?? $this->query->query
+        );
         throw new DbResultException(
-            $this->query->client->errorMessagePreamble()
+            $this->query->client->errorMessagePrefix()
             . ' - failed fetching row as object, with error: ' . $this->query->client->nativeError() . '.'
         );
     }
@@ -224,8 +255,10 @@ class MsSqlResult implements DbResultInterface
         switch ($as) {
             case Database::FETCH_NUMERIC:
                 if ($column_keyed) {
+                    // Unset prepared statement arguments reference.
+                    $this->query->closeStatement();
                     throw new DbLogicalException(
-                        $this->query->client->errorMessagePreamble()
+                        $this->query->client->errorMessagePrefix()
                         . ' - arg $options \'list_by_column\' is not supported when fetching as numeric arrays.'
                     );
                 }
@@ -244,8 +277,15 @@ class MsSqlResult implements DbResultInterface
                         if ($first) {
                             $first = false;
                             if (!property_exists($row, $key_column)) {
+                                // Unset prepared statement arguments reference.
+                                $this->query->closeStatement();
+                                $this->query->client->log(
+                                    'warning',
+                                    $this->query->client->errorMessagePrefix() . ' - ' . __FUNCTION__ . '(), query',
+                                    $this->query->queryTampered ?? $this->query->query
+                                );
                                 throw new \InvalidArgumentException(
-                                    $this->query->client->errorMessagePreamble()
+                                    $this->query->client->errorMessagePrefix()
                                     . ' - failed fetching all rows as objects keyed by column[' . $key_column
                                     . '], non-existent column.'
                                 );
@@ -264,8 +304,15 @@ class MsSqlResult implements DbResultInterface
                         if ($first) {
                             $first = false;
                             if (!array_key_exists($key_column, $row)) {
+                                // Unset prepared statement arguments reference.
+                                $this->query->closeStatement();
+                                $this->query->client->log(
+                                    'warning',
+                                    $this->query->client->errorMessagePrefix() . ' - ' . __FUNCTION__ . '(), query',
+                                    $this->query->queryTampered ?? $this->query->query
+                                );
                                 throw new \InvalidArgumentException(
-                                    $this->query->client->errorMessagePreamble()
+                                    $this->query->client->errorMessagePrefix()
                                     . ' - failed fetching all rows as assoc arrays keyed by column[' . $key_column
                                     . '], non-existent column.'
                                 );
@@ -286,8 +333,15 @@ class MsSqlResult implements DbResultInterface
                 default:
                     $em = 'assoc array';
             }
+            // Unset prepared statement arguments reference.
+            $this->query->closeStatement();
+            $this->query->client->log(
+                'warning',
+                $this->query->client->errorMessagePrefix() . ' - ' . __FUNCTION__ . '(), query',
+                $this->query->queryTampered ?? $this->query->query
+            );
             throw new DbResultException(
-                $this->query->client->errorMessagePreamble()
+                $this->query->client->errorMessagePrefix()
                 . ' - failed fetching all rows as ' . $em . ', with error: '
                 . $this->query->client->nativeError() . '.'
             );

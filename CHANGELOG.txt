@@ -1,3 +1,10 @@
+SimpleComplex/Database 1.x, 2018-04-24
+--------------------------------------
+- Clarify which methods are 'package protected'; @internal.
+- Order sequence of methods in code by relevance to user.
+- More exceptions must be preceded by unsetting prepared statement arguments
+  reference.
+
 SimpleComplex/Database 1.x, 2018-04-23
 --------------------------------------
 - Prepared statement arguments reference unsetting problem solved by setting

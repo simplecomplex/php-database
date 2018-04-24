@@ -195,7 +195,7 @@ class MsSqlQuery extends DatabaseQuery
         if (!empty($options['cursor_mode'])) {
             if (!in_array($options['cursor_mode'], static::CURSOR_MODES, true)) {
                 throw new DbLogicalException(
-                    $this->client->errorMessagePreamble()
+                    $this->client->errorMessagePrefix()
                     . ' query option \'cursor_mode\' value[' . $options['cursor_mode'] . '] is invalid.'
                 );
             }
@@ -263,16 +263,20 @@ class MsSqlQuery extends DatabaseQuery
     public function prepare(string $types, array &$arguments) : DbQueryInterface
     {
         if ($this->isPreparedStatement) {
+            // Unset prepared statement arguments reference.
+            $this->unsetReferences();
             throw new DbLogicalException(
-                $this->client->errorMessagePreamble() . ' - query cannot prepare statement more than once.'
+                $this->client->errorMessagePrefix() . ' - query cannot prepare statement more than once.'
             );
         }
         $this->isPreparedStatement = true;
 
         // Checks for parameters/arguments count mismatch.
         $query_fragments = $this->queryFragments($this->query, $arguments);
+
         if ($query_fragments) {
             unset($query_fragments);
+
             $this->adaptArguments($types, $arguments);
         }
 
@@ -290,9 +294,10 @@ class MsSqlQuery extends DatabaseQuery
         /** @var resource $statement */
         $statement = @sqlsrv_prepare($connection, $this->query, $this->arguments['prepared'] ?? [], $options);
         if (!$statement) {
+            // Unset prepared statement arguments reference.
             $this->unsetReferences();
             throw new DbRuntimeException(
-                $this->client->errorMessagePreamble()
+                $this->client->errorMessagePrefix()
                 . ' - query failed to prepare statement and bind parameters, with error: '
                 . $this->client->nativeError() . '.'
             );
@@ -339,13 +344,15 @@ class MsSqlQuery extends DatabaseQuery
     {
         if ($this->queryAppended) {
             throw new DbLogicalException(
-                $this->client->errorMessagePreamble()
+                $this->client->errorMessagePrefix()
                 . ' - passing parameters to base query is illegal after another query has been appended.'
             );
         }
         if ($this->isPreparedStatement) {
+            // Unset prepared statement arguments reference.
+            $this->unsetReferences();
             throw new DbLogicalException(
-                $this->client->errorMessagePreamble()
+                $this->client->errorMessagePrefix()
                 . ' - passing parameters to prepared statement is illegal except via call to prepare().'
             );
         }
@@ -378,7 +385,7 @@ class MsSqlQuery extends DatabaseQuery
         // (Sqlsrv) Even a simple statement is a 'statement'.
         if ($this->statementClosed) {
             throw new DbLogicalException(
-                $this->client->errorMessagePreamble()
+                $this->client->errorMessagePrefix()
                 . ' - query can\'t execute previously closed statement.'
             );
         }
@@ -386,22 +393,24 @@ class MsSqlQuery extends DatabaseQuery
         if ($this->isPreparedStatement) {
             // Require unbroken connection.
             if (!$this->client->isConnected()) {
+                // Unset prepared statement arguments reference.
                 $this->unsetReferences();
                 throw new DbInterruptionException(
-                    $this->client->errorMessagePreamble()
+                    $this->client->errorMessagePrefix()
                     . ' - query can\'t execute prepared statement when connection lost.'
                 );
             }
             // bool.
             if (!@sqlsrv_execute($this->statement)) {
+                // Unset prepared statement arguments reference.
                 $this->unsetReferences();
                 $this->client->log(
                     'warning',
-                    $this->client->errorMessagePreamble() . ' - failed executing prepared statement, query',
+                    $this->client->errorMessagePrefix() . ' - failed executing prepared statement, query',
                     $this->query
                 );
                 throw new DbQueryException(
-                    $this->client->errorMessagePreamble()
+                    $this->client->errorMessagePrefix()
                     . ' - failed executing prepared statement, with error: ' . $this->client->nativeError() . '.'
                 );
             }
@@ -425,11 +434,11 @@ class MsSqlQuery extends DatabaseQuery
             if (!$statement) {
                 $this->client->log(
                     'warning',
-                    $this->client->errorMessagePreamble() . ' - failed executing simple query',
+                    $this->client->errorMessagePrefix() . ' - failed executing simple query',
                     $this->queryTampered ?? $this->query
                 );
                 throw new DbQueryException(
-                    $this->client->errorMessagePreamble()
+                    $this->client->errorMessagePrefix()
                     . ' - failed executing simple query, with error: ' . $this->client->nativeError() . '.'
                 );
             }
@@ -446,8 +455,10 @@ class MsSqlQuery extends DatabaseQuery
             }
             $error = $this->client->nativeError(true);
             if ($error) {
+                // Unset prepared statement arguments reference.
+                $this->unsetReferences();
                 throw new DbRuntimeException(
-                    $this->client->errorMessagePreamble()
+                    $this->client->errorMessagePrefix()
                     . ' - failed to complete sending data chunked, after chunk[' . $chunks . '], with error: '
                     . $error . '.'
                 );
@@ -461,6 +472,8 @@ class MsSqlQuery extends DatabaseQuery
 
     /**
      * @see DatabaseQuery::$statementClosed
+     *
+     * @see DatabaseQuery::unsetReferences()
      *
      * @return void
      */
@@ -635,7 +648,7 @@ class MsSqlQuery extends DatabaseQuery
             $count = count($arg);
             if (!$count) {
                 throw new \InvalidArgumentException(
-                    $this->client->errorMessagePreamble() . ' - arg $arguments bucket ' . $i . ' is empty array.'
+                    $this->client->errorMessagePrefix() . ' - arg $arguments bucket ' . $i . ' is empty array.'
                 );
             }
             // An 'in' parameter must have 4th bucket,
@@ -669,13 +682,13 @@ class MsSqlQuery extends DatabaseQuery
         }
         elseif (strlen($types) != $n_params) {
             throw new \InvalidArgumentException(
-                $this->client->errorMessagePreamble() . ' - arg $types length[' . strlen($types)
+                $this->client->errorMessagePrefix() . ' - arg $types length[' . strlen($types)
                 . '] doesn\'t match query\'s ?-parameters count[' . $n_params . '].'
             );
         }
         elseif (($type_illegals = $this->parameterTypesCheck($types))) {
             throw new \InvalidArgumentException(
-                $this->client->errorMessagePreamble()
+                $this->client->errorMessagePrefix()
                 . ' - arg $types contains illegal char(s) ' . $type_illegals . '.'
             );
         }

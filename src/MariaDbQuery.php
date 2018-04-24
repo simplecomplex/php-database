@@ -115,8 +115,10 @@ class MariaDbQuery extends DatabaseQuery
     public function prepare(string $types, array &$arguments) : DbQueryInterface
     {
         if ($this->isPreparedStatement) {
+            // Unset prepared statement arguments reference.
+            $this->unsetReferences();
             throw new DbLogicalException(
-                $this->client->errorMessagePreamble() . ' - query cannot prepare statement more than once.'
+                $this->client->errorMessagePrefix() . ' - query cannot prepare statement more than once.'
             );
         }
         $this->isPreparedStatement = true;
@@ -134,13 +136,13 @@ class MariaDbQuery extends DatabaseQuery
             }
             elseif (strlen($types) != $n_params) {
                 throw new \InvalidArgumentException(
-                    $this->client->errorMessagePreamble() . ' - arg $types length[' . strlen($types)
+                    $this->client->errorMessagePrefix() . ' - arg $types length[' . strlen($types)
                     . '] doesn\'t match query\'s ?-parameters count[' . $n_params . '].'
                 );
             }
             elseif (($type_illegals = $this->parameterTypesCheck($types))) {
                 throw new \InvalidArgumentException(
-                    $this->client->errorMessagePreamble()
+                    $this->client->errorMessagePrefix()
                     . ' - arg $types contains illegal char(s) ' . $type_illegals . '.'
                 );
             }
@@ -153,7 +155,7 @@ class MariaDbQuery extends DatabaseQuery
         $mysqli_stmt = @$mysqli->prepare($this->query);
         if (!$mysqli_stmt) {
             throw new DbRuntimeException(
-                $this->client->errorMessagePreamble()
+                $this->client->errorMessagePrefix()
                 . ' - query failed to prepare statement, with error: ' . $this->client->nativeError() . '.'
             );
         }
@@ -162,9 +164,10 @@ class MariaDbQuery extends DatabaseQuery
             $this->arguments['prepared'] =& $arguments;
 
             if (!@$mysqli_stmt->bind_param($tps, ...$this->arguments['prepared'])) {
+                // Unset prepared statement arguments reference.
                 $this->unsetReferences();
                 throw new DbRuntimeException(
-                    $this->client->errorMessagePreamble()
+                    $this->client->errorMessagePrefix()
                     . ' - query failed to bind parameters prepare statement, with error: '
                     . $this->client->nativeError() . '.'
                 );
@@ -192,28 +195,30 @@ class MariaDbQuery extends DatabaseQuery
             // (MySQLi) Only a prepared statement is a 'statement'.
             if ($this->statementClosed) {
                 throw new DbLogicalException(
-                    $this->client->errorMessagePreamble()
+                    $this->client->errorMessagePrefix()
                     . ' - query can\'t execute previously closed prepared statement.'
                 );
             }
             // Require unbroken connection.
             if (!$this->client->isConnected()) {
+                // Unset prepared statement arguments reference.
                 $this->unsetReferences();
                 throw new DbInterruptionException(
-                    $this->client->errorMessagePreamble()
+                    $this->client->errorMessagePrefix()
                     . ' - query can\'t execute prepared statement when connection lost.'
                 );
             }
             // bool.
             if (!@$this->statement->execute()) {
+                // Unset prepared statement arguments reference.
                 $this->unsetReferences();
                 $this->client->log(
                     'warning',
-                    $this->client->errorMessagePreamble() . ' - failed executing prepared statement, query',
+                    $this->client->errorMessagePrefix() . ' - failed executing prepared statement, query',
                     $this->query
                 );
                 throw new DbQueryException(
-                    $this->client->errorMessagePreamble()
+                    $this->client->errorMessagePrefix()
                     . ' - failed executing prepared statement, with error: ' . $this->client->nativeError() . '.'
                 );
             }
@@ -226,11 +231,11 @@ class MariaDbQuery extends DatabaseQuery
             if (!@$mysqli->multi_query($this->queryTampered ?? $this->query)) {
                 $this->client->log(
                     'warning',
-                    $this->client->errorMessagePreamble() . ' - failed executing multi-query',
+                    $this->client->errorMessagePrefix() . ' - failed executing multi-query',
                     $this->queryTampered ?? $this->query
                 );
                 throw new DbQueryException(
-                    $this->client->errorMessagePreamble()
+                    $this->client->errorMessagePrefix()
                     . ' - failed executing multi-query, with error: ' . $this->client->nativeError() . '.'
                 );
             }
@@ -243,11 +248,11 @@ class MariaDbQuery extends DatabaseQuery
             if (!@$mysqli->real_query($this->queryTampered ?? $this->query)) {
                 $this->client->log(
                     'warning',
-                    $this->client->errorMessagePreamble() . ' - failed executing simple query',
+                    $this->client->errorMessagePrefix() . ' - failed executing simple query',
                     $this->queryTampered ?? $this->query
                 );
                 throw new DbQueryException(
-                    $this->client->errorMessagePreamble()
+                    $this->client->errorMessagePrefix()
                     . ' - failed executing simple query, with error: ' . $this->client->nativeError() . '.'
                 );
             }
@@ -260,6 +265,8 @@ class MariaDbQuery extends DatabaseQuery
 
     /**
      * @see DatabaseQuery::$statementClosed
+     *
+     * @see DatabaseQuery::unsetReferences()
      *
      * @return void
      */

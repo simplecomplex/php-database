@@ -17,6 +17,8 @@ namespace SimpleComplex\Database\Interfaces;
 interface DbQueryInterface
 {
     /**
+     * @see DbClientInterface::query()
+     *
      * @param \SimpleComplex\Database\Interfaces\DbClientInterface $client
      *      Reference to parent client.
      * @param string $baseQuery
@@ -53,8 +55,11 @@ interface DbQueryInterface
     public function prepare(string $types, array &$arguments) : DbQueryInterface;
 
     /**
-     * Non-prepared statement: substitute base query parameter markers
-     * by arguments.
+     * Non-prepared statement: set query arguments, for native automated
+     * parameter marker substitution or direct substition in the query.
+     *
+     * The base query remains reusable allowing more ->parameters()->execute(),
+     * much like a prepared statement (except arguments aren't referred).
      *
      * Types:
      * - i: integer.
@@ -80,6 +85,8 @@ interface DbQueryInterface
     public function execute() : DbResultInterface;
 
     /**
+     * Must unset prepared statement arguments reference.
+     *
      * @return void
      */
     public function closeStatement();

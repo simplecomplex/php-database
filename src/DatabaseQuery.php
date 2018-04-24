@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace SimpleComplex\Database;
 
 use SimpleComplex\Utils\Explorable;
+use SimpleComplex\Utils\Utils;
 
 use SimpleComplex\Database\Interfaces\DbClientInterface;
 use SimpleComplex\Database\Interfaces\DbQueryInterface;
@@ -42,6 +43,7 @@ use SimpleComplex\Database\Exception\DbLogicalException;
  * CRUD: (at least) INSERT, UPDATE, REPLACE, DELETE.
  * Non-CRUD: (at least) SELECT, DESCRIBE, EXPLAIN, HELP, USE.
  *
+ * @property-read string $id
  * @property-read bool $isPreparedStatement
  * @property-read bool $isMultiQuery
  * @property-read bool $isRepeatStatement
@@ -80,6 +82,13 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
      * @var DatabaseClient
      */
     public $client;
+
+    /**
+     * Random ID used for error handling, set on demand.
+     *
+     * @var string
+     */
+    protected $id;
 
     /**
      * @var string
@@ -174,7 +183,7 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
 
         if (!$baseQuery) {
             throw new \InvalidArgumentException(
-                $this->client->errorMessagePreamble() . ' - arg $baseQuery cannot be empty.'
+                $this->client->errorMessagePrefix() . ' - arg $baseQuery cannot be empty.'
             );
         }
         // Remove trailing (and leading) semicolon; for multi-query.
@@ -188,7 +197,7 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
         if (!empty($options['is_multi_query'])) {
             if (!static::MULTI_QUERY_SUPPORT) {
                 throw new DbLogicalException(
-                    $this->client->errorMessagePreamble() . ' doesn\'t support multi-query.'
+                    $this->client->errorMessagePrefix() . ' doesn\'t support multi-query.'
                 );
             }
             $this->isMultiQuery = true;
@@ -260,26 +269,27 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
 
         if ($this->isRepeatStatement) {
             throw new DbLogicalException(
-                $this->client->errorMessagePreamble()
+                $this->client->errorMessagePrefix()
                 . ' - passing parameters to base query is illegal when base query has been repeated.'
             );
         }
         if ($this->queryAppended) {
             throw new DbLogicalException(
-                $this->client->errorMessagePreamble()
+                $this->client->errorMessagePrefix()
                 . ' - passing parameters to base query is illegal after another query has been appended.'
             );
         }
         if ($this->isPreparedStatement) {
+            $this->unsetReferences();
             throw new DbLogicalException(
-                $this->client->errorMessagePreamble()
+                $this->client->errorMessagePrefix()
                 . ' - passing parameters to prepared statement is illegal except via call to prepare().'
             );
         }
 
         if ($types !== '' && ($type_illegals = $this->parameterTypesCheck($types))) {
             throw new \InvalidArgumentException(
-                $this->client->errorMessagePreamble()
+                $this->client->errorMessagePrefix()
                 . ' - arg $types contains illegal char(s) ' . $type_illegals . '.'
             );
         }
@@ -317,22 +327,23 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
      *      Arg $query empty.
      *      Propagated; parameters/arguments count mismatch.
      */
-    public function appendQuery(string $query, string $types, array $arguments) : DbQueryInterface
+    public function append(string $query, string $types, array $arguments) : DbQueryInterface
     {
         if (!static::MULTI_QUERY_SUPPORT) {
             throw new DbLogicalException(
-                $this->client->errorMessagePreamble() . ' doesn\'t support multi-query.'
+                $this->client->errorMessagePrefix() . ' doesn\'t support multi-query.'
             );
         }
         if ($this->isPreparedStatement) {
+            $this->unsetReferences();
             throw new DbLogicalException(
-                $this->client->errorMessagePreamble() . ' - appending to prepared statement is illegal.'
+                $this->client->errorMessagePrefix() . ' - appending to prepared statement is illegal.'
             );
         }
 
         if (!$query) {
             throw new \InvalidArgumentException(
-                $this->client->errorMessagePreamble() . ' - arg $query cannot be empty.'
+                $this->client->errorMessagePrefix() . ' - arg $query cannot be empty.'
             );
         }
 
@@ -381,22 +392,23 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
      * @throws \InvalidArgumentException
      *      Propagated; parameters/arguments count mismatch.
      */
-    public function repeatStatement(string $types, array $arguments) : DbQueryInterface
+    public function repeat(string $types, array $arguments) : DbQueryInterface
     {
         if (!static::MULTI_QUERY_SUPPORT) {
             throw new DbLogicalException(
-                $this->client->errorMessagePreamble() . ' doesn\'t support multi-query.'
+                $this->client->errorMessagePrefix() . ' doesn\'t support multi-query.'
             );
         }
         if ($this->queryAppended) {
             throw new DbLogicalException(
-                $this->client->errorMessagePreamble()
+                $this->client->errorMessagePrefix()
                 . ' - repeating base query is illegal after another query has been appended.'
             );
         }
         if ($this->isPreparedStatement) {
+            $this->unsetReferences();
             throw new DbLogicalException(
-                $this->client->errorMessagePreamble() . ' - appending to prepared statement is illegal.'
+                $this->client->errorMessagePrefix() . ' - appending to prepared statement is illegal.'
             );
         }
 
@@ -497,7 +509,7 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
         $n_args = count($arguments);
         if ($n_args != $n_params) {
             throw new \InvalidArgumentException(
-                $this->client->errorMessagePreamble() . ' - arg $arguments length[' . $n_args
+                $this->client->errorMessagePrefix() . ' - arg $arguments length[' . $n_args
                 . '] doesn\'t match query\'s ?-parameters count[' . $n_params . '].'
             );
         }
@@ -581,7 +593,7 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
         }
         elseif (strlen($types) != $n_params) {
             throw new \InvalidArgumentException(
-                $this->client->errorMessagePreamble() . ' - arg $types length[' . strlen($types)
+                $this->client->errorMessagePrefix() . ' - arg $types length[' . strlen($types)
                 . '] doesn\'t match query\'s ?-parameters count[' . $n_params . '].'
             );
         }
@@ -602,7 +614,7 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
             if (!is_scalar($value) || is_bool($value)) {
                 // Unlikely when checked via parameterTypesCheck().
                 throw new \InvalidArgumentException(
-                    $this->client->errorMessagePreamble() . ' - arg $arguments index[' . $i
+                    $this->client->errorMessagePrefix() . ' - arg $arguments index[' . $i
                     . '] type[' . gettype($value) . '] is not integer|float|string|binary.'
                 );
             }
@@ -618,7 +630,7 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
                 default:
                     // Unlikely when checked via parameterTypesCheck().
                     throw new \InvalidArgumentException(
-                        $this->client->errorMessagePreamble()
+                        $this->client->errorMessagePrefix()
                         . ' - arg $types[' . $types . '] index[' . $i . '] char[' . $tps{$i} . '] is not i|d|s|b.'
                     );
             }
@@ -628,17 +640,22 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
         return $query_with_args . $queryFragments[$i];
     }
 
+
+    // Package protected.-------------------------------------------------------
+
     /**
-     * Unsets instance vars that are references.
+     * Unset external references.
      *
-     * If any such, the object becomes inert (useless) because one cannot
-     * (later) set an instance var that previously was unset; spells error
-     * "Cannot assign by reference to overloaded object".
+     * Before throwing exception and when closing a statement.
+     *
+     * @internal Package protected.
      *
      * @return void
      */
-    protected function unsetReferences() /*:void*/
+    public function unsetReferences() /*:void*/
     {
+        // Prepared statement arguments refer.
+        // If not unset, the point of reference could get messed up.
         if (isset($this->arguments['prepared'])) {
             unset($this->arguments['prepared']);
         }
@@ -661,6 +678,7 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
      */
     protected $explorableIndex = [
         // Protected; readable via 'magic' __get().
+        'id',
         'isPreparedStatement',
         'isMultiQuery',
         'isRepeatStatement',
@@ -685,11 +703,12 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
     public function __get(string $name)
     {
         if (in_array($name, $this->explorableIndex, true)) {
-            // Handle instance var which was unset to clear reference.
-            if (!isset($this->{$name})) {
-                return null;
+            // Set 'id' on demand.
+            if ($name == 'id' && !$this->id) {
+                $c = explode('.', $uni = uniqid('', TRUE));
+                $utils = Utils::getInstance();
+                $this->id = $utils->baseConvert($c[0], 16, 62) . $utils->baseConvert($c[1], 16, 62);
             }
-
             return $this->{$name};
         }
         throw new \OutOfBoundsException(get_class($this) . ' instance exposes no property[' . $name . '].');
