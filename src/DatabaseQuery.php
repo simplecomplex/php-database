@@ -129,6 +129,7 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
      * A simple statement might not be linked at all (MySQLi).
      *
      * @var mixed|null
+     *      Extending class must override to annotate exact type.
      */
     protected $statement;
 

@@ -127,6 +127,7 @@ class MsSqlQuery extends DatabaseQuery
      * Prepared or simple statement.
      *
      * @var resource|null
+     *      Overriding to annotate type.
      */
     protected $statement;
 

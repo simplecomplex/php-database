@@ -70,6 +70,7 @@ class MariaDbQuery extends DatabaseQuery
      * A simple statement might not be linked at all (MySQLi).
      *
      * @var \mysqli_stmt|null
+     *      Overriding to annotate type.
      */
     protected $statement;
 

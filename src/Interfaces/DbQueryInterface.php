@@ -53,7 +53,8 @@ interface DbQueryInterface
     public function prepare(string $types, array &$arguments) : DbQueryInterface;
 
     /**
-     * Non-prepared statement: substitute base query ?-parameters by arguments.
+     * Non-prepared statement: substitute base query parameter markers
+     * by arguments.
      *
      * Types:
      * - i: integer.
