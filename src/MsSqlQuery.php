@@ -132,6 +132,8 @@ class MsSqlQuery extends DatabaseQuery
     protected $statement;
 
     /**
+     * Option (int) query_timeout.
+     *
      * @see MsSqlQuery::QUERY_TIMEOUT
      *
      * @var int
@@ -139,6 +141,8 @@ class MsSqlQuery extends DatabaseQuery
     protected $queryTimeout;
 
     /**
+     * Option (str) cursor_mode.
+     *
      * @see MsSqlQuery::CURSOR_MODES
      * @see MsSqlQuery::CURSOR_MODE_DEFAULT
      *
@@ -147,6 +151,8 @@ class MsSqlQuery extends DatabaseQuery
     protected $cursorMode;
 
     /**
+     * Option (bool) send_data_chunked.
+     *
      * Send query statement data in chunks instead sending all immediately.
      *
      * Relevant if giant query.
@@ -159,6 +165,10 @@ class MsSqlQuery extends DatabaseQuery
     protected $sendDataChunked = false;
 
     /**
+     * Option (int) send_chunks_limit.
+     *
+     * @see MsSqlQuery::SEND_CHUNKS_LIMIT
+     *
      * @var int
      */
     protected $sendChunksLimit;
