@@ -29,6 +29,11 @@ class MariaDbResult extends DatabaseResult
     protected $statement;
 
     /**
+     * @var \mysqli_result
+     */
+    protected $result;
+
+    /**
      * @var bool
      */
     protected $isMultiQuery;
@@ -55,8 +60,40 @@ class MariaDbResult extends DatabaseResult
         $this->isPreparedStatement = $this->query->isPreparedStatement;
     }
 
+    protected function setResult()
+    {
+        if (!$this->result) {
+            if ($this->isPreparedStatement) {
+                $result = @$this->statement->get_result();
+            }
+            elseif ($this->isMultiQuery) {
+
+            }
+
+            $this->result = $this->isPreparedStatement ? $this->statement->get_result() :
+        }
+    }
+
     public function nextRow()
     {
-        // @todo
+        // @todo: there's no direct MySQLi equivalent, use fetch_row().
+
+
+        $next = @sqlsrv_fetch($this->statement);
+        if ($next) {
+            ++$this->rowIndex;
+            return $next;
+        }
+        if ($next === null) {
+            null;
+        }
+        // Unset prepared statement arguments reference.
+        $this->query->closeStatement();
+        $this->logQuery(__FUNCTION__);
+        throw new DbResultException(
+            $this->query->errorMessagePrefix()
+            . ' - failed going to next row, with error: '
+            . $this->query->client->nativeError() . '.'
+        );
     }
 }

@@ -92,6 +92,7 @@ class MsSqlQuery extends DatabaseQuery
         SQLSRV_CURSOR_STATIC,
         SQLSRV_CURSOR_DYNAMIC,
         SQLSRV_CURSOR_KEYSET,
+        SQLSRV_CURSOR_CLIENT_BUFFERED,
     ];
 
     /**
@@ -100,11 +101,8 @@ class MsSqlQuery extends DatabaseQuery
      * Sqlsrv default is 'forward':
      * - fast
      * - reflects changes serverside
-     * - allows getting affected rows
      * - doesn't allow getting number of rows
-     *
-     *
-     * @todo: use 'forward' for CRUD statements
+     * - allows getting affected rows
      *
      * This class' default is 'static':
      * - slower
@@ -181,6 +179,9 @@ class MsSqlQuery extends DatabaseQuery
 
     /**
      * Option (bool) get_insert_id.
+     *
+     * Required when intending to retrieve last insert ID.
+     * @see MsSqlResult::insertId()
      *
      * @var bool
      */

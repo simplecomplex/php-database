@@ -14,9 +14,9 @@ use SimpleComplex\Utils\Explorable;
 use SimpleComplex\Database\Interfaces\DbQueryInterface;
 use SimpleComplex\Database\Interfaces\DbResultInterface;
 
-use SimpleComplex\Database\Exception\DbRuntimeException;
-
 /**
+ * Database result.
+ *
  * @property-read int $setIndex
  * @property-read int $rowIndex
  *
@@ -62,6 +62,7 @@ abstract class DatabaseResult extends Explorable implements DbResultInterface
      * Number of rows affected by a CRUD statement.
      *
      * @return int
+     *      Throws throwable on failure.
      */
     abstract public function affectedRows() : int;
 
@@ -72,6 +73,7 @@ abstract class DatabaseResult extends Explorable implements DbResultInterface
      *
      * @return mixed|null
      *      Null: no result at all.
+     *      Throws throwable on failure.
      */
     abstract public function insertId($getAsType = null);
 
@@ -79,6 +81,7 @@ abstract class DatabaseResult extends Explorable implements DbResultInterface
      * Number of rows in a result set.
      *
      * @return int
+     *      Throws throwable on failure.
      */
     abstract public function numRows() : int;
 
@@ -86,6 +89,7 @@ abstract class DatabaseResult extends Explorable implements DbResultInterface
      * Number of columns in a result row.
      *
      * @return int
+     *      Throws throwable on failure.
      */
     abstract public function numColumns() : int;
 
@@ -97,6 +101,7 @@ abstract class DatabaseResult extends Explorable implements DbResultInterface
      *
      * @return array|null
      *      No more rows.
+     *      Throws throwable on failure.
      */
     abstract public function fetchArray(int $as = Database::FETCH_ASSOC);
 
@@ -110,6 +115,7 @@ abstract class DatabaseResult extends Explorable implements DbResultInterface
      *
      * @return object|null
      *      No more rows.
+     *      Throws throwable on failure.
      */
     abstract public function fetchObject(string $class = '', array $args = []);
 
@@ -128,8 +134,35 @@ abstract class DatabaseResult extends Explorable implements DbResultInterface
      * }
      *
      * @return array
+     *      Throws throwable on failure.
      */
     abstract public function fetchAll(int $as = Database::FETCH_ASSOC, array $options = []) : array;
+
+    /**
+     * @return bool|null
+     *      Null: No next result set.
+     *      Throws throwable on failure.
+     */
+    abstract public function nextSet();
+
+
+    // Helpers.-----------------------------------------------------------------
+
+    /**
+     * @param string $function
+     */
+    protected function logQuery(string $function)
+    {
+        $this->query->client->log(
+            $this->query->errorMessagePrefix() . ' - ' . $function . '(), query',
+            substr($this->query->queryTampered ?? $this->query->query, 0,
+                constant(get_class($this->query) . '::LOG_QUERY_TRUNCATE')),
+            [
+                'wrappers' => 1,
+            ]
+        );
+    }
+
 
     // Explorable.--------------------------------------------------------------
 

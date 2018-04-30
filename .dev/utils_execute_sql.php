@@ -65,17 +65,23 @@ $arguments = [
 /** @noinspection SqlResolve */
 /** @var \SimpleComplex\Database\MsSqlQuery $query */
 $query = $database->query('INSERT INTO Persons (LastName, FirstName, Age) VALUES (?, ?, ?)', [
-    'cursor_mode' => 'forward',
+   // 'cursor_mode' => 'forward',
     'get_insert_id' => true,
 ]);
+$query->prepare('', $arguments);
+
+/*$arguments = [10];
+$query = $database->query('SELECT * FROM Persons WHERE ID = ?', [
+    // 'cursor_mode' => 'forward',
+]);*/
 
 
 //$query = $database->query('SELECT MedarbejderNR FROM KsRefund_Main WHERE id = 10; SELECT id, MedarbejderNR FROM KsRefund_Main WHERE id >= ? AND id <= ?');
 
-$query->prepare('', $arguments);
+//$query->prepare('i', $arguments);
 //$query->parameters('ii', [$id_first, $id_last]);
 
-$logger->debug('Query' . "\n" . $inspect->variable($query));
+//$logger->debug('Query' . "\n" . $inspect->variable($query));
 
 //$query->parameters($types, [$id]);
 //$logger->debug('' . "\n" . $inspect->variable($query->preparedStatementArgs));
@@ -83,8 +89,11 @@ $logger->debug('Query' . "\n" . $inspect->variable($query));
 //$variable = $query;
 $result = $query->execute();
 
-$logger->debug('affectedRows' . "\n" . $inspect->variable($result->affectedRows()));
+//$logger->debug('affectedRows' . "\n" . $inspect->variable($result->affectedRows()));
+$logger->debug('numRows' . "\n" . $inspect->variable($result->numRows()));
 $logger->debug('insertId' . "\n" . $inspect->variable($result->insertId('i')));
+//$logger->debug('fetchArray' . "\n" . $inspect->variable($result->fetchArray()));
+$logger->debug('numRows' . "\n" . $inspect->variable($result->numRows()));
 
 return;
 

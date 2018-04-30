@@ -58,8 +58,14 @@ class MsSqlResult extends DatabaseResult
     /**
      * Number of rows affected by a CRUD statement.
      *
+     * NB: Query class cursor mode must be SQLSRV_CURSOR_FORWARD ('forward').
+     * @see MsSqlQuery::__constructor()
+     *
      * @return int
      *
+     * @throws DbLogicalException
+     *      No cound, (probably) not a CRUD query.
+     *      Bad query class cursor mode.
      * @throws DbResultException
      */
     public function affectedRows() : int
@@ -67,85 +73,90 @@ class MsSqlResult extends DatabaseResult
         $count = @sqlsrv_rows_affected(
             $this->statement
         );
-        if (!$count) {
-            if ($count === 0) {
-                return 0;
-            }
-            // Unset prepared statement arguments reference.
-            $this->query->closeStatement();
-
-            $error = $this->query->client->nativeError();
-            // @todo: cursor mode must be 'forward';
-
-            $this->query->client->log(
-                $this->query->errorMessagePrefix() . ' - ' . __FUNCTION__ . '(), query',
-                substr($this->query->queryTampered ?? $this->query->query, 0,
-                    constant(get_class($this->query) . '::LOG_QUERY_TRUNCATE'))
-            );
-            throw new DbResultException(
-                $this->query->errorMessagePrefix() . ' - failed counting affected rows, with error: '
-                . $this->query->client->nativeError() . '.'
-            );
-        }
-        if ($count > -1) {
+        if (($count && $count > 0) || $count === 0) {
             return $count;
         }
-        $error = $this->query->client->nativeError(true);
         // Unset prepared statement arguments reference.
         $this->query->closeStatement();
-        $this->query->client->log(
-            $this->query->errorMessagePrefix() . ' - ' . __FUNCTION__ . '(), query',
-            substr($this->query->queryTampered ?? $this->query->query, 0,
-                constant(get_class($this->query) . '::LOG_QUERY_TRUNCATE'))
-        );
-        throw new DbLogicalException(
-            $this->query->errorMessagePrefix()
-            . ' - rejected counting affected rows, probably not a CRUD query'
-            . (!$error ? '' : (', with error: ' . $error)) . '.'
+        $this->logQuery(__FUNCTION__);
+        if ($count === -1) {
+            throw new DbLogicalException(
+                $this->query->errorMessagePrefix()
+                . ' - rejected counting affected rows (returned -1), probably not a CRUD query.'
+            );
+        }
+        // Cursor mode must be SQLSRV_CURSOR_FORWARD ('forward').
+        if ($this->query->cursorMode != SQLSRV_CURSOR_FORWARD) {
+            throw new DbLogicalException(
+                $this->query->client->errorMessagePrefix() . ' - cursor mode[' . $this->query->cursorMode
+                . '] forbids getting affected rows.'
+            );
+        }
+        throw new DbResultException(
+            $this->query->errorMessagePrefix() . ' - failed counting affected rows, with error: '
+            . $this->query->client->nativeError() . '.'
         );
     }
 
     /**
+     * Auto ID set by last insert statement.
+     *
+     * NB: Requires that the query contains a secondary ID selecting statement
+     * ; SELECT SCOPE_IDENTITY() AS IDENTITY_COLUMN_NAME
+     * Use query class option 'get_insert_id'.
+     * @see MsSqlQuery::__constructor()
+     * @see https://blogs.msdn.microsoft.com/nickhodge/2008/09/22/sql-server-driver-for-php-last-inserted-row-id/
+     * @see https://docs.microsoft.com/en-us/sql/t-sql/functions/scope-identity-transact-sql
+     *
      * @param int|string|null $getAsType
+     *      String: i|d|s|b.
+     *      Integer: An SQLSRV_PHPTYPE_* constant.
+     *      Null: Use driver default; probably string.
      *
      * @return mixed|null
-     *      Null: no result at all.
+     *      Null: no result or row at all.
+     *
+     * @throws DbLogicalException
+     *      Query misses secondary ID select statement.
+     * @throws DbResultException
+     *      Next result.
+     *      Next row.
+     *      Other failure.
+     * @throws \InvalidArgumentException
+     *      Bad arg $getAsType.
      */
     public function insertId($getAsType = null)
     {
-
-
-        /**
-         * @todo: insertId()
-         * ; SELECT SCOPE_IDENTITY() AS IDENTITY_COLUMN_NAME
-         * @see https://blogs.msdn.microsoft.com/nickhodge/2008/09/22/sql-server-driver-for-php-last-inserted-row-id/
-         * @see https://docs.microsoft.com/en-us/sql/t-sql/functions/scope-identity-transact-sql?view=sql-server-2017
-         */
-
-        // @todo?
-        //sqlsrv_next_result()
-
         // Fetch first row, unless already done.
         if ($this->rowIndex < 0) {
-            @sqlsrv_next_result($this->statement);
-            $next = @sqlsrv_fetch($this->statement);
-            /*if (!$next) {
+            $next = @sqlsrv_next_result($this->statement);
+            if (!$next) {
                 if ($next === null) {
-                    // No row at all because rowIndex was -1.
+                    // No result at all.
                     return null;
                 }
-                // Unset prepared statement arguments reference.
                 $this->query->closeStatement();
-                $this->query->client->log(
-                    $this->query->errorMessagePrefix() . ' - ' . __FUNCTION__ . '(), query',
-                    substr($this->query->queryTampered ?? $this->query->query, 0,
-                        constant(get_class($this->query) . '::LOG_QUERY_TRUNCATE'))
-                );
-                throw new DbLogicalException(
-                    $this->query->errorMessagePrefix() . ' - failed getting insert ID, with error: '
+                $this->logQuery(__FUNCTION__);
+                throw new DbResultException(
+                    $this->query->errorMessagePrefix() . ' - failed going to next set to get insert ID, with error: '
                     . $this->query->client->nativeError() . '.'
                 );
-            }*/
+            }
+            else {
+                $next = @sqlsrv_fetch($this->statement);
+                if (!$next) {
+                    if ($next === null) {
+                        // No row at all because rowIndex was -1.
+                        return null;
+                    }
+                    $this->query->closeStatement();
+                    $this->logQuery(__FUNCTION__);
+                    throw new DbResultException(
+                        $this->query->errorMessagePrefix() . ' - failed going to next row to get insert ID, with error: '
+                        . $this->query->client->nativeError() . '.'
+                    );
+                }
+            }
         }
         ++$this->rowIndex;
 
@@ -165,17 +176,20 @@ class MsSqlResult extends DatabaseResult
                     case 'b':
                         $type = SQLSRV_PHPTYPE_STRING($this->query->client->characterSet);
                         break;
-                    case 'Datetime':
-                        $type = SQLSRV_PHPTYPE_DATETIME;
-                        break;
                     default:
+                        // Unset prepared statement arguments reference.
+                        $this->query->closeStatement();
+                        $this->logQuery(__FUNCTION__);
                         throw new \InvalidArgumentException(
                             $this->query->errorMessagePrefix()
-                            . ' - arg $getAsType type[' . gettype($getAsType) . '] isn\'t ?.'
+                            . ' - arg $getAsType as string isn\'t i|d|s|b.'
                         );
                 }
             }
             else {
+                // Unset prepared statement arguments reference.
+                $this->query->closeStatement();
+                $this->logQuery(__FUNCTION__);
                 throw new \InvalidArgumentException(
                     $this->query->errorMessagePrefix()
                     . ' - arg $getAsType type[' . gettype($getAsType) . '] isn\'t integer|string|null.'
@@ -188,26 +202,22 @@ class MsSqlResult extends DatabaseResult
         if ($id === false) {
             // Unset prepared statement arguments reference.
             $this->query->closeStatement();
-            $this->query->client->log(
-                $this->query->errorMessagePrefix() . ' - ' . __FUNCTION__ . '(), query',
-                substr($this->query->queryTampered ?? $this->query->query, 0,
-                    constant(get_class($this->query) . '::LOG_QUERY_TRUNCATE'))
-            );
-            $error = $this->query->client->nativeError(true);
+            $this->logQuery(__FUNCTION__);
             if (
-                !$error
-                && !$this->query->getInsertId
+                !$this->query->getInsertId
                 && strpos(
                     $this->query->queryTampered ?? $this->query->query,
                     'SELECT SCOPE_IDENTITY() AS IDENTITY_COLUMN_NAME'
                 ) === false
             ) {
-                $error = 'statement misses secondary ID select query, see query option \'get_insert_id\'';
-            } elseif (!$error) {
-                $error = $this->query->client->nativeError();
+                throw new DbLogicalException(
+                    $this->query->errorMessagePrefix() . ' - failed getting insert ID'
+                    . ', query misses secondary ID select statement, see query option \'get_insert_id\''
+                );
             }
-            throw new DbLogicalException(
-                $this->query->errorMessagePrefix() . ' - failed getting insert ID, with error: ' . $error . '.'
+            throw new DbResultException(
+                $this->query->errorMessagePrefix()
+                . ' - failed getting insert ID, with error: ' . $this->query->client->nativeError() . '.'
             );
         }
         return $id;
@@ -215,6 +225,10 @@ class MsSqlResult extends DatabaseResult
 
     /**
      * Number of rows in a result set.
+     *
+     * NB: Query class cursor mode must be SQLSRV_CURSOR_STATIC ('static')
+     * or SQLSRV_CURSOR_KEYSET ('keyset').
+     * @see MsSqlQuery::__constructor()
      *
      * @return int
      *
@@ -224,36 +238,29 @@ class MsSqlResult extends DatabaseResult
      */
     public function numRows() : int
     {
+        $count = @sqlsrv_num_rows(
+            $this->statement
+        );
+        if (($count && $count > 0) || $count === 0) {
+            return $count;
+        }
+        // Unset prepared statement arguments reference.
+        $this->query->closeStatement();
+        $this->logQuery(__FUNCTION__);
         switch ($this->query->cursorMode) {
             case SQLSRV_CURSOR_STATIC:
             case SQLSRV_CURSOR_KEYSET:
                 break;
             default:
-                // Unset prepared statement arguments reference.
-                $this->query->closeStatement();
                 throw new DbLogicalException(
                     $this->query->client->errorMessagePrefix() . ' - cursor mode[' . $this->query->cursorMode
                     . '] forbids getting number of rows.'
                 );
         }
-        $count = @sqlsrv_num_rows(
-            $this->statement
+        throw new DbResultException(
+            $this->query->errorMessagePrefix() . ' - failed getting number of rows, with error: '
+            . $this->query->client->nativeError() . '.'
         );
-        if (!$count && $count !== 0) {
-            // Unset prepared statement arguments reference.
-            $this->query->closeStatement();
-            $this->query->client->log(
-                $this->query->errorMessagePrefix() . ' - ' . __FUNCTION__ . '(), query',
-                substr($this->query->queryTampered ?? $this->query->query, 0,
-                    constant(get_class($this->query) . '::LOG_QUERY_TRUNCATE'))
-            );
-            throw new DbResultException(
-                $this->query->errorMessagePrefix() . ' - failed getting number of rows, with error: '
-                . $this->query->client->nativeError() . '.'
-            );
-
-        }
-        return $count;
     }
 
     /**
@@ -268,21 +275,16 @@ class MsSqlResult extends DatabaseResult
         $count = @sqlsrv_num_fields(
             $this->statement
         );
-        if (!$count && $count !== 0) {
-            // Unset prepared statement arguments reference.
-            $this->query->closeStatement();
-            $this->query->client->log(
-                $this->query->errorMessagePrefix() . ' - ' . __FUNCTION__ . '(), query',
-                substr($this->query->queryTampered ?? $this->query->query, 0,
-                    constant(get_class($this->query) . '::LOG_QUERY_TRUNCATE'))
-            );
-            throw new DbResultException(
-                $this->query->errorMessagePrefix() . ' - failed getting number of columns, with error: '
-                . $this->query->client->nativeError() . '.'
-            );
-
+        if (($count && $count > 0) || $count === 0) {
+            return $count;
         }
-        return $count;
+        // Unset prepared statement arguments reference.
+        $this->query->closeStatement();
+        $this->logQuery(__FUNCTION__);
+        throw new DbResultException(
+            $this->query->errorMessagePrefix() . ' - failed getting number of columns, with error: '
+            . $this->query->client->nativeError() . '.'
+        );
     }
 
     /**
@@ -300,6 +302,7 @@ class MsSqlResult extends DatabaseResult
             $this->statement,
             $as == Database::FETCH_ASSOC ? SQLSRV_FETCH_ASSOC : SQLSRV_FETCH_NUMERIC
         );
+        ++$this->rowIndex;
         if ($row) {
             return $row;
         }
@@ -308,11 +311,7 @@ class MsSqlResult extends DatabaseResult
         }
         // Unset prepared statement arguments reference.
         $this->query->closeStatement();
-        $this->query->client->log(
-            $this->query->errorMessagePrefix() . ' - ' . __FUNCTION__ . '(), query',
-            substr($this->query->queryTampered ?? $this->query->query, 0,
-                constant(get_class($this->query) . '::LOG_QUERY_TRUNCATE'))
-        );
+        $this->logQuery(__FUNCTION__);
         throw new DbResultException(
             $this->query->errorMessagePrefix()
             . ' - failed fetching row as ' . (Database::FETCH_NUMERIC ? 'numeric' : 'assoc') . ' array, with error: '
@@ -342,11 +341,7 @@ class MsSqlResult extends DatabaseResult
         }
         // Unset prepared statement arguments reference.
         $this->query->closeStatement();
-        $this->query->client->log(
-            $this->query->errorMessagePrefix() . ' - ' . __FUNCTION__ . '(), query',
-            substr($this->query->queryTampered ?? $this->query->query, 0,
-                constant(get_class($this->query) . '::LOG_QUERY_TRUNCATE'))
-        );
+        $this->logQuery(__FUNCTION__);
         throw new DbResultException(
             $this->query->errorMessagePrefix()
             . ' - failed fetching row as object, with error: ' . $this->query->client->nativeError() . '.'
@@ -386,6 +381,7 @@ class MsSqlResult extends DatabaseResult
                 if ($column_keyed) {
                     // Unset prepared statement arguments reference.
                     $this->query->closeStatement();
+                    $this->logQuery(__FUNCTION__);
                     throw new DbLogicalException(
                         $this->query->client->errorMessagePrefix()
                         . ' - arg $options \'list_by_column\' is not supported when fetching as numeric arrays.'
@@ -408,11 +404,7 @@ class MsSqlResult extends DatabaseResult
                             if (!property_exists($row, $key_column)) {
                                 // Unset prepared statement arguments reference.
                                 $this->query->closeStatement();
-                                $this->query->client->log(
-                                    $this->query->errorMessagePrefix() . ' - ' . __FUNCTION__ . '(), query',
-                                    substr($this->query->queryTampered ?? $this->query->query, 0,
-                                        constant(get_class($this->query) . '::LOG_QUERY_TRUNCATE'))
-                                );
+                                $this->logQuery(__FUNCTION__);
                                 throw new \InvalidArgumentException(
                                     $this->query->errorMessagePrefix()
                                     . ' - failed fetching all rows as objects keyed by column[' . $key_column
@@ -435,11 +427,7 @@ class MsSqlResult extends DatabaseResult
                             if (!array_key_exists($key_column, $row)) {
                                 // Unset prepared statement arguments reference.
                                 $this->query->closeStatement();
-                                $this->query->client->log(
-                                    $this->query->errorMessagePrefix() . ' - ' . __FUNCTION__ . '(), query',
-                                    substr($this->query->queryTampered ?? $this->query->query, 0,
-                                        constant(get_class($this->query) . '::LOG_QUERY_TRUNCATE'))
-                                );
+                                $this->logQuery(__FUNCTION__);
                                 throw new \InvalidArgumentException(
                                     $this->query->errorMessagePrefix()
                                     . ' - failed fetching all rows as assoc arrays keyed by column[' . $key_column
@@ -464,11 +452,7 @@ class MsSqlResult extends DatabaseResult
             }
             // Unset prepared statement arguments reference.
             $this->query->closeStatement();
-            $this->query->client->log(
-                $this->query->errorMessagePrefix() . ' - ' . __FUNCTION__ . '(), query',
-                substr($this->query->queryTampered ?? $this->query->query, 0,
-                    constant(get_class($this->query) . '::LOG_QUERY_TRUNCATE'))
-            );
+            $this->logQuery(__FUNCTION__);
             throw new DbResultException(
                 $this->query->errorMessagePrefix()
                 . ' - failed fetching all rows as ' . $em . ', with error: '
@@ -476,5 +460,56 @@ class MsSqlResult extends DatabaseResult
             );
         }
         return $list;
+    }
+
+    /**
+     * @return bool|null
+     *      Null: No next result set.
+     *      Throws throwable on failure.
+     */
+    public function nextSet()
+    {
+        $next = @sqlsrv_next_result($this->statement);
+        if ($next) {
+            ++$this->setIndex;
+            $this->rowIndex = -1;
+            return $next;
+        }
+        if ($next === null) {
+            return null;
+        }
+        // Unset prepared statement arguments reference.
+        $this->query->closeStatement();
+        $this->logQuery(__FUNCTION__);
+        throw new DbResultException(
+            $this->query->errorMessagePrefix()
+            . ' - failed going to next set, with error: '
+            . $this->query->client->nativeError() . '.'
+        );
+    }
+
+    /**
+     * @return bool|null
+     *      Null: No next row.
+     *      Throws throwable on failure.
+     */
+    public function nextRow()
+    {
+        $next = @sqlsrv_fetch($this->statement);
+        if ($next) {
+            ++$this->rowIndex;
+            return $next;
+        }
+        if ($next === null) {
+            null;
+        }
+        // Unset prepared statement arguments reference.
+        $this->query->closeStatement();
+        $this->logQuery(__FUNCTION__);
+        throw new DbResultException(
+            $this->query->errorMessagePrefix()
+            . ' - failed going to next row, with error: '
+            . $this->query->client->nativeError() . '.'
+        );
     }
 }

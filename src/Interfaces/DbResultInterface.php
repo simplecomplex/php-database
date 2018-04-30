@@ -28,6 +28,7 @@ interface DbResultInterface
      * Number of rows affected by a CRUD statement.
      *
      * @return int
+     *      Throws throwable on failure.
      */
     public function affectedRows() : int;
 
@@ -38,6 +39,7 @@ interface DbResultInterface
      *
      * @return mixed|null
      *      Null: no result at all.
+     *      Throws throwable on failure.
      */
     public function insertId($getAsType = null);
 
@@ -45,6 +47,7 @@ interface DbResultInterface
      * Number of rows in a result set.
      *
      * @return int
+     *      Throws throwable on failure.
      */
     public function numRows() : int;
 
@@ -52,6 +55,7 @@ interface DbResultInterface
      * Number of columns in a result row.
      *
      * @return int
+     *      Throws throwable on failure.
      */
     public function numColumns() : int;
 
@@ -63,6 +67,7 @@ interface DbResultInterface
      *
      * @return array|null
      *      No more rows.
+     *      Throws throwable on failure.
      */
     public function fetchArray(int $as = Database::FETCH_ASSOC);
 
@@ -76,6 +81,7 @@ interface DbResultInterface
      *
      * @return object|null
      *      No more rows.
+     *      Throws throwable on failure.
      */
     public function fetchObject(string $class = '', array $args = []);
 
@@ -94,6 +100,14 @@ interface DbResultInterface
      * }
      *
      * @return array
+     *      Throws throwable on failure.
      */
     public function fetchAll(int $as = Database::FETCH_ASSOC, array $options = []) : array;
+
+    /**
+     * @return bool|null
+     *      Null: No next result set.
+     *      Throws throwable on failure.
+     */
+    public function nextSet();
 }

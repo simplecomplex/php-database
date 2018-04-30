@@ -287,10 +287,12 @@ abstract class DatabaseClient extends Explorable implements DbClientInterface
      * @param null $variable
      *      Ignored if no argument or dependency injection container
      *      has no 'inspect'.
+     * @param array $options
+     *      For Inspect.
      *
      * @return void
      */
-    public function log(string $message, $variable = null) /*:void*/
+    public function log(string $message, $variable = null, array $options = []) /*:void*/
     {
         /** @var \Psr\Container\ContainerInterface $container */
         $container = Dependency::container();
@@ -308,9 +310,18 @@ abstract class DatabaseClient extends Explorable implements DbClientInterface
         else {
             /** @var \SimpleComplex\Inspect\Inspect $inspect */
             $inspect = $container->get('inspect');
-            $logger->log(static::LOG_LEVEL, $message . "\n" . $inspect->variable($variable), [
-                'subType' => 'database',
-            ]);
+            $logger->log(
+                static::LOG_LEVEL,
+                $message . "\n" . $inspect->variable(
+                    $variable,
+                    [
+                        'wrappers' => ($options['wrappers'] ?? 0) + 1,
+                    ]
+                ),
+                [
+                    'subType' => 'database',
+                ]
+            );
         }
     }
 
