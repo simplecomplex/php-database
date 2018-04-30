@@ -224,7 +224,8 @@ abstract class DatabaseClient extends Explorable implements DbClientInterface
         /** @var DbQueryInterface|MariaDbQuery|MsSqlQuery */
         return new $class_query(
             $this,
-            $baseQuery
+            $baseQuery,
+            $options
         );
     }
 

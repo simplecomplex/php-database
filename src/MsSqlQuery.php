@@ -40,6 +40,7 @@ use SimpleComplex\Database\Exception\DbQueryException;
  * @property-read string $cursorMode
  * @property-read bool $sendDataChunked
  * @property-read int $sendChunksLimit
+ * @property-read bool $getInsertId
  *
  * @package SimpleComplex\Database
  */
@@ -99,12 +100,17 @@ class MsSqlQuery extends DatabaseQuery
      * Sqlsrv default is 'forward':
      * - fast
      * - reflects changes serverside
+     * - allows getting affected rows
      * - doesn't allow getting number of rows
+     *
+     *
+     * @todo: use 'forward' for CRUD statements
      *
      * This class' default is 'static':
      * - slower
      * - we don't want serverside changes to reflect the result set
      * - we like getting number of rows
+     * - doesn't allow getting affected rows
      *
      * @var string
      */
@@ -174,6 +180,13 @@ class MsSqlQuery extends DatabaseQuery
     protected $sendChunksLimit;
 
     /**
+     * Option (bool) get_insert_id.
+     *
+     * @var bool
+     */
+    protected $getInsertId;
+
+    /**
      * @param DbClientInterface|DatabaseClient|MsSqlClient $client
      *      Reference to parent client.
      * @param string $baseQuery
@@ -182,6 +195,7 @@ class MsSqlQuery extends DatabaseQuery
      *      @var string $cursor_mode
      *      @var bool $send_data_chunked
      *      @var int $send_chunks_limit
+     *      @var bool $get_insert_id
      * }
      *
      * @throws \InvalidArgumentException
@@ -221,6 +235,12 @@ class MsSqlQuery extends DatabaseQuery
         }
         $this->explorableIndex[] = 'sendDataChunked';
         $this->explorableIndex[] = 'sendChunksLimit';
+
+        $this->getInsertId = !empty($options['get_insert_id']);
+        if ($this->getInsertId && strpos($baseQuery, 'SELECT SCOPE_IDENTITY() AS IDENTITY_COLUMN_NAME') === false) {
+            $this->queryTampered = $this->query . '; SELECT SCOPE_IDENTITY() AS IDENTITY_COLUMN_NAME';
+        }
+        $this->explorableIndex[] = 'getInsertId';
     }
 
     public function __destruct()
@@ -282,7 +302,7 @@ class MsSqlQuery extends DatabaseQuery
         $this->isPreparedStatement = true;
 
         // Checks for parameters/arguments count mismatch.
-        $query_fragments = $this->queryFragments($this->query, $arguments);
+        $query_fragments = $this->queryFragments($this->queryTampered ?? $this->query, $arguments);
 
         if ($query_fragments) {
             unset($query_fragments);
@@ -302,13 +322,15 @@ class MsSqlQuery extends DatabaseQuery
         }
 
         /** @var resource $statement */
-        $statement = @sqlsrv_prepare($connection, $this->query, $this->arguments['prepared'] ?? [], $options);
+        $statement = @sqlsrv_prepare(
+            $connection, $this->queryTampered ?? $this->query, $this->arguments['prepared'] ?? [], $options
+        );
         if (!$statement) {
             // Unset prepared statement arguments reference.
             $this->unsetReferences();
             $this->client->log(
                 $this->errorMessagePrefix() . ' - ' . __FUNCTION__ . '(), query',
-                substr($this->query, 0, static::LOG_QUERY_TRUNCATE)
+                substr($this->queryTampered ?? $this->query, 0, static::LOG_QUERY_TRUNCATE)
             );
             throw new DbRuntimeException(
                 $this->errorMessagePrefix()
@@ -372,7 +394,7 @@ class MsSqlQuery extends DatabaseQuery
         }
 
         // Checks for parameters/arguments count mismatch.
-        $query_fragments = $this->queryFragments($this->query, $arguments);
+        $query_fragments = $this->queryFragments($this->queryTampered ?? $this->query, $arguments);
         if ($query_fragments) {
             unset($query_fragments);
             $this->adaptArguments($types, $arguments);
@@ -411,7 +433,7 @@ class MsSqlQuery extends DatabaseQuery
                 $this->unsetReferences();
                 $this->client->log(
                     $this->errorMessagePrefix() . ' - ' . __FUNCTION__ . '(), query',
-                    substr($this->query, 0, static::LOG_QUERY_TRUNCATE)
+                    substr($this->queryTampered ?? $this->query, 0, static::LOG_QUERY_TRUNCATE)
                 );
                 throw new DbInterruptionException(
                     $this->errorMessagePrefix()
@@ -424,7 +446,7 @@ class MsSqlQuery extends DatabaseQuery
                 $this->unsetReferences();
                 $this->client->log(
                     $this->errorMessagePrefix() . ' - ' . __FUNCTION__ . '(), query',
-                    substr($this->query, 0, static::LOG_QUERY_TRUNCATE)
+                    substr($this->queryTampered ?? $this->query, 0, static::LOG_QUERY_TRUNCATE)
                 );
                 throw new DbQueryException(
                     $this->errorMessagePrefix()
@@ -573,7 +595,9 @@ class MsSqlQuery extends DatabaseQuery
                             . '] doesn\'t match arg $value type[' . gettype($value) . '].'
                         );
                     }
-                    return SQLSRV_SQLTYPE_VARCHAR(strlen($value));
+                    // @todo: Why doesn't SQLSRV_SQLTYPE_VARCHAR(int) work?
+                    //return SQLSRV_SQLTYPE_VARCHAR(strlen($value));
+                    return SQLSRV_SQLTYPE_VARCHAR('max');
                 case 'b':
                     if (!is_string($value)) {
                         throw new \RuntimeException(
@@ -581,7 +605,9 @@ class MsSqlQuery extends DatabaseQuery
                             . '] doesn\'t match arg $value type[' . gettype($value) . '].'
                         );
                     }
-                    return SQLSRV_SQLTYPE_VARBINARY(strlen($value));
+                    // @todo: Why doesn't SQLSRV_SQLTYPE_VARBINARY(int) work?
+                    //return SQLSRV_SQLTYPE_VARBINARY(strlen($value));
+                    return SQLSRV_SQLTYPE_VARBINARY('max');
                 default:
                     throw new \InvalidArgumentException(
                         'Arg $typeChar value[' . $typeChar . '] is not one of i, d, s, b.'
@@ -742,12 +768,12 @@ class MsSqlQuery extends DatabaseQuery
                         null,
                         $arg[1],
                         $arg[2],
-                        $arg[3] ?? ($arg[1] == SQLSRV_PARAM_OUT ? null : $this->nativeType($arg, $tps[$i]))
+                        $arg[3] ?? ($arg[1] == SQLSRV_PARAM_OUT ? null : $this->nativeType($arg[0], $tps[$i]))
                     ];
                     if ($is_prep_stat) {
-                        $type_qualifieds[$i][0] = &$arg;
+                        $type_qualifieds[$i][0] = &$arg[0];
                     } else {
-                        $type_qualifieds[$i][0] = $arg;
+                        $type_qualifieds[$i][0] = $arg[0];
                     }
                 }
                 else {
@@ -755,12 +781,12 @@ class MsSqlQuery extends DatabaseQuery
                         null,
                         $count > 1 ? $arg[1] : null,
                         $count > 2 ? $arg[2] : null,
-                        $count > 1 && $arg[1] == SQLSRV_PARAM_OUT ? null : $this->nativeType($arg, $tps[$i])
+                        $count > 1 && $arg[1] == SQLSRV_PARAM_OUT ? null : $this->nativeType($arg[0], $tps[$i])
                     ];
                     if ($is_prep_stat) {
-                        $type_qualifieds[$i][0] = &$arg;
+                        $type_qualifieds[$i][0] = &$arg[0];
                     } else {
-                        $type_qualifieds[$i][0] = $arg;
+                        $type_qualifieds[$i][0] = $arg[0];
                     }
                 }
             }
