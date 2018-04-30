@@ -510,7 +510,7 @@ class MsSqlQuery extends DatabaseQuery
 
         $class_result = static::CLASS_RESULT;
         /** @var DbResultInterface|MsSqlResult */
-        return new $class_result($this, $this->statement);
+        return new $class_result($this, null, $this->statement);
     }
 
     /**
@@ -520,24 +520,13 @@ class MsSqlQuery extends DatabaseQuery
      *
      * @return void
      */
-    public function closeStatement()
+    public function close()
     {
         $this->statementClosed = true;
         $this->unsetReferences();
         if ($this->statement) {
             @sqlsrv_free_stmt($this->statement);
         }
-    }
-
-    /**
-     * Does nothing, because Sqlsrv statement and result are linked
-     * by the same resource.
-     * Thus a statement could inadvertedly be closed.
-     *
-     * @return void
-     */
-    public function freeResult()
-    {
     }
 
 

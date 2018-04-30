@@ -62,10 +62,26 @@ $arguments = [
     ]
 ];
 
+$last_name = 'm';
+$id = 60;
+$arguments = [
+    [
+        &$last_name,
+        SQLSRV_PARAM_IN
+    ],
+    [
+        &$id,
+        SQLSRV_PARAM_IN,
+        null,
+        SQLSRV_SQLTYPE_SMALLINT
+    ]
+];
+
 /** @noinspection SqlResolve */
 /** @var \SimpleComplex\Database\MsSqlQuery $query */
-$query = $database->query('INSERT INTO Persons (LastName, FirstName, Age) VALUES (?, ?, ?)', [
-   // 'cursor_mode' => 'forward',
+//$query = $database->query('INSERT INTO Persons (LastName, FirstName, Age) VALUES (?, ?, ?)', [
+$query = $database->query('UPDATE Persons SET LastName = ? WHERE ID = ?', [
+    'cursor_mode' => 'forward',
     'get_insert_id' => true,
 ]);
 $query->prepare('', $arguments);
@@ -89,11 +105,9 @@ $query = $database->query('SELECT * FROM Persons WHERE ID = ?', [
 //$variable = $query;
 $result = $query->execute();
 
-//$logger->debug('affectedRows' . "\n" . $inspect->variable($result->affectedRows()));
-$logger->debug('numRows' . "\n" . $inspect->variable($result->numRows()));
+$logger->debug('affectedRows' . "\n" . $inspect->variable($result->affectedRows()));
+//$logger->debug('numRows' . "\n" . $inspect->variable($result->numRows()));
 $logger->debug('insertId' . "\n" . $inspect->variable($result->insertId('i')));
-//$logger->debug('fetchArray' . "\n" . $inspect->variable($result->fetchArray()));
-$logger->debug('numRows' . "\n" . $inspect->variable($result->numRows()));
 
 return;
 
@@ -116,6 +130,6 @@ $variable = $result->fetchAll(Database::FETCH_ASSOC, [
 ]);
 $logger->debug('' . "\n" . $inspect->variable($variable));
 
-$query->closeStatement();
+$query->close();
 
 $logger->debug('Query' . "\n" . $inspect->variable($query));

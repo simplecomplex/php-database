@@ -36,12 +36,14 @@ class MsSqlResult extends DatabaseResult
      * @see MsSqlQuery::execute()
      *
      * @param DbQueryInterface|MsSqlQuery $query
+     * @param null $connection
+     *      Ignored.
      * @param resource $statement
      *
      * @throws DbRuntimeException
      *      Arg statement not (no longer?) resource.
      */
-    public function __construct(DbQueryInterface $query, $statement)
+    public function __construct(DbQueryInterface $query, $connection, $statement)
     {
         $this->query = $query;
         if (!$statement) {
@@ -64,7 +66,7 @@ class MsSqlResult extends DatabaseResult
      * @return int
      *
      * @throws DbLogicalException
-     *      No cound, (probably) not a CRUD query.
+     *      No count, (probably) not a CRUD query.
      *      Bad query class cursor mode.
      * @throws DbResultException
      */
@@ -77,7 +79,7 @@ class MsSqlResult extends DatabaseResult
             return $count;
         }
         // Unset prepared statement arguments reference.
-        $this->query->closeStatement();
+        $this->query->close();
         $this->logQuery(__FUNCTION__);
         if ($count === -1) {
             throw new DbLogicalException(
@@ -99,7 +101,7 @@ class MsSqlResult extends DatabaseResult
     }
 
     /**
-     * Auto ID set by last insert statement.
+     * Auto ID set by last insert or update statement.
      *
      * NB: Requires that the query contains a secondary ID selecting statement
      * ; SELECT SCOPE_IDENTITY() AS IDENTITY_COLUMN_NAME
@@ -114,16 +116,18 @@ class MsSqlResult extends DatabaseResult
      *      Null: Use driver default; probably string.
      *
      * @return mixed|null
-     *      Null: no result or row at all.
+     *      Null: The query didn't trigger setting an ID.
      *
      * @throws DbLogicalException
      *      Query misses secondary ID select statement.
+     * @throws \InvalidArgumentException
+     *      Invalid arg $getAsType value.
+     * @throws \TypeError
+     *      Arg $getAsType not int|string|null.
      * @throws DbResultException
      *      Next result.
      *      Next row.
      *      Other failure.
-     * @throws \InvalidArgumentException
-     *      Bad arg $getAsType.
      */
     public function insertId($getAsType = null)
     {
@@ -131,12 +135,15 @@ class MsSqlResult extends DatabaseResult
         if ($this->rowIndex < 0) {
             $next = @sqlsrv_next_result($this->statement);
             if (!$next) {
+                $this->query->close();
+                $this->logQuery(__FUNCTION__);
                 if ($next === null) {
                     // No result at all.
-                    return null;
+                    throw new DbResultException(
+                        $this->query->errorMessagePrefix()
+                        . ' - failed going to next set to get insert ID, no result at all.'
+                    );
                 }
-                $this->query->closeStatement();
-                $this->logQuery(__FUNCTION__);
                 throw new DbResultException(
                     $this->query->errorMessagePrefix() . ' - failed going to next set to get insert ID, with error: '
                     . $this->query->client->nativeError() . '.'
@@ -147,9 +154,12 @@ class MsSqlResult extends DatabaseResult
                 if (!$next) {
                     if ($next === null) {
                         // No row at all because rowIndex was -1.
-                        return null;
+                        throw new DbResultException(
+                            $this->query->errorMessagePrefix()
+                            . ' - failed going to next set to get insert ID, no result row at all.'
+                        );
                     }
-                    $this->query->closeStatement();
+                    $this->query->close();
                     $this->logQuery(__FUNCTION__);
                     throw new DbResultException(
                         $this->query->errorMessagePrefix() . ' - failed going to next row to get insert ID, with error: '
@@ -178,7 +188,7 @@ class MsSqlResult extends DatabaseResult
                         break;
                     default:
                         // Unset prepared statement arguments reference.
-                        $this->query->closeStatement();
+                        $this->query->close();
                         $this->logQuery(__FUNCTION__);
                         throw new \InvalidArgumentException(
                             $this->query->errorMessagePrefix()
@@ -188,9 +198,9 @@ class MsSqlResult extends DatabaseResult
             }
             else {
                 // Unset prepared statement arguments reference.
-                $this->query->closeStatement();
+                $this->query->close();
                 $this->logQuery(__FUNCTION__);
-                throw new \InvalidArgumentException(
+                throw new \TypeError(
                     $this->query->errorMessagePrefix()
                     . ' - arg $getAsType type[' . gettype($getAsType) . '] isn\'t integer|string|null.'
                 );
@@ -199,28 +209,30 @@ class MsSqlResult extends DatabaseResult
         } else {
             $id = @sqlsrv_get_field($this->statement, 0);
         }
-        if ($id === false) {
-            // Unset prepared statement arguments reference.
-            $this->query->closeStatement();
-            $this->logQuery(__FUNCTION__);
-            if (
-                !$this->query->getInsertId
-                && strpos(
-                    $this->query->queryTampered ?? $this->query->query,
-                    'SELECT SCOPE_IDENTITY() AS IDENTITY_COLUMN_NAME'
-                ) === false
-            ) {
-                throw new DbLogicalException(
-                    $this->query->errorMessagePrefix() . ' - failed getting insert ID'
-                    . ', query misses secondary ID select statement, see query option \'get_insert_id\''
-                );
-            }
-            throw new DbResultException(
-                $this->query->errorMessagePrefix()
-                . ' - failed getting insert ID, with error: ' . $this->query->client->nativeError() . '.'
+        if ($id === null) {
+            // Query didn't trigger setting an ID.
+            return null;
+        }
+        // $id == false.
+        // Unset prepared statement arguments reference.
+        $this->query->close();
+        $this->logQuery(__FUNCTION__);
+        if (
+            !$this->query->getInsertId
+            && strpos(
+                $this->query->queryTampered ?? $this->query->query,
+                'SELECT SCOPE_IDENTITY() AS IDENTITY_COLUMN_NAME'
+            ) === false
+        ) {
+            throw new DbLogicalException(
+                $this->query->errorMessagePrefix() . ' - failed getting insert ID'
+                . ', query misses secondary ID select statement, see query option \'get_insert_id\''
             );
         }
-        return $id;
+        throw new DbResultException(
+            $this->query->errorMessagePrefix()
+            . ' - failed getting insert ID, with error: ' . $this->query->client->nativeError() . '.'
+        );
     }
 
     /**
@@ -245,7 +257,7 @@ class MsSqlResult extends DatabaseResult
             return $count;
         }
         // Unset prepared statement arguments reference.
-        $this->query->closeStatement();
+        $this->query->close();
         $this->logQuery(__FUNCTION__);
         switch ($this->query->cursorMode) {
             case SQLSRV_CURSOR_STATIC:
@@ -279,7 +291,7 @@ class MsSqlResult extends DatabaseResult
             return $count;
         }
         // Unset prepared statement arguments reference.
-        $this->query->closeStatement();
+        $this->query->close();
         $this->logQuery(__FUNCTION__);
         throw new DbResultException(
             $this->query->errorMessagePrefix() . ' - failed getting number of columns, with error: '
@@ -294,7 +306,7 @@ class MsSqlResult extends DatabaseResult
      *      Default: column-keyed.
      *
      * @return array|null
-     *      No more rows.
+     *      Null: No more rows.
      */
     public function fetchArray(int $as = Database::FETCH_ASSOC)
     {
@@ -303,18 +315,15 @@ class MsSqlResult extends DatabaseResult
             $as == Database::FETCH_ASSOC ? SQLSRV_FETCH_ASSOC : SQLSRV_FETCH_NUMERIC
         );
         ++$this->rowIndex;
-        if ($row) {
+        if ($row || $row === null) {
             return $row;
         }
-        if ($row === null) {
-            return null;
-        }
         // Unset prepared statement arguments reference.
-        $this->query->closeStatement();
+        $this->query->close();
         $this->logQuery(__FUNCTION__);
         throw new DbResultException(
-            $this->query->errorMessagePrefix()
-            . ' - failed fetching row as ' . (Database::FETCH_NUMERIC ? 'numeric' : 'assoc') . ' array, with error: '
+            $this->query->errorMessagePrefix() . ' - failed fetching row as '
+            . ($as == Database::FETCH_ASSOC ? 'assoc' : 'numeric') . ' array, with error: '
             . $this->query->client->nativeError() . '.'
         );
     }
@@ -328,19 +337,16 @@ class MsSqlResult extends DatabaseResult
      *      Optional constructor args.
      *
      * @return object|null
-     *      No more rows.
+     *      Null: No more rows.
      */
     public function fetchObject(string $class = '', array $args = [])
     {
         $row = @sqlsrv_fetch_object($this->statement, $class, $args);
-        if ($row) {
+        if ($row || $row === null) {
             return $row;
         }
-        if ($row === null) {
-            return null;
-        }
         // Unset prepared statement arguments reference.
-        $this->query->closeStatement();
+        $this->query->close();
         $this->logQuery(__FUNCTION__);
         throw new DbResultException(
             $this->query->errorMessagePrefix()
@@ -373,14 +379,12 @@ class MsSqlResult extends DatabaseResult
     public function fetchAll(int $as = Database::FETCH_ASSOC, array $options = []) : array
     {
         $column_keyed = !empty($options['list_by_column']);
-        $key_column = !$column_keyed ? null : $options['list_by_column'];
         $list = [];
-        $first = true;
         switch ($as) {
             case Database::FETCH_NUMERIC:
                 if ($column_keyed) {
                     // Unset prepared statement arguments reference.
-                    $this->query->closeStatement();
+                    $this->query->close();
                     $this->logQuery(__FUNCTION__);
                     throw new DbLogicalException(
                         $this->query->client->errorMessagePrefix()
@@ -392,6 +396,8 @@ class MsSqlResult extends DatabaseResult
                 }
                 break;
             case Database::FETCH_OBJECT:
+                $key_column = !$column_keyed ? null : $options['list_by_column'];
+                $first = true;
                 while (
                     ($row = @sqlsrv_fetch_object($this->statement, $options['class'] ?? '', $options['args'] ?? []))
                 ) {
@@ -403,7 +409,7 @@ class MsSqlResult extends DatabaseResult
                             $first = false;
                             if (!property_exists($row, $key_column)) {
                                 // Unset prepared statement arguments reference.
-                                $this->query->closeStatement();
+                                $this->query->close();
                                 $this->logQuery(__FUNCTION__);
                                 throw new \InvalidArgumentException(
                                     $this->query->errorMessagePrefix()
@@ -417,6 +423,8 @@ class MsSqlResult extends DatabaseResult
                 }
                 break;
             default:
+                $key_column = !$column_keyed ? null : $options['list_by_column'];
+                $first = true;
                 while (($row = @sqlsrv_fetch_array($this->statement, SQLSRV_FETCH_ASSOC))) {
                     if (!$column_keyed) {
                         $list[] = $row;
@@ -426,7 +434,7 @@ class MsSqlResult extends DatabaseResult
                             $first = false;
                             if (!array_key_exists($key_column, $row)) {
                                 // Unset prepared statement arguments reference.
-                                $this->query->closeStatement();
+                                $this->query->close();
                                 $this->logQuery(__FUNCTION__);
                                 throw new \InvalidArgumentException(
                                     $this->query->errorMessagePrefix()
@@ -439,6 +447,7 @@ class MsSqlResult extends DatabaseResult
                     }
                 }
         }
+        // Last fetched row must be null; no more rows.
         if ($row !== null) {
             switch ($as) {
                 case Database::FETCH_NUMERIC:
@@ -451,7 +460,7 @@ class MsSqlResult extends DatabaseResult
                     $em = 'assoc array';
             }
             // Unset prepared statement arguments reference.
-            $this->query->closeStatement();
+            $this->query->close();
             $this->logQuery(__FUNCTION__);
             throw new DbResultException(
                 $this->query->errorMessagePrefix()
@@ -479,7 +488,7 @@ class MsSqlResult extends DatabaseResult
             return null;
         }
         // Unset prepared statement arguments reference.
-        $this->query->closeStatement();
+        $this->query->close();
         $this->logQuery(__FUNCTION__);
         throw new DbResultException(
             $this->query->errorMessagePrefix()
@@ -504,12 +513,23 @@ class MsSqlResult extends DatabaseResult
             null;
         }
         // Unset prepared statement arguments reference.
-        $this->query->closeStatement();
+        $this->query->close();
         $this->logQuery(__FUNCTION__);
         throw new DbResultException(
             $this->query->errorMessagePrefix()
             . ' - failed going to next row, with error: '
             . $this->query->client->nativeError() . '.'
         );
+    }
+
+    /**
+     * Does nothing, because freeing result would also close the statement
+     * since they share the same resource.
+     * @see MsSqlQuery::close()
+     *
+     * @return void
+     */
+    public function free() /*:void*/
+    {
     }
 }

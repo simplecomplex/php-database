@@ -89,13 +89,5 @@ interface DbQueryInterface
      *
      * @return void
      */
-    public function closeStatement();
-
-    /**
-     * Implementation is allowed to do nothing, if query statement and result
-     * are linked by one and only resource (like for Sqlsrv).
-     *
-     * @return void
-     */
-    public function freeResult();
+    public function close();
 }

@@ -63,7 +63,7 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
      *
      * @var bool
      */
-    const MULTI_QUERY_SUPPORT = true;
+    const MULTI_QUERY_SUPPORT = false;
 
     /**
      * Char or string flagging a parameter a query,
@@ -210,28 +210,6 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
             $this->isMultiQuery = true;
         }
     }
-
-    /**
-     * Turn query into server-side prepared statement and bind parameters.
-     *
-     * Types:
-     * - i: integer.
-     * - d: float (double).
-     * - s: string.
-     * - b: blob.
-     *
-     * @param string $types
-     *      Empty: uses string for all.
-     * @param array &$arguments
-     *      By reference.
-     *
-     * @return $this|DbQueryInterface
-     *
-     * @throws \SimpleComplex\Database\Exception\DbConnectionException
-     *      Propagated.
-     * @throws \SimpleComplex\Database\Exception\DbRuntimeException
-     */
-    abstract public function prepare(string $types, array &$arguments) : DbQueryInterface;
 
     /**
      * Non-prepared statement: set query arguments, for native automated

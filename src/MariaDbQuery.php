@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace SimpleComplex\Database;
 
+use SimpleComplex\Database\Interfaces\DbClientInterface;
 use SimpleComplex\Database\Interfaces\DbQueryInterface;
 use SimpleComplex\Database\Interfaces\DbResultInterface;
 
@@ -38,6 +39,9 @@ use SimpleComplex\Database\Exception\DbQueryException;
  * @property-read string $queryTampered
  * @property-read array $arguments
  *
+ * Own read-onlys:
+ * @property-read string $cursorMode
+ *
  * @package SimpleComplex\Database
  */
 class MariaDbQuery extends DatabaseQuery
@@ -57,6 +61,43 @@ class MariaDbQuery extends DatabaseQuery
     const CLASS_RESULT = MariaDbResult::class;
 
     /**
+     * MySQL (MySQLi) supports multi-query.
+     *
+     * @var bool
+     */
+    const MULTI_QUERY_SUPPORT = true;
+
+    /**
+     * Result set cursor modes.
+     *
+     * @see http://php.net/manual/en/mysqli.use-result.php
+     *
+     * Store vs. use at Stackoverflow:
+     * @see https://stackoverflow.com/questions/9876730/mysqli-store-result-vs-mysqli-use-result
+     *
+     * @var int[]
+     */
+    const CURSOR_MODES = [
+        'use',
+        'store',
+    ];
+
+    /**
+     * Default result set cursor mode.
+     *
+     * 'use':
+     * - heavy serverside, light clientside
+     * - doesn't allow getting number of rows until all rows have been retrieved
+     *
+     * This class' default is 'store':
+     * - light serverside, heavy clientside
+     * - we like getting number of rows
+     *
+     * @var string
+     */
+    const CURSOR_MODE_DEFAULT = 'store';
+
+    /**
      * Ought to be protected, but too costly since result instance
      * may use it repetetively; via the query instance.
      *
@@ -65,14 +106,56 @@ class MariaDbQuery extends DatabaseQuery
     public $client;
 
     /**
-     * Prepared or simple statement.
-     *
-     * A simple statement might not be linked at all (MySQLi).
+     * Prepared statement only.
      *
      * @var \mysqli_stmt|null
      *      Overriding to annotate type.
      */
     protected $statement;
+
+    /**
+     * Option (str) cursor_mode.
+     *
+     * Will always be 'store' when making a stored procedure.
+     * @see \mysqli_stmt::get_result()
+     *
+     * @see MariaDbQuery::CURSOR_MODES
+     * @see MariaDbQuery::CURSOR_MODE_DEFAULT
+     *
+     * @var string
+     */
+    protected $cursorMode;
+
+    /**
+     * @param DbClientInterface|DatabaseClient|MariaDbClient $client
+     *      Reference to parent client.
+     * @param string $baseQuery
+     * @param array $options {
+     *      @var string $cursor_mode
+     *          Ignored if making prepared statement; will always be 'store'.
+     * }
+     *
+     * @throws \InvalidArgumentException
+     *      Propagated.
+     *      Unsupported 'cursor_mode'.
+     */
+    public function __construct(DbClientInterface $client, string $baseQuery, array $options = [])
+    {
+        parent::__construct($client, $baseQuery, $options);
+
+        if (!empty($options['cursor_mode'])) {
+            if (!in_array($options['cursor_mode'], static::CURSOR_MODES, true)) {
+                throw new DbLogicalException(
+                    $this->client->errorMessagePrefix()
+                    . ' query option \'cursor_mode\' value[' . $options['cursor_mode'] . '] is invalid.'
+                );
+            }
+            $this->cursorMode = $options['cursor_mode'];
+        } else {
+            $this->cursorMode = static::CURSOR_MODE_DEFAULT;
+        }
+        $this->explorableIndex[] = 'cursorMode';
+    }
 
     public function __destruct()
     {
@@ -122,6 +205,10 @@ class MariaDbQuery extends DatabaseQuery
             );
         }
         $this->isPreparedStatement = true;
+        // Prepared statement's result will be store'd
+        // - via \mysqli_stmt::get_result() - because \mysqli_stmt misses
+        // result methods like fetch_array().
+        $this->cursorMode = 'store';
 
         // Checks for parameters/arguments count mismatch.
         $query_fragments = $this->queryFragments($this->query, $arguments);
@@ -208,7 +295,9 @@ class MariaDbQuery extends DatabaseQuery
                 );
             }
             // Require unbroken connection.
-            if (!$this->client->isConnected()) {
+            /** @var \MySQLi $mysqli */
+            $mysqli = $this->client->getConnection();
+            if (!$mysqli) {
                 // Unset prepared statement arguments reference.
                 $this->unsetReferences();
                 throw new DbInterruptionException(
@@ -246,6 +335,7 @@ class MariaDbQuery extends DatabaseQuery
                 );
             }
         }
+        // @todo: a query containing more non-SELECT statements (like INSERT...; SELECT...) must probably also be executed as multi-query.
         else {
             // Allow re-connection.
             /** @var \MySQLi $mysqli */
@@ -265,7 +355,7 @@ class MariaDbQuery extends DatabaseQuery
 
         $class_result = static::CLASS_RESULT;
         /** @var DbResultInterface|MariaDbResult */
-        return new $class_result($this);
+        return new $class_result($this, $mysqli, $this->statement);
     }
 
     /**
@@ -275,7 +365,7 @@ class MariaDbQuery extends DatabaseQuery
      *
      * @return void
      */
-    public function closeStatement()
+    public function close()
     {
         $this->statementClosed = true;
         $this->unsetReferences();
@@ -283,14 +373,6 @@ class MariaDbQuery extends DatabaseQuery
             @$this->statement->close();
             $this->statement = null;
         }
-    }
-
-    /**
-     * @return void
-     */
-    public function freeResult()
-    {
-         // @todo: free_result()
     }
 
 

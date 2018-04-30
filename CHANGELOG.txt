@@ -1,6 +1,13 @@
 SimpleComplex/Database 1.x, 2018-04-30
 --------------------------------------
 - MS SQL insertId(), and better error handling.
+- Freeing result is result method, not a query method.
+- Result constructor must accommodate (MySQLi) connection object as well
+  as statement.
+- An abstract class doesn't have to implement methods of an interface.
+- insertId() must return null when query didn't trigger setting an ID.
+- MariaDb result; entirely untested, and still wondering about the nature
+  of non-selecting multi-queries vs. mysql_multi_query.
 
 SimpleComplex/Database 1.x, 2018-04-24
 --------------------------------------

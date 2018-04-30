@@ -20,9 +20,10 @@ interface DbResultInterface
 {
     /**
      * @param DbQueryInterface $query
-     * @param mixed $statement
+     * @param mixed|null $connection
+     * @param mixed|null $statement
      */
-    public function __construct(DbQueryInterface $query, $statement);
+    public function __construct(DbQueryInterface $query, $connection, $statement);
 
     /**
      * Number of rows affected by a CRUD statement.
@@ -38,7 +39,7 @@ interface DbResultInterface
      * @param mixed|null $getAsType
      *
      * @return mixed|null
-     *      Null: no result at all.
+     *      Null: The query didn't trigger setting an ID.
      *      Throws throwable on failure.
      */
     public function insertId($getAsType = null);
@@ -110,4 +111,9 @@ interface DbResultInterface
      *      Throws throwable on failure.
      */
     public function nextSet();
+
+    /**
+     * @return void
+     */
+    public function free() /*:void*/;
 }
