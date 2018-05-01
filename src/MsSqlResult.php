@@ -80,7 +80,7 @@ class MsSqlResult extends DatabaseResult
         }
         // Unset prepared statement arguments reference.
         $this->query->close();
-        $this->logQuery(__FUNCTION__);
+        $this->query->log(__FUNCTION__);
         if ($count === -1) {
             throw new DbLogicalException(
                 $this->query->errorMessagePrefix()
@@ -136,7 +136,7 @@ class MsSqlResult extends DatabaseResult
             $next = @sqlsrv_next_result($this->statement);
             if (!$next) {
                 $this->query->close();
-                $this->logQuery(__FUNCTION__);
+                $this->query->log(__FUNCTION__);
                 if ($next === null) {
                     // No result at all.
                     throw new DbResultException(
@@ -160,7 +160,7 @@ class MsSqlResult extends DatabaseResult
                         );
                     }
                     $this->query->close();
-                    $this->logQuery(__FUNCTION__);
+                    $this->query->log(__FUNCTION__);
                     throw new DbResultException(
                         $this->query->errorMessagePrefix() . ' - failed going to next row to get insert ID, with error: '
                         . $this->query->client->nativeError() . '.'
@@ -189,7 +189,7 @@ class MsSqlResult extends DatabaseResult
                     default:
                         // Unset prepared statement arguments reference.
                         $this->query->close();
-                        $this->logQuery(__FUNCTION__);
+                        $this->query->log(__FUNCTION__);
                         throw new \InvalidArgumentException(
                             $this->query->errorMessagePrefix()
                             . ' - arg $getAsType as string isn\'t i|d|s|b.'
@@ -199,7 +199,7 @@ class MsSqlResult extends DatabaseResult
             else {
                 // Unset prepared statement arguments reference.
                 $this->query->close();
-                $this->logQuery(__FUNCTION__);
+                $this->query->log(__FUNCTION__);
                 throw new \TypeError(
                     $this->query->errorMessagePrefix()
                     . ' - arg $getAsType type[' . gettype($getAsType) . '] isn\'t integer|string|null.'
@@ -209,14 +209,14 @@ class MsSqlResult extends DatabaseResult
         } else {
             $id = @sqlsrv_get_field($this->statement, 0);
         }
-        if ($id === null) {
-            // Query didn't trigger setting an ID.
-            return null;
+        if ($id || $id === null) {
+            // Null: query didn't trigger setting an ID.
+            return $id;
         }
         // $id == false.
         // Unset prepared statement arguments reference.
         $this->query->close();
-        $this->logQuery(__FUNCTION__);
+        $this->query->log(__FUNCTION__);
         if (
             !$this->query->getInsertId
             && strpos(
@@ -258,7 +258,7 @@ class MsSqlResult extends DatabaseResult
         }
         // Unset prepared statement arguments reference.
         $this->query->close();
-        $this->logQuery(__FUNCTION__);
+        $this->query->log(__FUNCTION__);
         switch ($this->query->cursorMode) {
             case SQLSRV_CURSOR_STATIC:
             case SQLSRV_CURSOR_KEYSET:
@@ -292,7 +292,7 @@ class MsSqlResult extends DatabaseResult
         }
         // Unset prepared statement arguments reference.
         $this->query->close();
-        $this->logQuery(__FUNCTION__);
+        $this->query->log(__FUNCTION__);
         throw new DbResultException(
             $this->query->errorMessagePrefix() . ' - failed getting number of columns, with error: '
             . $this->query->client->nativeError() . '.'
@@ -320,7 +320,7 @@ class MsSqlResult extends DatabaseResult
         }
         // Unset prepared statement arguments reference.
         $this->query->close();
-        $this->logQuery(__FUNCTION__);
+        $this->query->log(__FUNCTION__);
         throw new DbResultException(
             $this->query->errorMessagePrefix() . ' - failed fetching row as '
             . ($as == Database::FETCH_ASSOC ? 'assoc' : 'numeric') . ' array, with error: '
@@ -347,7 +347,7 @@ class MsSqlResult extends DatabaseResult
         }
         // Unset prepared statement arguments reference.
         $this->query->close();
-        $this->logQuery(__FUNCTION__);
+        $this->query->log(__FUNCTION__);
         throw new DbResultException(
             $this->query->errorMessagePrefix()
             . ' - failed fetching row as object, with error: ' . $this->query->client->nativeError() . '.'
@@ -385,7 +385,7 @@ class MsSqlResult extends DatabaseResult
                 if ($column_keyed) {
                     // Unset prepared statement arguments reference.
                     $this->query->close();
-                    $this->logQuery(__FUNCTION__);
+                    $this->query->log(__FUNCTION__);
                     throw new DbLogicalException(
                         $this->query->client->errorMessagePrefix()
                         . ' - arg $options \'list_by_column\' is not supported when fetching as numeric arrays.'
@@ -410,7 +410,7 @@ class MsSqlResult extends DatabaseResult
                             if (!property_exists($row, $key_column)) {
                                 // Unset prepared statement arguments reference.
                                 $this->query->close();
-                                $this->logQuery(__FUNCTION__);
+                                $this->query->log(__FUNCTION__);
                                 throw new \InvalidArgumentException(
                                     $this->query->errorMessagePrefix()
                                     . ' - failed fetching all rows as objects keyed by column[' . $key_column
@@ -435,7 +435,7 @@ class MsSqlResult extends DatabaseResult
                             if (!array_key_exists($key_column, $row)) {
                                 // Unset prepared statement arguments reference.
                                 $this->query->close();
-                                $this->logQuery(__FUNCTION__);
+                                $this->query->log(__FUNCTION__);
                                 throw new \InvalidArgumentException(
                                     $this->query->errorMessagePrefix()
                                     . ' - failed fetching all rows as assoc arrays keyed by column[' . $key_column
@@ -461,7 +461,7 @@ class MsSqlResult extends DatabaseResult
             }
             // Unset prepared statement arguments reference.
             $this->query->close();
-            $this->logQuery(__FUNCTION__);
+            $this->query->log(__FUNCTION__);
             throw new DbResultException(
                 $this->query->errorMessagePrefix()
                 . ' - failed fetching all rows as ' . $em . ', with error: '
@@ -489,7 +489,7 @@ class MsSqlResult extends DatabaseResult
         }
         // Unset prepared statement arguments reference.
         $this->query->close();
-        $this->logQuery(__FUNCTION__);
+        $this->query->log(__FUNCTION__);
         throw new DbResultException(
             $this->query->errorMessagePrefix()
             . ' - failed going to next set, with error: '
@@ -514,7 +514,7 @@ class MsSqlResult extends DatabaseResult
         }
         // Unset prepared statement arguments reference.
         $this->query->close();
-        $this->logQuery(__FUNCTION__);
+        $this->query->log(__FUNCTION__);
         throw new DbResultException(
             $this->query->errorMessagePrefix()
             . ' - failed going to next row, with error: '

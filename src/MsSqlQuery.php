@@ -274,6 +274,8 @@ class MsSqlQuery extends DatabaseQuery
      *
      * @see http://php.net/manual/en/function.sqlsrv-prepare.php
      *
+     * Supports that arg $arguments is associative array.
+     *
      * @param string $types
      *      Empty: uses string for all.
      *      Ignored if all $arguments are type qualifying arrays.
@@ -308,6 +310,7 @@ class MsSqlQuery extends DatabaseQuery
         if ($query_fragments) {
             unset($query_fragments);
 
+            // Set instance var $arguments['prepared'] or $arguments['simple'].
             $this->adaptArguments($types, $arguments);
         }
 
@@ -329,10 +332,7 @@ class MsSqlQuery extends DatabaseQuery
         if (!$statement) {
             // Unset prepared statement arguments reference.
             $this->unsetReferences();
-            $this->client->log(
-                $this->errorMessagePrefix() . ' - ' . __FUNCTION__ . '(), query',
-                substr($this->queryTampered ?? $this->query, 0, static::LOG_QUERY_TRUNCATE)
-            );
+            $this->log(__FUNCTION__);
             throw new DbRuntimeException(
                 $this->errorMessagePrefix()
                 . ' - query failed to prepare statement and bind parameters, with error: '
@@ -398,6 +398,8 @@ class MsSqlQuery extends DatabaseQuery
         $query_fragments = $this->queryFragments($this->queryTampered ?? $this->query, $arguments);
         if ($query_fragments) {
             unset($query_fragments);
+
+            // Set instance var $arguments['prepared'] or $arguments['simple'].
             $this->adaptArguments($types, $arguments);
         }
 
@@ -432,10 +434,7 @@ class MsSqlQuery extends DatabaseQuery
             if (!$this->client->isConnected()) {
                 // Unset prepared statement arguments reference.
                 $this->unsetReferences();
-                $this->client->log(
-                    $this->errorMessagePrefix() . ' - ' . __FUNCTION__ . '(), query',
-                    substr($this->queryTampered ?? $this->query, 0, static::LOG_QUERY_TRUNCATE)
-                );
+                $this->log(__FUNCTION__);
                 throw new DbInterruptionException(
                     $this->errorMessagePrefix()
                     . ' - query can\'t execute prepared statement when connection lost.'
@@ -445,10 +444,7 @@ class MsSqlQuery extends DatabaseQuery
             if (!@sqlsrv_execute($this->statement)) {
                 // Unset prepared statement arguments reference.
                 $this->unsetReferences();
-                $this->client->log(
-                    $this->errorMessagePrefix() . ' - ' . __FUNCTION__ . '(), query',
-                    substr($this->queryTampered ?? $this->query, 0, static::LOG_QUERY_TRUNCATE)
-                );
+                $this->log(__FUNCTION__);
                 throw new DbQueryException(
                     $this->errorMessagePrefix()
                     . ' - failed executing prepared statement, with error: ' . $this->client->nativeError() . '.'
@@ -472,10 +468,7 @@ class MsSqlQuery extends DatabaseQuery
                 $connection, $this->queryTampered ?? $this->query, $this->arguments['simple'] ?? [], $options
             );
             if (!$statement) {
-                $this->client->log(
-                    $this->errorMessagePrefix() . ' - ' . __FUNCTION__ . '(), query',
-                    substr($this->queryTampered ?? $this->query, 0, static::LOG_QUERY_TRUNCATE)
-                );
+                $this->log(__FUNCTION__);
                 throw new DbQueryException(
                     $this->errorMessagePrefix()
                     . ' - failed executing simple query, with error: ' . $this->client->nativeError() . '.'
@@ -496,10 +489,7 @@ class MsSqlQuery extends DatabaseQuery
             if ($error) {
                 // Unset prepared statement arguments reference.
                 $this->unsetReferences();
-                $this->client->log(
-                    $this->errorMessagePrefix() . ' - ' . __FUNCTION__ . '(), query',
-                    substr($this->queryTampered ?? $this->query, 0, static::LOG_QUERY_TRUNCATE)
-                );
+                $this->log(__FUNCTION__);
                 throw new DbRuntimeException(
                     $this->errorMessagePrefix()
                     . ' - failed to complete sending data chunked, after chunk[' . $chunks . '], with error: '
@@ -640,6 +630,8 @@ class MsSqlQuery extends DatabaseQuery
     }
 
     /**
+     * Sets instance var $arguments['prepared'] or $arguments['simple'].
+     *
      * @param string $types
      * @param &$arguments
      *      By reference, for prepared statement's sake.
@@ -699,12 +691,31 @@ class MsSqlQuery extends DatabaseQuery
         }
 
         if ($args_typed) {
-            if ($this->isPreparedStatement) {
-                $this->arguments['prepared'] =& $arguments;
-            } else {
-                // Don't refer; cannot unset the reference on later execute()
-                // because setting to an unset instance var is PHP illegal.
-                $this->arguments['simple'] = $arguments;
+            // Support assoc array; sqlsrv_prepare() doesn't.
+            if ($arguments && !ctype_digit('' . join(array_keys($arguments)))) {
+                $args = [];
+                $i = -1;
+                foreach ($arguments as &$arg) {
+                    $args[] = $arg;
+                    $args[++$i][0] =& $arg[0];
+                }
+                unset($arg);
+                if ($this->isPreparedStatement) {
+                    $this->arguments['prepared'] =& $args;
+                } else {
+                    // Don't refer; cannot unset the reference on later execute()
+                    // because setting to an unset instance var is PHP illegal.
+                    $this->arguments['simple'] = $args;
+                }
+            }
+            else {
+                if ($this->isPreparedStatement) {
+                    $this->arguments['prepared'] =& $arguments;
+                } else {
+                    // Don't refer; cannot unset the reference on later execute()
+                    // because setting to an unset instance var is PHP illegal.
+                    $this->arguments['simple'] = $arguments;
+                }
             }
 
             return;

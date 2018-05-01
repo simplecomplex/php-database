@@ -11,6 +11,7 @@ namespace SimpleComplex\Database;
 
 use SimpleComplex\Utils\Explorable;
 use SimpleComplex\Utils\Dependency;
+
 use SimpleComplex\Database\Interfaces\DbClientInterface;
 use SimpleComplex\Database\Interfaces\DbQueryInterface;
 
@@ -193,7 +194,7 @@ abstract class DatabaseClient extends Explorable implements DbClientInterface
                     . (array_key_exists($key, $databaseInfo) ? ('has empty value[' . $databaseInfo[$key] . ']') :
                         'is missing')
                     . '. Required keys are ' . join(', ', $requireds) . '; saw keys '
-                    . join(', ', array_keys($databaseInfo))
+                    . (!$databaseInfo ? '- none -' : join(', ', array_keys($databaseInfo))) . '.'
                 );
             }
         }

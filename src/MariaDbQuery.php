@@ -178,6 +178,8 @@ class MariaDbQuery extends DatabaseQuery
      * - s: string.
      * - b: blob.
      *
+     * Supports that arg $arguments is associative array.
+     *
      * @param string $types
      *      Empty: uses string for all.
      * @param array &$arguments
@@ -241,10 +243,7 @@ class MariaDbQuery extends DatabaseQuery
         /** @var \mysqli_stmt|bool $mysqli_stmt */
         $mysqli_stmt = @$mysqli->prepare($this->query);
         if (!$mysqli_stmt) {
-            $this->client->log(
-                $this->errorMessagePrefix() . ' - ' . __FUNCTION__ . '(), query',
-                substr($this->query, 0, static::LOG_QUERY_TRUNCATE)
-            );
+            $this->log(__FUNCTION__);
             throw new DbRuntimeException(
                 $this->errorMessagePrefix()
                 . ' - query failed to prepare statement, with error: ' . $this->client->nativeError() . '.'
@@ -252,15 +251,22 @@ class MariaDbQuery extends DatabaseQuery
         }
 
         if ($n_params) {
-            $this->arguments['prepared'] =& $arguments;
+            // Support assoc array; \mysqli_stmt::bind_param() doesn't.
+            if ($arguments && !ctype_digit('' . join(array_keys($arguments)))) {
+                $args = [];
+                foreach ($arguments as &$arg) {
+                    $args[] =& $arg;
+                }
+                unset($arg);
+                $this->arguments['prepared'] =& $args;
+            } else {
+                $this->arguments['prepared'] =& $arguments;
+            }
 
             if (!@$mysqli_stmt->bind_param($tps, ...$this->arguments['prepared'])) {
                 // Unset prepared statement arguments reference.
                 $this->unsetReferences();
-                $this->client->log(
-                    $this->errorMessagePrefix() . ' - ' . __FUNCTION__ . '(), query',
-                    substr($this->query, 0, static::LOG_QUERY_TRUNCATE)
-                );
+                $this->log(__FUNCTION__);
                 throw new DbRuntimeException(
                     $this->errorMessagePrefix()
                     . ' - query failed to bind parameters prepare statement, with error: '
@@ -309,10 +315,7 @@ class MariaDbQuery extends DatabaseQuery
             if (!@$this->statement->execute()) {
                 // Unset prepared statement arguments reference.
                 $this->unsetReferences();
-                $this->client->log(
-                    $this->errorMessagePrefix() . ' - ' . __FUNCTION__ . '(), query',
-                    substr($this->query, 0, static::LOG_QUERY_TRUNCATE)
-                );
+                $this->log(__FUNCTION__);
                 throw new DbQueryException(
                     $this->errorMessagePrefix()
                     . ' - failed executing prepared statement, with error: ' . $this->client->nativeError() . '.'
@@ -325,10 +328,7 @@ class MariaDbQuery extends DatabaseQuery
             $mysqli = $this->client->getConnection(true);
             // bool.
             if (!@$mysqli->multi_query($this->queryTampered ?? $this->query)) {
-                $this->client->log(
-                    $this->errorMessagePrefix() . ' - ' . __FUNCTION__ . '(), query',
-                    substr($this->queryTampered ?? $this->query, 0, static::LOG_QUERY_TRUNCATE)
-                );
+                $this->log(__FUNCTION__);
                 throw new DbQueryException(
                     $this->errorMessagePrefix()
                     . ' - failed executing multi-query, with error: ' . $this->client->nativeError() . '.'
@@ -342,10 +342,7 @@ class MariaDbQuery extends DatabaseQuery
             $mysqli = $this->client->getConnection(true);
             // bool.
             if (!@$mysqli->real_query($this->queryTampered ?? $this->query)) {
-                $this->client->log(
-                    $this->errorMessagePrefix() . ' - ' . __FUNCTION__ . '(), query',
-                    substr($this->queryTampered ?? $this->query, 0, static::LOG_QUERY_TRUNCATE)
-                );
+                $this->log(__FUNCTION__);
                 throw new DbQueryException(
                     $this->errorMessagePrefix()
                     . ' - failed executing simple query, with error: ' . $this->client->nativeError() . '.'

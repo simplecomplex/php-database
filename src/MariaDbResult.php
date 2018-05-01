@@ -103,7 +103,7 @@ class MariaDbResult extends DatabaseResult
         // Unset prepared statement arguments reference.
         $this->query->close();
         $this->free();
-        $this->logQuery(__FUNCTION__);
+        $this->query->log(__FUNCTION__);
         if ($count === -1) {
             throw new DbLogicalException(
                 $this->query->errorMessagePrefix()
@@ -154,7 +154,7 @@ class MariaDbResult extends DatabaseResult
                             // Unset prepared statement arguments reference.
                             $this->query->close();
                             $this->free();
-                            $this->logQuery(__FUNCTION__);
+                            $this->query->log(__FUNCTION__);
                             throw new \InvalidArgumentException(
                                 $this->query->errorMessagePrefix()
                                 . ' - arg $getAsType as string isn\'t i|d|s|b.'
@@ -165,7 +165,7 @@ class MariaDbResult extends DatabaseResult
                     // Unset prepared statement arguments reference.
                     $this->query->close();
                     $this->free();
-                    $this->logQuery(__FUNCTION__);
+                    $this->query->log(__FUNCTION__);
                     throw new \TypeError(
                         $this->query->errorMessagePrefix()
                         . ' - arg $getAsType type[' . gettype($getAsType) . '] isn\'t string|null.'
@@ -181,7 +181,7 @@ class MariaDbResult extends DatabaseResult
         // Unset prepared statement arguments reference.
         $this->query->close();
         $this->free();
-        $this->logQuery(__FUNCTION__);
+        $this->query->log(__FUNCTION__);
         throw new DbResultException(
             $this->query->errorMessagePrefix() . ' - failed getting insert ID, with error: '
             . $this->query->client->nativeError() . '.'
@@ -220,7 +220,7 @@ class MariaDbResult extends DatabaseResult
         // Unset prepared statement arguments reference.
         $this->query->close();
         $this->free();
-        $this->logQuery(__FUNCTION__);
+        $this->query->log(__FUNCTION__);
         throw new DbResultException(
             $this->query->errorMessagePrefix() . ' - failed getting number of rows, with error: '
             . $this->query->client->nativeError() . '.'
@@ -247,7 +247,7 @@ class MariaDbResult extends DatabaseResult
         // Unset prepared statement arguments reference.
         $this->query->close();
         $this->free();
-        $this->logQuery(__FUNCTION__);
+        $this->query->log(__FUNCTION__);
         throw new DbResultException(
             $this->query->errorMessagePrefix() . ' - failed getting number of columns, with error: '
             . $this->query->client->nativeError() . '.'
@@ -280,7 +280,7 @@ class MariaDbResult extends DatabaseResult
         // Unset prepared statement arguments reference.
         $this->query->close();
         $this->free();
-        $this->logQuery(__FUNCTION__);
+        $this->query->log(__FUNCTION__);
         throw new DbResultException(
             $this->query->errorMessagePrefix() . ' - failed fetching row as '
             . ($as == Database::FETCH_ASSOC ? 'assoc' : 'numeric') . ' array, with error: '
@@ -316,7 +316,7 @@ class MariaDbResult extends DatabaseResult
         // Unset prepared statement arguments reference.
         $this->query->close();
         $this->free();
-        $this->logQuery(__FUNCTION__);
+        $this->query->log(__FUNCTION__);
         throw new DbResultException(
             $this->query->errorMessagePrefix()
             . ' - failed fetching row as object, with error: ' . $this->query->client->nativeError() . '.'
@@ -359,7 +359,7 @@ class MariaDbResult extends DatabaseResult
                     // Unset prepared statement arguments reference.
                     $this->query->close();
                     $this->free();
-                    $this->logQuery(__FUNCTION__);
+                    $this->query->log(__FUNCTION__);
                     throw new DbLogicalException(
                         $this->query->client->errorMessagePrefix()
                         . ' - arg $options \'list_by_column\' is not supported when fetching as numeric arrays.'
@@ -369,7 +369,7 @@ class MariaDbResult extends DatabaseResult
                 if (!is_array($list)) {
                     // Unset prepared statement arguments reference.
                     $this->query->close();
-                    $this->logQuery(__FUNCTION__);
+                    $this->query->log(__FUNCTION__);
                     throw new DbResultException(
                         $this->query->errorMessagePrefix()
                         . ' - failed fetching all rows as numeric array, with error: '
@@ -394,7 +394,7 @@ class MariaDbResult extends DatabaseResult
                                 // Unset prepared statement arguments reference.
                                 $this->query->close();
                                 $this->free();
-                                $this->logQuery(__FUNCTION__);
+                                $this->query->log(__FUNCTION__);
                                 throw new \InvalidArgumentException(
                                     $this->query->errorMessagePrefix()
                                     . ' - failed fetching all rows as objects keyed by column[' . $key_column
@@ -413,7 +413,7 @@ class MariaDbResult extends DatabaseResult
                         // Unset prepared statement arguments reference.
                         $this->query->close();
                         $this->free();
-                        $this->logQuery(__FUNCTION__);
+                        $this->query->log(__FUNCTION__);
                         throw new DbResultException(
                             $this->query->errorMessagePrefix()
                             . ' - failed fetching all rows as assoc array, with error: '
@@ -432,7 +432,7 @@ class MariaDbResult extends DatabaseResult
                             // Unset prepared statement arguments reference.
                             $this->query->close();
                             $this->free();
-                            $this->logQuery(__FUNCTION__);
+                            $this->query->log(__FUNCTION__);
                             throw new \InvalidArgumentException(
                                 $this->query->errorMessagePrefix()
                                 . ' - failed fetching all rows as assoc arrays keyed by column[' . $key_column
@@ -448,7 +448,7 @@ class MariaDbResult extends DatabaseResult
             // Unset prepared statement arguments reference.
             $this->query->close();
             $this->free();
-            $this->logQuery(__FUNCTION__);
+            $this->query->log(__FUNCTION__);
             throw new DbResultException(
                 $this->query->errorMessagePrefix()
                 . ' - failed fetching all rows as ' . ($as == Database::FETCH_OBJECT ? 'object' : 'assoc array')
@@ -483,7 +483,7 @@ class MariaDbResult extends DatabaseResult
         // Unset prepared statement arguments reference.
         $this->query->close();
         $this->free();
-        $this->logQuery(__FUNCTION__);
+        $this->query->log(__FUNCTION__);
         throw new DbResultException(
             $this->query->errorMessagePrefix()
             . ' - failed going to next set, with error: '
@@ -509,7 +509,7 @@ class MariaDbResult extends DatabaseResult
         // Unset prepared statement arguments reference.
         $this->query->close();
         $this->free();
-        $this->logQuery(__FUNCTION__);
+        $this->query->log(__FUNCTION__);
         throw new DbResultException(
             $this->query->errorMessagePrefix()
             . ' - failed going to next row, with error: '
@@ -551,7 +551,7 @@ class MariaDbResult extends DatabaseResult
             if (!$result) {
                 // Unset prepared statement arguments reference.
                 $this->query->close();
-                $this->logQuery(__FUNCTION__);
+                $this->query->log(__FUNCTION__);
                 throw new DbResultException(
                     $this->query->errorMessagePrefix() . ' - failed getting result, with error: '
                     . $this->query->client->nativeError() . '.'

@@ -11,6 +11,7 @@ namespace SimpleComplex\Database;
 
 use SimpleComplex\Utils\Explorable;
 use SimpleComplex\Utils\Utils;
+use SimpleComplex\Utils\Dependency;
 
 use SimpleComplex\Database\Interfaces\DbClientInterface;
 use SimpleComplex\Database\Interfaces\DbQueryInterface;
@@ -636,6 +637,35 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
     public function errorMessagePrefix() : string
     {
         return $this->client->errorMessagePrefix() . '[' . $this->__get('id') . ']';
+    }
+
+    /**
+     * Log query self or just the active SQL query string.
+     *
+     * @param string $method
+     * @param bool $sqlOnly
+     */
+    public function log(string $method, bool $sqlOnly = false)
+    {
+        $sql_only = $sqlOnly;
+        if (!$sql_only) {
+            try {
+                $sql_only = !Dependency::container()->has('inspect');
+            } catch (\Throwable $ignore) {
+                $sql_only = false;
+            }
+        }
+        $this->client->log(
+            $this->errorMessagePrefix() . ' - ' . $method . '(), query:',
+            !$sql_only ? $this : substr(
+                $this->queryTampered ?? $this->query,
+                0,
+                static::LOG_QUERY_TRUNCATE
+            ),
+            [
+                'wrappers' => 1,
+            ]
+        );
     }
 
     /**

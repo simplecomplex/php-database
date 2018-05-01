@@ -22,23 +22,50 @@ $container = Dependency::container();
 $logger = $container->get('logger');
 /** @var \SimpleComplex\Inspect\Inspect $inspect */
 $inspect = $container->get('inspect');
-
 /** @var \KkBase\Base\Config\IniSectionedConfig $config_store */
 $config_store = $container->get('config');
-
 /** @var \SimpleComplex\Database\DatabaseBroker $db_broker */
 $db_broker = $container->get('database-broker');
 
-/** @var \SimpleComplex\Database\DatabaseClient $database */
-/** @var \SimpleComplex\Database\MsSqlClient $database */
-$database = $db_broker->getClient(
-    'test',
-    'mssql',
-    $config_store->get('database-info.test', '*')
+/** @var \SimpleComplex\Database\MariaDbClient $client */
+$client = $db_broker->getClient(
+    'test_scx_mariadb',
+    'mariadb',
+    $config_store->get('database-info.test_scx_mariadb', '*')
 );
-$database->optionsResolve();
+$client->optionsResolve();
 
-//$logger->debug('Client' . "\n" . $inspect->variable($database));
+$logger->debug('Client (mariadb)' . "\n" . $inspect->variable($client));
+
+/** @noinspection SqlResolve */
+/** @var \SimpleComplex\Database\MariaDbQuery $query */
+$query = $client->query('INSERT INTO parent (lastName, firstName, birthday) VALUES (?, ?, ?)');
+$arguments = [
+    'lastName' => 'Mathiasen',
+    'firstName' => 'Jacob Friis',
+    'birthday' => '1970-01-02',
+];
+$query->prepare('sss', $arguments)->execute();
+$arguments['birthday'] = '1969-02-01';
+$result = $query->execute();
+
+$logger->debug('inserted' . "\n" . $inspect->variable([
+        'affectedRows' => $result->affectedRows(),
+        'insertId' => $result->insertId(),
+    ]));
+
+
+
+$query = $client->query('SELECT * FROM parent');
+//$logger->debug('query' . "\n" . $inspect->variable($query));
+
+$result = $query->execute();
+//$logger->debug('result' . "\n" . $inspect->variable($result));
+
+$logger->debug('row' . "\n" . $inspect->variable($result->fetchArray()));
+$logger->debug('all rows' . "\n" . $inspect->variable($result->fetchAll(Database::FETCH_ASSOC, ['list_by_column' => 'id'])));
+
+return;
 
 
 $last_name = 'Mathiasen';

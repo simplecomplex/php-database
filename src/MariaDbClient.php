@@ -284,7 +284,7 @@ class MariaDbClient extends DatabaseClient
     public function nativeError(bool $emptyOnNone = false) : string
     {
         if ($this->mySqlI && ($code = $this->mySqlI->errno)) {
-            return '(' . $this->mySqlI->errno . ') ' . rtrim($this->mySqlI->error, '.') . '.';
+            return '(' . $this->mySqlI->errno . ') ' . rtrim($this->mySqlI->error, '.');
         }
         return $emptyOnNone ? '' : '- no native error recorded -';
     }
@@ -337,7 +337,7 @@ class MariaDbClient extends DatabaseClient
                     );
                 }
                 $constant = @constant($name);
-                if (!$constant) {
+                if ($constant === null) {
                     throw new DbOptionException(
                         $this->errorMessagePrefix() . ' - invalid option[' . $name . '] value[' . $value
                         . '], there\'s no PHP constant by that name.'
@@ -449,7 +449,7 @@ class MariaDbClient extends DatabaseClient
                     $this->pass,
                     $this->database,
                     $this->port,
-                    null,
+                    '',
                     $this->flagsResolved
                 )
                 || $mysqli->connect_errno

@@ -50,23 +50,6 @@ abstract class DatabaseResult extends Explorable implements DbResultInterface
      */
     protected $rowIndex = -1;
 
-    // Helpers.-----------------------------------------------------------------
-
-    /**
-     * @param string $function
-     */
-    protected function logQuery(string $function)
-    {
-        $this->query->client->log(
-            $this->query->errorMessagePrefix() . ' - ' . $function . '(), query',
-            substr($this->query->queryTampered ?? $this->query->query, 0,
-                constant(get_class($this->query) . '::LOG_QUERY_TRUNCATE')),
-            [
-                'wrappers' => 1,
-            ]
-        );
-    }
-
 
     // Explorable.--------------------------------------------------------------
 

@@ -1,3 +1,9 @@
+SimpleComplex/Database 1.x, 2018-05-01
+--------------------------------------
+- prepare() support associative arguments array.
+- MS SQL insertId() shan't err when ID ;-)
+- Better query logging.
+
 SimpleComplex/Database 1.x, 2018-04-30
 --------------------------------------
 - MS SQL insertId(), and better error handling.
