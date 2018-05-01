@@ -11,7 +11,6 @@ namespace SimpleComplex\Database;
 
 use SimpleComplex\Utils\Explorable;
 
-use SimpleComplex\Database\Interfaces\DbQueryInterface;
 use SimpleComplex\Database\Interfaces\DbResultInterface;
 
 /**

@@ -103,7 +103,7 @@ class MsSqlResult extends DatabaseResult
     /**
      * Auto ID set by last insert or update statement.
      *
-     * NB: Requires that the query contains a secondary ID selecting statement
+     * NB: Requires that the sql contains a secondary ID selecting statement
      * ; SELECT SCOPE_IDENTITY() AS IDENTITY_COLUMN_NAME
      * Use query class option 'get_insert_id'.
      * @see MsSqlQuery::__constructor()
@@ -119,7 +119,7 @@ class MsSqlResult extends DatabaseResult
      *      Null: The query didn't trigger setting an ID.
      *
      * @throws DbLogicalException
-     *      Query misses secondary ID select statement.
+     *      Sql misses secondary ID select statement.
      * @throws \InvalidArgumentException
      *      Invalid arg $getAsType value.
      * @throws \TypeError
@@ -220,13 +220,13 @@ class MsSqlResult extends DatabaseResult
         if (
             !$this->query->getInsertId
             && strpos(
-                $this->query->queryTampered ?? $this->query->query,
+                $this->query->sqlTampered ?? $this->query->sql,
                 'SELECT SCOPE_IDENTITY() AS IDENTITY_COLUMN_NAME'
             ) === false
         ) {
             throw new DbLogicalException(
                 $this->query->errorMessagePrefix() . ' - failed getting insert ID'
-                . ', query misses secondary ID select statement, see query option \'get_insert_id\''
+                . ', sql misses secondary ID select statement, see query option \'get_insert_id\''
             );
         }
         throw new DbResultException(

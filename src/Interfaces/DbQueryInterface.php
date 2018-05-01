@@ -21,16 +21,16 @@ interface DbQueryInterface
      *
      * @param \SimpleComplex\Database\Interfaces\DbClientInterface $client
      *      Reference to parent client.
-     * @param string $baseQuery
+     * @param string $sql
      * @param array $options {
      *      @var bool $is_multi_query
-     *          True: arg $baseQuery contains multiple queries.
+     *          True: arg $sql contains multiple queries.
      * }
      *
      * @throws \InvalidArgumentException
-     *      Arg $query empty.
+     *      Arg $sql empty.
      */
-    public function __construct(DbClientInterface $client, string $baseQuery, array $options = []);
+    public function __construct(DbClientInterface $client, string $sql, array $options = []);
 
     /**
      * Turn query into prepared statement and bind parameters.
@@ -56,9 +56,9 @@ interface DbQueryInterface
 
     /**
      * Non-prepared statement: set query arguments, for native automated
-     * parameter marker substitution or direct substition in the query.
+     * parameter marker substitution or direct substition in the sql.
      *
-     * The base query remains reusable allowing more ->parameters()->execute(),
+     * The base sql remains reusable allowing more ->parameters()->execute(),
      * much like a prepared statement (except arguments aren't referred).
      *
      * Types:
@@ -70,7 +70,7 @@ interface DbQueryInterface
      * @param string $types
      *      Empty: uses string for all.
      * @param array $arguments
-     *      Values to substitute query ?-parameters with.
+     *      Values to substitute sql ?-parameters with.
      *      Arguments are consumed once, not referred.
      *
      * @return $this|DbQueryInterface

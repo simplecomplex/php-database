@@ -29,15 +29,15 @@ interface DbClientInterface
     /**
      * Create a query.
      *
-     * @param string $baseQuery
+     * @param string $sql
      * @param array $options {
      *      @var bool $is_multi_query
-     *          True: arg $baseQuery contains multiple queries.
+     *          True: arg $sql contains multiple queries.
      * }
      *
      * @return DbQueryInterface
      */
-    public function query(string $baseQuery, array $options = []) : DbQueryInterface;
+    public function query(string $sql, array $options = []) : DbQueryInterface;
 
     /**
      * @return void

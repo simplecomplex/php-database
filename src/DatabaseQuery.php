@@ -25,7 +25,7 @@ use SimpleComplex\Database\Exception\DbLogicalException;
  * A multi query (here) consists of multiple non-CRUD statements.
  * @todo: is this correct?
  * MySQL supports them, MS SQL doesn't.
- * A query containing 'CRUD; non-CRUD' (INSERT...; SELECT...) is not considered
+ * An sql string containing 'CRUD; non-CRUD' (INSERT...; SELECT...) is not considered
  * a multi-query. And MS SQL supports such.
  *
  * Prepared statement vs. simple statement
@@ -35,7 +35,7 @@ use SimpleComplex\Database\Exception\DbLogicalException;
  * A simple statement's arguments get consumed and one has to pass new arguments
  * for later execution of the statement.
  * Normally simple statements don't support automated (and safe) ?-parameter
- * substitution (argument value parsed into query string). However this library
+ * substitution (argument value parsed into sql string). However this library
  * does support that.
  * @see DatabaseQuery::parameters()
  *
@@ -48,10 +48,10 @@ use SimpleComplex\Database\Exception\DbLogicalException;
  * @property-read bool $isPreparedStatement
  * @property-read bool $isMultiQuery
  * @property-read bool $isRepeatStatement
- * @property-read bool $queryAppended
+ * @property-read bool $sqlAppended
  * @property-read bool $hasLikeClause
- * @property-read string $query
- * @property-read string $queryTampered
+ * @property-read string $sql
+ * @property-read string $sqlTampered
  * @property-read array $arguments
  * @property-read bool|null $statementClosed
  *
@@ -67,21 +67,21 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
     const MULTI_QUERY_SUPPORT = false;
 
     /**
-     * Char or string flagging a parameter a query,
+     * Char or string flagging an sql parameter,
      * to be substituted by an argument.
      *
      * Typically question mark (Postgresql uses dollar sign).
      *
      * @var string
      */
-    const QUERY_PARAMETER = '?';
+    const SQL_PARAMETER = '?';
 
     /**
-     * Truncate query to that length when logging.
+     * Truncate sql to that length when logging.
      *
      * @int
      */
-    const LOG_QUERY_TRUNCATE = 8192;
+    const LOG_SQL_TRUNCATE = 8192;
 
     /**
      * Ought to be protected, but too costly since result instance
@@ -101,19 +101,19 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
     /**
      * @var string
      */
-    protected $query;
+    protected $sql;
 
     /**
-     * Copy of instance var $query manipulated in one more ways:
+     * Copy of instance var $sql manipulated in one more ways:
      * - parameter markers substituted by arguments
-     * - another query has been appended
-     * - the base query repeated (with parameter markers substituted)
+     * - another sql string has been appended
+     * - the base sql repeated (with parameter markers substituted)
      *
      * Must be null when empty (not used).
      *
      * @var string|null
      */
-    protected $queryTampered;
+    protected $sqlTampered;
 
     /**
      * @var bool
@@ -133,7 +133,7 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
     /**
      * @var bool
      */
-    protected $queryAppended = false;
+    protected $sqlAppended = false;
 
     /**
      * @var bool
@@ -174,32 +174,32 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
     /**
      * @param DbClientInterface|DatabaseClient $client
      *      Reference to parent client.
-     * @param string $baseQuery
+     * @param string $sql
      * @param array $options {
      *      @var bool $is_multi_query
-     *          True: arg $baseQuery contains multiple queries.
+     *          True: arg $sql contains multiple queries.
      * }
      *
      * @throws \InvalidArgumentException
-     *      Arg $query empty.
+     *      Arg $sql empty.
      * @throws DbLogicalException
      *      True $options['is_multi_query'] and query class doesn't support it.
      */
-    public function __construct(DbClientInterface $client, string $baseQuery, array $options = [])
+    public function __construct(DbClientInterface $client, string $sql, array $options = [])
     {
         $this->client = $client;
 
-        if (!$baseQuery) {
+        if (!$sql) {
             throw new \InvalidArgumentException(
-                $this->client->errorMessagePrefix() . ' - arg $baseQuery cannot be empty.'
+                $this->client->errorMessagePrefix() . ' - arg $sql cannot be empty.'
             );
         }
         // Remove trailing (and leading) semicolon; for multi-query.
-        $this->query = trim($baseQuery, " \t\n\r\0\x0B;");
+        $this->sql = trim($sql, " \t\n\r\0\x0B;");
 
-        // The $isMulti parameter is needed because we cannot safely deduct
+        // The 'is_multi_query' options is needed because we cannot safely deduct
         // that a query is multi-query contains semicolon.
-        // False positive if the query contains literal parameter value
+        // False positive if the sql string contains literal parameter value
         // and that value contains semicolon.
 
         if (!empty($options['is_multi_query'])) {
@@ -214,9 +214,9 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
 
     /**
      * Non-prepared statement: set query arguments, for native automated
-     * parameter marker substitution or direct substition in the query.
+     * parameter marker substitution or direct substition in the sql string.
      *
-     * The base query remains reusable allowing more ->parameters()->execute(),
+     * The base sql remains reusable allowing more ->parameters()->execute(),
      * much like a prepared statement (except arguments aren't referred).
      *
      * An $arguments bucket must be integer|float|string|binary,
@@ -228,20 +228,20 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
      * - s: string.
      * - b: blob.
      *
-     * Query parameter marker is typically question mark:
-     * @see DatabaseQuery::QUERY_PARAMETER
+     * Sql parameter marker is typically question mark:
+     * @see DatabaseQuery::SQL_PARAMETER
      *
      * @param string $types
      *      Empty: uses string for all.
      * @param array $arguments
-     *      Values to substitute query ?-parameters with.
+     *      Values to substitute sql ?-parameters with.
      *      Arguments are consumed once, not referred.
      *
      * @return $this|DbQueryInterface
      *
      * @throws DbLogicalException
-     *      Base query has been repeated.
-     *      Another query has been appended to base query.
+     *      Base sql has been repeated.
+     *      Another sql string has been appended to base sql.
      *      Query is prepared statement.
      * @throws \InvalidArgumentException
      *      Propagated; parameters/arguments count mismatch.
@@ -250,19 +250,16 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
      */
     public function parameters(string $types, array $arguments) : DbQueryInterface
     {
-        // Reset; secure base query reusability.
-        $this->queryTampered = null;
-
         if ($this->isRepeatStatement) {
             throw new DbLogicalException(
                 $this->client->errorMessagePrefix()
-                . ' - passing parameters to base query is illegal when base query has been repeated.'
+                . ' - passing parameters to base sql is illegal when base sql has been repeated.'
             );
         }
-        if ($this->queryAppended) {
+        if ($this->sqlAppended) {
             throw new DbLogicalException(
                 $this->client->errorMessagePrefix()
-                . ' - passing parameters to base query is illegal after another query has been appended.'
+                . ' - passing parameters to base sql is illegal after another sql string has been appended.'
             );
         }
         if ($this->isPreparedStatement) {
@@ -280,28 +277,31 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
             );
         }
 
-        // Checks for parameters/arguments count mismatch.
-        $query_fragments = $this->queryFragments($this->query, $arguments);
+        // Reset; secure base sql reusability; @todo: needed?.
+        $this->sqlTampered = null;
 
-        if ($query_fragments) {
-            $this->queryTampered = $this->substituteParametersByArgs($query_fragments, $types, $arguments);
+        // Checks for parameters/arguments count mismatch.
+        $sql_fragments = $this->sqlFragments($this->sql, $arguments);
+
+        if ($sql_fragments) {
+            $this->sqlTampered = $this->substituteParametersByArgs($sql_fragments, $types, $arguments);
         }
 
         return $this;
     }
 
     /**
-     * Append query to previously defined query(ies).
+     * Append sql to previously defined sql.
      *
      * Non-prepared statement only.
      *
      * Turns the full query into multi-query.
      *
-     * @param string $query
+     * @param string $sql
      * @param string $types
      *      Empty: uses string for all.
      * @param array $arguments
-     *      Values to substitute query ?-parameters with.
+     *      Values to substitute sql ?-parameters with.
      *      Arguments are consumed once, not referred.
      *
      * @return $this|DbQueryInterface
@@ -310,10 +310,10 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
      *      Query class doesn't support multi-query.
      *      Query is prepared statement.
      * @throws \InvalidArgumentException
-     *      Arg $query empty.
+     *      Arg $sql empty.
      *      Propagated; parameters/arguments count mismatch.
      */
-    public function append(string $query, string $types, array $arguments) : DbQueryInterface
+    public function append(string $sql, string $types, array $arguments) : DbQueryInterface
     {
         if (!static::MULTI_QUERY_SUPPORT) {
             throw new DbLogicalException(
@@ -327,32 +327,32 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
             );
         }
 
-        if (!$query) {
+        if (!$sql) {
             throw new \InvalidArgumentException(
-                $this->client->errorMessagePrefix() . ' - arg $query cannot be empty.'
+                $this->client->errorMessagePrefix() . ' - arg $sql cannot be empty.'
             );
         }
 
-        $this->isMultiQuery = $this->queryAppended = true;
+        $this->isMultiQuery = $this->sqlAppended = true;
 
-        if (!$this->queryTampered) {
+        if (!$this->sqlTampered) {
             // First time appending.
-            $this->queryTampered = $this->query;
+            $this->sqlTampered = $this->sql;
         }
 
         // Checks for parameters/arguments count mismatch.
-        $query_fragments = $this->queryFragments($query, $arguments);
+        $sql_fragments = $this->sqlFragments($sql, $arguments);
 
-        $this->queryTampered .= '; ' . (
-            !$query_fragments ? $query :
-                $this->substituteParametersByArgs($query_fragments, $types, $arguments)
+        $this->sqlTampered .= '; ' . (
+            !$sql_fragments ? $sql :
+                $this->substituteParametersByArgs($sql_fragments, $types, $arguments)
             );
 
         return $this;
     }
 
     /**
-     * Repeat base query, and substitute it's ?-parameters by arguments.
+     * Repeat base sql, and substitute it's ?-parameters by arguments.
      *
      * Turns the full query into multi-query, except at first call.
      *
@@ -367,13 +367,13 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
      * @param string $types
      *      Empty: uses string for all.
      * @param array $arguments
-     *      Values to substitute query ?-parameters with.
+     *      Values to substitute sql ?-parameters with.
      *
      * @return $this|DbQueryInterface
      *
      * @throws DbLogicalException
      *      Query class doesn't support multi-query.
-     *      Another query has been appended to base query.
+     *      Another sql string has been appended to base sql.
      *      Query is prepared statement.
      * @throws \InvalidArgumentException
      *      Propagated; parameters/arguments count mismatch.
@@ -385,10 +385,10 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
                 $this->client->errorMessagePrefix() . ' doesn\'t support multi-query.'
             );
         }
-        if ($this->queryAppended) {
+        if ($this->sqlAppended) {
             throw new DbLogicalException(
                 $this->client->errorMessagePrefix()
-                . ' - repeating base query is illegal after another query has been appended.'
+                . ' - repeating base sql is illegal after another sql string has been appended.'
             );
         }
         if ($this->isPreparedStatement) {
@@ -399,27 +399,27 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
         }
 
         // Checks for parameters/arguments count mismatch.
-        $query_fragments = $this->queryFragments($this->query, $arguments);
+        $sql_fragments = $this->sqlFragments($this->sql, $arguments);
 
-        $repeated_query = !$query_fragments ? $this->query :
-            $this->substituteParametersByArgs($query_fragments, $types, $arguments);
+        $repeated_query = !$sql_fragments ? $this->sql :
+            $this->substituteParametersByArgs($sql_fragments, $types, $arguments);
 
-        if (!$this->queryTampered) {
+        if (!$this->sqlTampered) {
             // Not necessarily multi-query yet.
 
-            $this->queryTampered = $repeated_query;
+            $this->sqlTampered = $repeated_query;
         }
         else {
             $this->isMultiQuery = $this->isRepeatStatement = true;
 
-            $this->queryTampered .= '; ' . $repeated_query;
+            $this->sqlTampered .= '; ' . $repeated_query;
         }
 
         return $this;
     }
 
     /**
-     * Flag that the query contains LIKE clause(s).
+     * Flag that the sql contains LIKE clause(s).
      *
      * Affects parameter escaping: chars %_ won't be escaped.
      * @see DatabaseQuery::escapeString()
@@ -474,29 +474,29 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
     }
 
     /**
-     * Splits a query by parameter flags and checks that number of arguments
-     * matches number of parameters.
+     * Splits an sql string by parameter flags and checks that
+     * number of arguments matches number of parameters.
      *
-     * @see DatabaseQuery::QUERY_PARAMETER
+     * @see DatabaseQuery::SQL_PARAMETER
      *
-     * @param string $query
+     * @param string $sql
      * @param array $arguments
      *
      * @return array
-     *      Empty: query contains no parameter flags.
+     *      Empty: sql contains no parameter flags.
      *
      * @throws \InvalidArgumentException
      *      Arg $arguments length doesn't match number of parameters.
      */
-    public function queryFragments(string $query, array $arguments) : array
+    public function sqlFragments(string $sql, array $arguments) : array
     {
-        $fragments = explode(static::QUERY_PARAMETER, $query);
+        $fragments = explode(static::SQL_PARAMETER, $sql);
         $n_params = count($fragments) - 1;
         $n_args = count($arguments);
         if ($n_args != $n_params) {
             throw new \InvalidArgumentException(
                 $this->client->errorMessagePrefix() . ' - arg $arguments length[' . $n_args
-                . '] doesn\'t match query\'s ?-parameters count[' . $n_params . '].'
+                . '] doesn\'t match sql\'s ?-parameters count[' . $n_params . '].'
             );
         }
         return $n_params ? $fragments : [];
@@ -546,7 +546,7 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
     }
 
     /**
-     * Substitute query parameters markers by arguments.
+     * Substitute sql parameters markers by arguments.
      *
      * An $arguments bucket must be integer|float|string|binary.
      *
@@ -556,10 +556,10 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
      * - s: string.
      * - b: blob.
      *
-     * @see DatabaseQuery::QUERY_PARAMETER
+     * @see DatabaseQuery::SQL_PARAMETER
      *
-     * @param array $queryFragments
-     *      A query string split by parameter marker.
+     * @param array $sqlFragments
+     *      An sql string split by parameter marker.
      * @param string $types
      * @param array $arguments
      *
@@ -568,9 +568,9 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
      * @throws \InvalidArgumentException
      *      Arg $types length (unless empty) doesn't match number of parameters.
      */
-    protected function substituteParametersByArgs(array $queryFragments, string $types, array $arguments) : string
+    protected function substituteParametersByArgs(array $sqlFragments, string $types, array $arguments) : string
     {
-        $n_params = count($queryFragments) - 1;
+        $n_params = count($sqlFragments) - 1;
 
         $tps = $types;
         if ($tps === '') {
@@ -580,7 +580,7 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
         elseif (strlen($types) != $n_params) {
             throw new \InvalidArgumentException(
                 $this->client->errorMessagePrefix() . ' - arg $types length[' . strlen($types)
-                . '] doesn\'t match query\'s ?-parameters count[' . $n_params . '].'
+                . '] doesn\'t match sql\'s ?-parameters count[' . $n_params . '].'
             );
         }
 
@@ -588,7 +588,7 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
         // nor correctly indexed.
         $args = array_values($arguments);
 
-        $query_with_args = '';
+        $sql_with_args = '';
         for ($i = 0; $i < $n_params; ++$i) {
             $value = $args[$i];
 
@@ -620,10 +620,10 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
                         . ' - arg $types[' . $types . '] index[' . $i . '] char[' . $tps{$i} . '] is not i|d|s|b.'
                     );
             }
-            $query_with_args .= $queryFragments[$i] . $value;
+            $sql_with_args .= $sqlFragments[$i] . $value;
         }
 
-        return $query_with_args . $queryFragments[$i];
+        return $sql_with_args . $sqlFragments[$i];
     }
 
 
@@ -640,7 +640,7 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
     }
 
     /**
-     * Log query self or just the active SQL query string.
+     * Log query self or just the active sql string.
      *
      * @param string $method
      * @param bool $sqlOnly
@@ -656,11 +656,11 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
             }
         }
         $this->client->log(
-            $this->errorMessagePrefix() . ' - ' . $method . '(), query:',
+            $this->errorMessagePrefix() . ' - ' . $method . '(), ' . (!$sqlOnly ? 'query' : 'sql') . ':',
             !$sql_only ? $this : substr(
-                $this->queryTampered ?? $this->query,
+                $this->sqlTampered ?? $this->sql,
                 0,
-                static::LOG_QUERY_TRUNCATE
+                static::LOG_SQL_TRUNCATE
             ),
             [
                 'wrappers' => 1,
@@ -707,10 +707,10 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
         'isPreparedStatement',
         'isMultiQuery',
         'isRepeatStatement',
-        'queryAppended',
+        'sqlAppended',
         'hasLikeClause',
-        'query',
-        'queryTampered',
+        'sql',
+        'sqlTampered',
         'arguments',
         'statementClosed',
     ];

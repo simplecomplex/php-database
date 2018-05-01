@@ -33,10 +33,10 @@ use SimpleComplex\Database\Exception\DbQueryException;
  * @property-read bool $isPreparedStatement
  * @property-read bool $isMultiQuery
  * @property-read bool $isRepeatStatement
- * @property-read bool $queryAppended
+ * @property-read bool $sqlAppended
  * @property-read bool $hasLikeClause
- * @property-read string $query
- * @property-read string $queryTampered
+ * @property-read string $sql
+ * @property-read string $sqlTampered
  * @property-read array $arguments
  *
  * Own read-onlys:
@@ -129,7 +129,7 @@ class MariaDbQuery extends DatabaseQuery
     /**
      * @param DbClientInterface|DatabaseClient|MariaDbClient $client
      *      Reference to parent client.
-     * @param string $baseQuery
+     * @param string $sql
      * @param array $options {
      *      @var string $cursor_mode
      *          Ignored if making prepared statement; will always be 'store'.
@@ -139,9 +139,9 @@ class MariaDbQuery extends DatabaseQuery
      *      Propagated.
      *      Unsupported 'cursor_mode'.
      */
-    public function __construct(DbClientInterface $client, string $baseQuery, array $options = [])
+    public function __construct(DbClientInterface $client, string $sql, array $options = [])
     {
-        parent::__construct($client, $baseQuery, $options);
+        parent::__construct($client, $sql, $options);
 
         if (!empty($options['cursor_mode'])) {
             if (!in_array($options['cursor_mode'], static::CURSOR_MODES, true)) {
@@ -213,9 +213,9 @@ class MariaDbQuery extends DatabaseQuery
         $this->cursorMode = 'store';
 
         // Checks for parameters/arguments count mismatch.
-        $query_fragments = $this->queryFragments($this->query, $arguments);
-        $n_params = count($query_fragments) - 1;
-        unset($query_fragments);
+        $sql_fragments = $this->sqlFragments($this->sql, $arguments);
+        $n_params = count($sql_fragments) - 1;
+        unset($sql_fragments);
 
         $tps = $types;
         if ($n_params) {
@@ -226,7 +226,7 @@ class MariaDbQuery extends DatabaseQuery
             elseif (strlen($types) != $n_params) {
                 throw new \InvalidArgumentException(
                     $this->client->errorMessagePrefix() . ' - arg $types length[' . strlen($types)
-                    . '] doesn\'t match query\'s ?-parameters count[' . $n_params . '].'
+                    . '] doesn\'t match sql\'s ?-parameters count[' . $n_params . '].'
                 );
             }
             elseif (($type_illegals = $this->parameterTypesCheck($types))) {
@@ -241,7 +241,7 @@ class MariaDbQuery extends DatabaseQuery
         $mysqli = $this->client->getConnection(true);
 
         /** @var \mysqli_stmt|bool $mysqli_stmt */
-        $mysqli_stmt = @$mysqli->prepare($this->query);
+        $mysqli_stmt = @$mysqli->prepare($this->sql);
         if (!$mysqli_stmt) {
             $this->log(__FUNCTION__);
             throw new DbRuntimeException(
@@ -327,7 +327,7 @@ class MariaDbQuery extends DatabaseQuery
             /** @var \MySQLi $mysqli */
             $mysqli = $this->client->getConnection(true);
             // bool.
-            if (!@$mysqli->multi_query($this->queryTampered ?? $this->query)) {
+            if (!@$mysqli->multi_query($this->sqlTampered ?? $this->sql)) {
                 $this->log(__FUNCTION__);
                 throw new DbQueryException(
                     $this->errorMessagePrefix()
@@ -335,13 +335,13 @@ class MariaDbQuery extends DatabaseQuery
                 );
             }
         }
-        // @todo: a query containing more non-SELECT statements (like INSERT...; SELECT...) must probably also be executed as multi-query.
+        // @todo: an sql string containing more non-SELECT statements (like INSERT...; SELECT...) must probably also be executed as multi-query.
         else {
             // Allow re-connection.
             /** @var \MySQLi $mysqli */
             $mysqli = $this->client->getConnection(true);
             // bool.
-            if (!@$mysqli->real_query($this->queryTampered ?? $this->query)) {
+            if (!@$mysqli->real_query($this->sqlTampered ?? $this->sql)) {
                 $this->log(__FUNCTION__);
                 throw new DbQueryException(
                     $this->errorMessagePrefix()

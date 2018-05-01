@@ -29,10 +29,10 @@ use SimpleComplex\Database\Exception\DbQueryException;
  * @property-read bool $isPreparedStatement
  * @property-read bool $isMultiQuery
  * @property-read bool $isRepeatStatement
- * @property-read bool $queryAppended
+ * @property-read bool $sqlAppended
  * @property-read bool $hasLikeClause
- * @property-read string $query
- * @property-read string $queryTampered
+ * @property-read string $sql
+ * @property-read string $sqlTampered
  * @property-read array $arguments
  *
  * Own read-onlys:
@@ -159,7 +159,7 @@ class MsSqlQuery extends DatabaseQuery
      *
      * Send query statement data in chunks instead sending all immediately.
      *
-     * Relevant if giant query.
+     * Relevant if giant sql string.
      *
      * Native setting 'SendStreamParamsAtExec'; opposite boolean value.
      * @see http://php.net/manual/en/function.sqlsrv-send-stream-data.php
@@ -190,7 +190,7 @@ class MsSqlQuery extends DatabaseQuery
     /**
      * @param DbClientInterface|DatabaseClient|MsSqlClient $client
      *      Reference to parent client.
-     * @param string $baseQuery
+     * @param string $sql
      * @param array $options {
      *      @var int $query_timeout
      *      @var string $cursor_mode
@@ -203,9 +203,9 @@ class MsSqlQuery extends DatabaseQuery
      *      Propagated.
      *      Unsupported 'cursor_mode'.
      */
-    public function __construct(DbClientInterface $client, string $baseQuery, array $options = [])
+    public function __construct(DbClientInterface $client, string $sql, array $options = [])
     {
-        parent::__construct($client, $baseQuery, $options);
+        parent::__construct($client, $sql, $options);
 
         if (isset($options['query_timeout'])) {
             $this->queryTimeout = $options['query_timeout'];
@@ -238,8 +238,8 @@ class MsSqlQuery extends DatabaseQuery
         $this->explorableIndex[] = 'sendChunksLimit';
 
         $this->getInsertId = !empty($options['get_insert_id']);
-        if ($this->getInsertId && strpos($baseQuery, 'SELECT SCOPE_IDENTITY() AS IDENTITY_COLUMN_NAME') === false) {
-            $this->queryTampered = $this->query . '; SELECT SCOPE_IDENTITY() AS IDENTITY_COLUMN_NAME';
+        if ($this->getInsertId && strpos($sql, 'SELECT SCOPE_IDENTITY() AS IDENTITY_COLUMN_NAME') === false) {
+            $this->sqlTampered = $this->sql . '; SELECT SCOPE_IDENTITY() AS IDENTITY_COLUMN_NAME';
         }
         $this->explorableIndex[] = 'getInsertId';
     }
@@ -305,10 +305,10 @@ class MsSqlQuery extends DatabaseQuery
         $this->isPreparedStatement = true;
 
         // Checks for parameters/arguments count mismatch.
-        $query_fragments = $this->queryFragments($this->queryTampered ?? $this->query, $arguments);
+        $sql_fragments = $this->sqlFragments($this->sqlTampered ?? $this->sql, $arguments);
 
-        if ($query_fragments) {
-            unset($query_fragments);
+        if ($sql_fragments) {
+            unset($sql_fragments);
 
             // Set instance var $arguments['prepared'] or $arguments['simple'].
             $this->adaptArguments($types, $arguments);
@@ -327,7 +327,7 @@ class MsSqlQuery extends DatabaseQuery
 
         /** @var resource $statement */
         $statement = @sqlsrv_prepare(
-            $connection, $this->queryTampered ?? $this->query, $this->arguments['prepared'] ?? [], $options
+            $connection, $this->sqlTampered ?? $this->sql, $this->arguments['prepared'] ?? [], $options
         );
         if (!$statement) {
             // Unset prepared statement arguments reference.
@@ -348,10 +348,10 @@ class MsSqlQuery extends DatabaseQuery
      * Non-prepared statement: set query arguments for native automated
      * parameter marker substitution.
      *
-     * The base query remains reusable allowing more ->parameters()->execute(),
+     * The base sql remains reusable allowing more ->parameters()->execute(),
      * much like a prepared statement (except arguments aren't referred).
      *
-     * Query parameter marker is question mark.
+     * Sql parameter marker is question mark.
      *
      * Arg $types type:
      * - i: integer.
@@ -363,14 +363,14 @@ class MsSqlQuery extends DatabaseQuery
      *      Ignored if all arguments are type qualified arrays.
      *      Otherwise empty: uses string for all.
      * @param array $arguments
-     *      Values to substitute query ?-parameters with.
+     *      Values to substitute sql ?-parameters with.
      *      Arguments are consumed once, not referred.
      *
      * @return $this|DbQueryInterface
      *
      * @throws DbLogicalException
-     *      Base query has been repeated.
-     *      Another query has been appended to base query.
+     *      Base sql has been repeated.
+     *      Another sql string has been appended to base sql.
      *      Query is prepared statement.
      * @throws \InvalidArgumentException
      *      Propagated; parameters/arguments count mismatch.
@@ -379,10 +379,10 @@ class MsSqlQuery extends DatabaseQuery
      */
     public function parameters(string $types, array $arguments) : DbQueryInterface
     {
-        if ($this->queryAppended) {
+        if ($this->sqlAppended) {
             throw new DbLogicalException(
                 $this->client->errorMessagePrefix()
-                . ' - passing parameters to base query is illegal after another query has been appended.'
+                . ' - passing parameters to base sql is illegal after another sql string has been appended.'
             );
         }
         if ($this->isPreparedStatement) {
@@ -395,9 +395,9 @@ class MsSqlQuery extends DatabaseQuery
         }
 
         // Checks for parameters/arguments count mismatch.
-        $query_fragments = $this->queryFragments($this->queryTampered ?? $this->query, $arguments);
-        if ($query_fragments) {
-            unset($query_fragments);
+        $sql_fragments = $this->sqlFragments($this->sqlTampered ?? $this->sql, $arguments);
+        if ($sql_fragments) {
+            unset($sql_fragments);
 
             // Set instance var $arguments['prepared'] or $arguments['simple'].
             $this->adaptArguments($types, $arguments);
@@ -465,7 +465,7 @@ class MsSqlQuery extends DatabaseQuery
             $connection = $this->client->getConnection(true);
             /** @var resource|bool $statement */
             $statement = @sqlsrv_query(
-                $connection, $this->queryTampered ?? $this->query, $this->arguments['simple'] ?? [], $options
+                $connection, $this->sqlTampered ?? $this->sql, $this->arguments['simple'] ?? [], $options
             );
             if (!$statement) {
                 $this->log(__FUNCTION__);
@@ -645,8 +645,8 @@ class MsSqlQuery extends DatabaseQuery
     protected function adaptArguments(string $types, array &$arguments) /*:void*/
     {
         // Checks for parameters/arguments count mismatch.
-        $query_fragments = $this->queryFragments($this->query, $arguments);
-        $n_params = count($query_fragments) - 1;
+        $sql_fragments = $this->sqlFragments($this->sql, $arguments);
+        $n_params = count($sql_fragments) - 1;
 
         if (!$n_params) {
 
@@ -730,7 +730,7 @@ class MsSqlQuery extends DatabaseQuery
         elseif (strlen($types) != $n_params) {
             throw new \InvalidArgumentException(
                 $this->client->errorMessagePrefix() . ' - arg $types length[' . strlen($types)
-                . '] doesn\'t match query\'s ?-parameters count[' . $n_params . '].'
+                . '] doesn\'t match sql\'s ?-parameters count[' . $n_params . '].'
             );
         }
         elseif (($type_illegals = $this->parameterTypesCheck($types))) {
