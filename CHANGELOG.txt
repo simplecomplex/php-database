@@ -5,6 +5,7 @@ SimpleComplex/Database 1.x, 2018-05-02
 - MariaDb nextRow() shan't always fail.
 - All multi-query features moved to separate (extending) interfaces and classes;
   MS SQL implementation no longer relates to multi-querying at all.
+- Forbid reconnecting if unfinished transaction.
 
 SimpleComplex/Database 1.x, 2018-05-01
 --------------------------------------

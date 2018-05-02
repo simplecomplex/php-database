@@ -90,7 +90,8 @@ interface DbClientInterface
     /**
      * Used by query instance, on demand.
      *
-     * Attempts to re-connect if connection lost and arg $reConnect.
+     * Attempts to re-connect if connection lost and arg $reConnect,
+     * unless unfinished transaction.
      *
      * @internal Package protected; for DbQueryInterface.
      *

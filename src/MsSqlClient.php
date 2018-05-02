@@ -339,7 +339,8 @@ class MsSqlClient extends DatabaseClient
     // Package protected.-------------------------------------------------------
 
     /**
-     * Attempts to re-connect if connection lost and arg $reConnect.
+     * Attempts to re-connect if connection lost and arg $reConnect,
+     * unless unfinished transaction.
      *
      * Always sets:
      * - connection timeout; (int) LoginTimeout
@@ -361,12 +362,19 @@ class MsSqlClient extends DatabaseClient
      *      Resource: connection (re-)established.
      *
      * @throws DbConnectionException
+     * @throws DbInterruptionException
+     *      Connection lost during unfinished transaction.
      */
     public function getConnection(bool $reConnect = false)
     {
         if (!$this->connection) {
             if (!$reConnect) {
                 return false;
+            }
+            if ($this->transactionStarted) {
+                throw new DbInterruptionException(
+                    $this->errorMessagePrefix() . ' - connection lost during unfinished transaction.'
+                );
             }
 
             if (!$this->optionsResolved) {

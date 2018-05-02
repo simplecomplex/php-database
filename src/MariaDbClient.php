@@ -399,7 +399,8 @@ class MariaDbClient extends DatabaseClientMulti
     // Package protected.-------------------------------------------------------
 
     /**
-     * Attempts to re-connect if connection lost and arg $reConnect.
+     * Attempts to re-connect if connection lost and arg $reConnect,
+     * unless unfinished transaction.
      *
      * Always sets connection timeout and connection character set.
      *
@@ -417,6 +418,8 @@ class MariaDbClient extends DatabaseClientMulti
      *      Propagated.
      *      Failure to set option.
      * @throws DbConnectionException
+     * @throws DbInterruptionException
+     *      Connection lost during unfinished transaction.
      */
     public function getConnection(bool $reConnect = false)
     {
@@ -425,6 +428,11 @@ class MariaDbClient extends DatabaseClientMulti
         if (!$this->mySqlI || !$this->mySqlI->ping()) {
             if (!$reConnect) {
                 return false;
+            }
+            if ($this->transactionStarted) {
+                throw new DbInterruptionException(
+                    $this->errorMessagePrefix() . ' - connection lost during unfinished transaction.'
+                );
             }
 
             $mysqli = mysqli_init();
