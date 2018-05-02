@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace SimpleComplex\Database;
 
+use SimpleComplex\Database\Interfaces\DbQueryInterface;
+
 use SimpleComplex\Database\Exception\DbLogicalException;
 use SimpleComplex\Database\Exception\DbOptionException;
 use SimpleComplex\Database\Exception\DbRuntimeException;
@@ -154,6 +156,24 @@ class MariaDbClient extends DatabaseClient
         $this->flags = $databaseInfo['flags'] ?? [];
         $this->explorableIndex[] = 'flags';
         $this->explorableIndex[] = 'flagsResolved';
+    }
+
+    /**
+     * Convenience method which calls query() passing 'is_multi_query' option.
+     *
+     * @see DatabaseClient::query()
+     * @see MariaDbQuery::__construct()
+     *
+     * @param string $sql
+     * @param array $options
+     *
+     * @return DbQueryInterface|MariaDbQuery
+     */
+    public function multiQuery(string $sql, array $options = []) : DbQueryInterface
+    {
+        $opts =& $options;
+        $opts['is_multi_query'] = true;
+        return $this->query($sql, $opts);
     }
 
     /**

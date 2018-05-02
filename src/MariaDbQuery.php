@@ -133,6 +133,8 @@ class MariaDbQuery extends DatabaseQuery
      * @param array $options {
      *      @var string $cursor_mode
      *          Ignored if making prepared statement; will always be 'store'.
+     *      @var bool $is_multi_query
+     *          True: arg $sql contains multiple queries.
      * }
      *
      * @throws \InvalidArgumentException
@@ -155,6 +157,8 @@ class MariaDbQuery extends DatabaseQuery
             $this->cursorMode = static::CURSOR_MODE_DEFAULT;
         }
         $this->explorableIndex[] = 'cursorMode';
+
+        $this->isMultiQuery = !empty($options['is_multi_query']);
     }
 
     public function __destruct()
@@ -380,22 +384,15 @@ class MariaDbQuery extends DatabaseQuery
      *
      * Escapes %_ unless instance var hasLikeClause.
      *
-     * Replaces semicolon with comma if multi-query.
-     *
      * @param string $str
      *
      * @return string
      */
     public function escapeString(string $str) : string
     {
-        $s = $str;
-        if ($this->isMultiQuery) {
-            $s = str_replace(';', ',', $s);
-        }
-
         // Allow re-connection.
         $s = $this->client->getConnection(true)
-            ->real_escape_string($s);
+            ->real_escape_string($str);
 
         return $this->hasLikeClause ? $s : addcslashes($s, '%_');
     }

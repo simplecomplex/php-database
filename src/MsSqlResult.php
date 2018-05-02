@@ -472,6 +472,8 @@ class MsSqlResult extends DatabaseResult
     }
 
     /**
+     * Move cursor to next result set.
+     *
      * @return bool|null
      *      Null: No next result set.
      *      Throws throwable on failure.
@@ -498,6 +500,8 @@ class MsSqlResult extends DatabaseResult
     }
 
     /**
+     * Go to next row in the result set.
+     *
      * @return bool|null
      *      Null: No next row.
      *      Throws throwable on failure.

@@ -192,8 +192,8 @@ class MsSqlQuery extends DatabaseQuery
      *      Reference to parent client.
      * @param string $sql
      * @param array $options {
-     *      @var int $query_timeout
      *      @var string $cursor_mode
+     *      @var int $query_timeout
      *      @var bool $send_data_chunked
      *      @var int $send_chunks_limit
      *      @var bool $get_insert_id
@@ -207,16 +207,6 @@ class MsSqlQuery extends DatabaseQuery
     {
         parent::__construct($client, $sql, $options);
 
-        if (isset($options['query_timeout'])) {
-            $this->queryTimeout = $options['query_timeout'];
-            if ($this->queryTimeout < 0) {
-                $this->queryTimeout = 0;
-            }
-        } else {
-            $this->queryTimeout = static::QUERY_TIMEOUT;
-        }
-        $this->explorableIndex[] = 'queryTimeout';
-
         if (!empty($options['cursor_mode'])) {
             if (!in_array($options['cursor_mode'], static::CURSOR_MODES, true)) {
                 throw new DbLogicalException(
@@ -229,6 +219,16 @@ class MsSqlQuery extends DatabaseQuery
             $this->cursorMode = static::CURSOR_MODE_DEFAULT;
         }
         $this->explorableIndex[] = 'cursorMode';
+
+        if (isset($options['query_timeout'])) {
+            $this->queryTimeout = $options['query_timeout'];
+            if ($this->queryTimeout < 0) {
+                $this->queryTimeout = 0;
+            }
+        } else {
+            $this->queryTimeout = static::QUERY_TIMEOUT;
+        }
+        $this->explorableIndex[] = 'queryTimeout';
 
         if (!empty($options['send_data_chunked'])) {
             $this->sendDataChunked = true;

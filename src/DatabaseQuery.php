@@ -445,19 +445,12 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
      *
      * Escapes %_ unless instance var hasLikeClause.
      *
-     * Replaces semicolon with comma if multi-query.
-     *
      * @param string $str
      *
      * @return string
      */
     public function escapeString(string $str) : string
     {
-        $s = $str;
-        if ($this->isMultiQuery) {
-            $s = str_replace(';', ',', $s);
-        }
-
         if (!$this->escapeStringPattern) {
             $pattern = '/[\x00\x0A\x0D\x1A\x22\x27\x5C';
             if (!$this->hasLikeClause) {
@@ -470,7 +463,7 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
             $this->escapeStringPattern = $pattern;
         }
 
-        return '' . preg_replace($this->escapeStringPattern, '\\\$0', $s);
+        return '' . preg_replace($this->escapeStringPattern, '\\\$0', $str);
     }
 
     /**

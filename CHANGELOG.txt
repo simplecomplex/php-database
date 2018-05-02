@@ -1,3 +1,9 @@
+SimpleComplex/Database 1.x, 2018-05-02
+--------------------------------------
+- Parameter value escaper shan't escape semicolon, not even when multi-query.
+- Result nextRow() is a result interface method.
+- MariaDb nextRow() shan't always fail.
+
 SimpleComplex/Database 1.x, 2018-05-01
 --------------------------------------
 - prepare() support associative arguments array.

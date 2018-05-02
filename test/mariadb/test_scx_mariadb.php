@@ -40,21 +40,34 @@ $logger->debug('Client (mariadb)' . "\n" . $inspect->variable($client));
 /** @noinspection SqlResolve */
 /** @var \SimpleComplex\Database\MariaDbQuery $query */
 $query = $client->query('INSERT INTO parent (lastName, firstName, birthday) VALUES (?, ?, ?)');
+//$query = $client->multiQuery('INSERT INTO parent (lastName, firstName, birthday) VALUES (?, ?, ?); SELECT LAST_INSERT_ID()');
 $arguments = [
     'lastName' => 'Mathiasen',
     'firstName' => 'Jacob Friis',
     'birthday' => '1970-01-02',
 ];
-$query->prepare('sss', $arguments)->execute();
-$arguments['birthday'] = '1969-02-01';
-$result = $query->execute();
+$result = $query->prepare('sss', $arguments)->execute();
+//$arguments['birthday'] = '1969-02-01';
+//$result = $query->parameters('sss', $arguments)->execute();
 
 $logger->debug('inserted' . "\n" . $inspect->variable([
         'affectedRows' => $result->affectedRows(),
         'insertId' => $result->insertId(),
     ]));
+/*
+$result->nextSet();
+$logger->debug('fetchArray' . "\n" . $inspect->variable([
+        'fetchArray' => $result->fetchArray(),
+    ]));
+*/
 
+/*$logger->debug('LAST_INSERT_ID' . "\n" . $inspect->variable(
+    $client->query('SELECT LAST_INSERT_ID()')->execute()->fetchArray()
+));*/
 
+//SELECT LAST_INSERT_ID()
+
+return;
 
 $query = $client->query('SELECT * FROM parent');
 //$logger->debug('query' . "\n" . $inspect->variable($query));

@@ -459,6 +459,8 @@ class MariaDbResult extends DatabaseResult
     }
 
     /**
+     * Move cursor to next result set.
+     *
      * @return bool|null
      *      Null: No next result set.
      *      Throws throwable on failure.
@@ -492,6 +494,8 @@ class MariaDbResult extends DatabaseResult
     }
 
     /**
+     * Go to next row in the result set.
+     *
      * @return bool|null
      *      Null: No next row.
      *      Throws throwable on failure.
@@ -503,6 +507,10 @@ class MariaDbResult extends DatabaseResult
         }
         // There's no MySQLi direct equivalent; use lightest alternative.
         $row = $this->result->fetch_array(MYSQL_NUM);
+        if ($row || is_array($row)) {
+            ++$this->rowIndex;
+            return true;
+        }
         if ($row === null) {
             null;
         }

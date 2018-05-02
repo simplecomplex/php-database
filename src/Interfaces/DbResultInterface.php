@@ -106,11 +106,22 @@ interface DbResultInterface
     public function fetchAll(int $as = Database::FETCH_ASSOC, array $options = []) : array;
 
     /**
+     * Move cursor to next result set.
+     *
      * @return bool|null
      *      Null: No next result set.
      *      Throws throwable on failure.
      */
     public function nextSet();
+
+    /**
+     * Go to next row in the result set.
+     *
+     * @return bool|null
+     *      Null: No next row.
+     *      Throws throwable on failure.
+     */
+    public function nextRow();
 
     /**
      * @return void

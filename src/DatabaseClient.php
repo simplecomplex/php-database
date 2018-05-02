@@ -211,10 +211,15 @@ abstract class DatabaseClient extends Explorable implements DbClientInterface
     /**
      * Create a query.
      *
+     * For options, see DbQueryInterface implementation's constructor.
+     * @see MariaDbQuery::__construct()
+     * @see MsSqlQuery::__construct()
+     *
      * @param string $sql
      * @param array $options {
      *      @var bool $is_multi_query
      *          True: arg $sql contains multiple queries.
+     *      @var * $*  See DbQueryInterface implementation's constructor.
      * }
      *
      * @return DbQueryInterface
