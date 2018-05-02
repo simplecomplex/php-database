@@ -40,13 +40,17 @@ $logger->debug('Client (mariadb)' . "\n" . $inspect->variable($client));
 /** @noinspection SqlResolve */
 /** @var \SimpleComplex\Database\MariaDbQuery $query */
 $query = $client->query('INSERT INTO parent (lastName, firstName, birthday) VALUES (?, ?, ?)');
+/** @noinspection SqlResolve */
+/** @var \SimpleComplex\Database\MariaDbQuery $query */
 //$query = $client->multiQuery('INSERT INTO parent (lastName, firstName, birthday) VALUES (?, ?, ?); SELECT LAST_INSERT_ID()');
 $arguments = [
     'lastName' => 'Mathiasen',
     'firstName' => 'Jacob Friis',
     'birthday' => '1970-01-02',
 ];
-$result = $query->prepare('sss', $arguments)->execute();
+$query->prepare('sss', $arguments);
+$logger->debug('Query (mariadb)' . "\n" . $inspect->variable($query));
+$result = $query->execute();
 //$arguments['birthday'] = '1969-02-01';
 //$result = $query->parameters('sss', $arguments)->execute();
 

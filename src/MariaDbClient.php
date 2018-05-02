@@ -9,14 +9,11 @@ declare(strict_types=1);
 
 namespace SimpleComplex\Database;
 
-use SimpleComplex\Database\Interfaces\DbQueryInterface;
-
 use SimpleComplex\Database\Exception\DbLogicalException;
 use SimpleComplex\Database\Exception\DbOptionException;
 use SimpleComplex\Database\Exception\DbRuntimeException;
 use SimpleComplex\Database\Exception\DbConnectionException;
 use SimpleComplex\Database\Exception\DbInterruptionException;
-
 
 /**
  * Maria DB client.
@@ -54,7 +51,7 @@ use SimpleComplex\Database\Exception\DbInterruptionException;
  *
  * @package SimpleComplex\Database
  */
-class MariaDbClient extends DatabaseClient
+class MariaDbClient extends DatabaseClientMulti
 {
     /**
      * Class name of \SimpleComplex\Database\MariaDbQuery or extending class.
@@ -156,24 +153,6 @@ class MariaDbClient extends DatabaseClient
         $this->flags = $databaseInfo['flags'] ?? [];
         $this->explorableIndex[] = 'flags';
         $this->explorableIndex[] = 'flagsResolved';
-    }
-
-    /**
-     * Convenience method which calls query() passing 'is_multi_query' option.
-     *
-     * @see DatabaseClient::query()
-     * @see MariaDbQuery::__construct()
-     *
-     * @param string $sql
-     * @param array $options
-     *
-     * @return DbQueryInterface|MariaDbQuery
-     */
-    public function multiQuery(string $sql, array $options = []) : DbQueryInterface
-    {
-        $opts =& $options;
-        $opts['is_multi_query'] = true;
-        return $this->query($sql, $opts);
     }
 
     /**
@@ -312,6 +291,8 @@ class MariaDbClient extends DatabaseClient
     /**
      * Resolve options.
      *
+     * Chainable.
+     *
      * Public to facilitate option debugging prior to attempt to connect.
      *
      * @see MariaDbClient::getConnection()
@@ -319,13 +300,13 @@ class MariaDbClient extends DatabaseClient
      * @see MariaDbClient::$optionsResolved
      * @see MariaDbClient::$flagsResolved
      *
-     * @return void
+     * @return $this|DatabaseClient|MariaDbClient
      *      Throws exception on error.
      *
      * @throws DbOptionException
      *      Invalid option.
      */
-    public function optionsResolve()
+    public function optionsResolve() : DatabaseClient
     {
         if (!$this->optionsResolved) {
             $this->optionsResolved = [];
@@ -391,6 +372,7 @@ class MariaDbClient extends DatabaseClient
             }
             $this->flagsResolved = $flags;
         }
+        return $this;
     }
 
     /**

@@ -19,14 +19,7 @@ use SimpleComplex\Database\Interfaces\DbQueryInterface;
 use SimpleComplex\Database\Exception\DbLogicalException;
 
 /**
- *
- * Multi-query
- * -----------
- * A multi query (here) consists of multiple non-CRUD statements.
- * @todo: is this correct?
- * MySQL supports them, MS SQL doesn't.
- * An sql string containing 'CRUD; non-CRUD' (INSERT...; SELECT...) is not considered
- * a multi-query. And MS SQL supports such.
+ * Database query.
  *
  * Prepared statement vs. simple statement
  * ---------------------------------------
@@ -46,9 +39,6 @@ use SimpleComplex\Database\Exception\DbLogicalException;
  *
  * @property-read string $id
  * @property-read bool $isPreparedStatement
- * @property-read bool $isMultiQuery
- * @property-read bool $isRepeatStatement
- * @property-read bool $sqlAppended
  * @property-read bool $hasLikeClause
  * @property-read string $sql
  * @property-read string $sqlTampered
@@ -59,13 +49,6 @@ use SimpleComplex\Database\Exception\DbLogicalException;
  */
 abstract class DatabaseQuery extends Explorable implements DbQueryInterface
 {
-    /**
-     * Whether the database type supports multi-query.
-     *
-     * @var bool
-     */
-    const MULTI_QUERY_SUPPORT = false;
-
     /**
      * Char or string flagging an sql parameter,
      * to be substituted by an argument.
@@ -123,21 +106,6 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
     /**
      * @var bool
      */
-    protected $isMultiQuery = false;
-
-    /**
-     * @var bool
-     */
-    protected $isRepeatStatement = false;
-
-    /**
-     * @var bool
-     */
-    protected $sqlAppended = false;
-
-    /**
-     * @var bool
-     */
     protected $hasLikeClause = false;
 
     /**
@@ -175,15 +143,10 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
      * @param DbClientInterface|DatabaseClient $client
      *      Reference to parent client.
      * @param string $sql
-     * @param array $options {
-     *      @var bool $is_multi_query
-     *          True: arg $sql contains multiple queries.
-     * }
+     * @param array $options
      *
      * @throws \InvalidArgumentException
      *      Arg $sql empty.
-     * @throws DbLogicalException
-     *      True $options['is_multi_query'] and query class doesn't support it.
      */
     public function __construct(DbClientInterface $client, string $sql, array $options = [])
     {
@@ -196,20 +159,6 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
         }
         // Remove trailing (and leading) semicolon; for multi-query.
         $this->sql = trim($sql, " \t\n\r\0\x0B;");
-
-        // The 'is_multi_query' options is needed because we cannot safely deduct
-        // that a query is multi-query contains semicolon.
-        // False positive if the sql string contains literal parameter value
-        // and that value contains semicolon.
-
-        if (!empty($options['is_multi_query'])) {
-            if (!static::MULTI_QUERY_SUPPORT) {
-                throw new DbLogicalException(
-                    $this->client->errorMessagePrefix() . ' doesn\'t support multi-query.'
-                );
-            }
-            $this->isMultiQuery = true;
-        }
     }
 
     /**
@@ -221,6 +170,8 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
      *
      * An $arguments bucket must be integer|float|string|binary,
      * unless database-specific behaviour (Sqlsrv type qualifying array).
+     *
+     * Chainable.
      *
      * Arg $types types:
      * - i: integer.
@@ -234,7 +185,7 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
      * @param string $types
      *      Empty: uses string for all.
      * @param array $arguments
-     *      Values to substitute sql ?-parameters with.
+     *      Values to substitute sql parameter markers with.
      *      Arguments are consumed once, not referred.
      *
      * @return $this|DbQueryInterface
@@ -250,18 +201,6 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
      */
     public function parameters(string $types, array $arguments) : DbQueryInterface
     {
-        if ($this->isRepeatStatement) {
-            throw new DbLogicalException(
-                $this->client->errorMessagePrefix()
-                . ' - passing parameters to base sql is illegal when base sql has been repeated.'
-            );
-        }
-        if ($this->sqlAppended) {
-            throw new DbLogicalException(
-                $this->client->errorMessagePrefix()
-                . ' - passing parameters to base sql is illegal after another sql string has been appended.'
-            );
-        }
         if ($this->isPreparedStatement) {
             $this->unsetReferences();
             throw new DbLogicalException(
@@ -291,138 +230,12 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
     }
 
     /**
-     * Append sql to previously defined sql.
-     *
-     * Non-prepared statement only.
-     *
-     * Turns the full query into multi-query.
-     *
-     * @param string $sql
-     * @param string $types
-     *      Empty: uses string for all.
-     * @param array $arguments
-     *      Values to substitute sql ?-parameters with.
-     *      Arguments are consumed once, not referred.
-     *
-     * @return $this|DbQueryInterface
-     *
-     * @throws DbLogicalException
-     *      Query class doesn't support multi-query.
-     *      Query is prepared statement.
-     * @throws \InvalidArgumentException
-     *      Arg $sql empty.
-     *      Propagated; parameters/arguments count mismatch.
-     */
-    public function append(string $sql, string $types, array $arguments) : DbQueryInterface
-    {
-        if (!static::MULTI_QUERY_SUPPORT) {
-            throw new DbLogicalException(
-                $this->client->errorMessagePrefix() . ' doesn\'t support multi-query.'
-            );
-        }
-        if ($this->isPreparedStatement) {
-            $this->unsetReferences();
-            throw new DbLogicalException(
-                $this->client->errorMessagePrefix() . ' - appending to prepared statement is illegal.'
-            );
-        }
-
-        if (!$sql) {
-            throw new \InvalidArgumentException(
-                $this->client->errorMessagePrefix() . ' - arg $sql cannot be empty.'
-            );
-        }
-
-        $this->isMultiQuery = $this->sqlAppended = true;
-
-        if (!$this->sqlTampered) {
-            // First time appending.
-            $this->sqlTampered = $this->sql;
-        }
-
-        // Checks for parameters/arguments count mismatch.
-        $sql_fragments = $this->sqlFragments($sql, $arguments);
-
-        $this->sqlTampered .= '; ' . (
-            !$sql_fragments ? $sql :
-                $this->substituteParametersByArgs($sql_fragments, $types, $arguments)
-            );
-
-        return $this;
-    }
-
-    /**
-     * Repeat base sql, and substitute it's ?-parameters by arguments.
-     *
-     * Turns the full query into multi-query, except at first call.
-     *
-     * Non-prepared statement only.
-     *
-     * Types:
-     * - i: integer.
-     * - d: float (double).
-     * - s: string.
-     * - b: blob.
-     *
-     * @param string $types
-     *      Empty: uses string for all.
-     * @param array $arguments
-     *      Values to substitute sql ?-parameters with.
-     *
-     * @return $this|DbQueryInterface
-     *
-     * @throws DbLogicalException
-     *      Query class doesn't support multi-query.
-     *      Another sql string has been appended to base sql.
-     *      Query is prepared statement.
-     * @throws \InvalidArgumentException
-     *      Propagated; parameters/arguments count mismatch.
-     */
-    public function repeat(string $types, array $arguments) : DbQueryInterface
-    {
-        if (!static::MULTI_QUERY_SUPPORT) {
-            throw new DbLogicalException(
-                $this->client->errorMessagePrefix() . ' doesn\'t support multi-query.'
-            );
-        }
-        if ($this->sqlAppended) {
-            throw new DbLogicalException(
-                $this->client->errorMessagePrefix()
-                . ' - repeating base sql is illegal after another sql string has been appended.'
-            );
-        }
-        if ($this->isPreparedStatement) {
-            $this->unsetReferences();
-            throw new DbLogicalException(
-                $this->client->errorMessagePrefix() . ' - appending to prepared statement is illegal.'
-            );
-        }
-
-        // Checks for parameters/arguments count mismatch.
-        $sql_fragments = $this->sqlFragments($this->sql, $arguments);
-
-        $repeated_query = !$sql_fragments ? $this->sql :
-            $this->substituteParametersByArgs($sql_fragments, $types, $arguments);
-
-        if (!$this->sqlTampered) {
-            // Not necessarily multi-query yet.
-
-            $this->sqlTampered = $repeated_query;
-        }
-        else {
-            $this->isMultiQuery = $this->isRepeatStatement = true;
-
-            $this->sqlTampered .= '; ' . $repeated_query;
-        }
-
-        return $this;
-    }
-
-    /**
      * Flag that the sql contains LIKE clause(s).
      *
      * Affects parameter escaping: chars %_ won't be escaped.
      * @see DatabaseQuery::escapeString()
+     *
+     * Chainable.
      *
      * @return $this|DbQueryInterface
      */
@@ -698,9 +511,6 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
         // Protected; readable via 'magic' __get().
         'id',
         'isPreparedStatement',
-        'isMultiQuery',
-        'isRepeatStatement',
-        'sqlAppended',
         'hasLikeClause',
         'sql',
         'sqlTampered',

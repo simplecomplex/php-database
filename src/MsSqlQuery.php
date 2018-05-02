@@ -21,23 +21,22 @@ use SimpleComplex\Database\Exception\DbQueryException;
 /**
  * MS SQL query.
  *
- * Multi-query - multiple non-CRUD statements - is NOT supported by MS SQL.
- * @todo: is this correct?
- * @see DatabaseQuery
+ * Multi-query is NOT supported by MS SQL.
+ * For multi-query explanation, see:
+ * @see DbClientMultiInterface
  *
- * Inherited read-onlys:
+ * Inherited properties:
+ * @property-read string $id
  * @property-read bool $isPreparedStatement
- * @property-read bool $isMultiQuery
- * @property-read bool $isRepeatStatement
- * @property-read bool $sqlAppended
  * @property-read bool $hasLikeClause
  * @property-read string $sql
  * @property-read string $sqlTampered
  * @property-read array $arguments
+ * @property-read bool|null $statementClosed
  *
  * Own read-onlys:
- * @property-read int $queryTimeout
  * @property-read string $cursorMode
+ * @property-read int $queryTimeout
  * @property-read bool $sendDataChunked
  * @property-read int $sendChunksLimit
  * @property-read bool $getInsertId
@@ -59,13 +58,6 @@ class MsSqlQuery extends DatabaseQuery
      * @var string
      */
     const CLASS_RESULT = MsSqlResult::class;
-
-    /**
-     * MS SQL (Sqlsrv) does not support multi-query.
-     *
-     * @var bool
-     */
-    const MULTI_QUERY_SUPPORT = false;
 
     /**
      * Default query timeout.
@@ -118,6 +110,15 @@ class MsSqlQuery extends DatabaseQuery
      * @var int
      */
     const SEND_CHUNKS_LIMIT = 1000;
+
+    /**
+     * Additional query needed for getting last insert ID.
+     *
+     * @see MsSqlResult::insertId()
+     *
+     * @var string
+     */
+    const SQL_INSERT_ID = 'SELECT SCOPE_IDENTITY() AS IDENTITY_COLUMN_NAME';
 
     /**
      * Ought to be protected, but too costly since result instance
@@ -238,8 +239,8 @@ class MsSqlQuery extends DatabaseQuery
         $this->explorableIndex[] = 'sendChunksLimit';
 
         $this->getInsertId = !empty($options['get_insert_id']);
-        if ($this->getInsertId && strpos($sql, 'SELECT SCOPE_IDENTITY() AS IDENTITY_COLUMN_NAME') === false) {
-            $this->sqlTampered = $this->sql . '; SELECT SCOPE_IDENTITY() AS IDENTITY_COLUMN_NAME';
+        if ($this->getInsertId && strpos($sql, static::SQL_INSERT_ID) === false) {
+            $this->sqlTampered = $this->sql . '; ' . static::SQL_INSERT_ID;
         }
         $this->explorableIndex[] = 'getInsertId';
     }
@@ -259,6 +260,8 @@ class MsSqlQuery extends DatabaseQuery
      *
      * Otherwise - literal argument value - the only types are
      * integer, float, string (and binary, if non-empty arg $types).
+     *
+     * Chainable.
      *
      * Type qualifying argument
      * ------------------------
@@ -353,6 +356,8 @@ class MsSqlQuery extends DatabaseQuery
      *
      * Sql parameter marker is question mark.
      *
+     * Chainable.
+     *
      * Arg $types type:
      * - i: integer.
      * - d: float (double).
@@ -379,12 +384,6 @@ class MsSqlQuery extends DatabaseQuery
      */
     public function parameters(string $types, array $arguments) : DbQueryInterface
     {
-        if ($this->sqlAppended) {
-            throw new DbLogicalException(
-                $this->client->errorMessagePrefix()
-                . ' - passing parameters to base sql is illegal after another sql string has been appended.'
-            );
-        }
         if ($this->isPreparedStatement) {
             // Unset prepared statement arguments reference.
             $this->unsetReferences();

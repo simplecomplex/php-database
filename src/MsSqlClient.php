@@ -251,16 +251,18 @@ class MsSqlClient extends DatabaseClient
     /**
      * Resolve options.
      *
+     * Chainable.
+     *
      * Public to facilitate option debugging prior to attempt to connect.
      *
      * @see MsSqlClient::getConnection()
      * @see MsSqlClient::OPTION_SHORTHANDS
      * @see MsSqlClient::$optionsResolved
      *
-     * @return void
+     * @return DatabaseClient|MsSqlClient
      *      Throws exception on error.
      */
-    public function optionsResolve()
+    public function optionsResolve() : DatabaseClient
     {
         if (!$this->optionsResolved) {
             // Copy.
@@ -304,6 +306,7 @@ class MsSqlClient extends DatabaseClient
             // SQL Server Authentication.
             $this->optionsResolved['Authentication'] = 'SqlPassword';
         }
+        return $this;
     }
 
     /**

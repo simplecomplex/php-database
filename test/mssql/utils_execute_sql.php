@@ -89,6 +89,7 @@ $query = $database->query('INSERT INTO Persons (LastName, FirstName, Age) VALUES
     'get_insert_id' => true,
 ]);
 $query->prepare('', $arguments);
+$logger->debug('Query (mssql)' . "\n" . $inspect->variable($query));
 
 /*$arguments = [10];
 $query = $database->query('SELECT * FROM Persons WHERE ID = ?', [

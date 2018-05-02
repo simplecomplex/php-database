@@ -16,6 +16,8 @@ use SimpleComplex\Database\Interfaces\DbClientInterface;
 use SimpleComplex\Database\Interfaces\DbQueryInterface;
 
 /**
+ * Database client.
+ *
  * @property-read string $type
  * @property-read string $name
  * @property-read string $host
@@ -216,11 +218,7 @@ abstract class DatabaseClient extends Explorable implements DbClientInterface
      * @see MsSqlQuery::__construct()
      *
      * @param string $sql
-     * @param array $options {
-     *      @var bool $is_multi_query
-     *          True: arg $sql contains multiple queries.
-     *      @var * $*  See DbQueryInterface implementation's constructor.
-     * }
+     * @param array $options
      *
      * @return DbQueryInterface
      */
@@ -241,16 +239,18 @@ abstract class DatabaseClient extends Explorable implements DbClientInterface
     /**
      * Resolve options.
      *
+     * Chainable.
+     *
      * Public to facilitate option debugging prior to attempt to connect.
      *
      * @see DbClientInterface::getConnection()
      * @see DatabaseClient::OPTION_SHORTHANDS
      * @see DatabaseClient::$optionsResolved
      *
-     * @return void
+     * @return $this|DatabaseClient
      *      Throws exception on error.
      */
-    abstract public function optionsResolve() /*:void*/;
+    abstract public function optionsResolve() : DatabaseClient;
 
     /**
      * Resolve character set, for constructor.

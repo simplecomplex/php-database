@@ -30,10 +30,7 @@ interface DbClientInterface
      * Create a query.
      *
      * @param string $sql
-     * @param array $options {
-     *      @var bool $is_multi_query
-     *          True: arg $sql contains multiple queries.
-     * }
+     * @param array $options
      *
      * @return DbQueryInterface
      */

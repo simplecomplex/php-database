@@ -3,6 +3,8 @@ SimpleComplex/Database 1.x, 2018-05-02
 - Parameter value escaper shan't escape semicolon, not even when multi-query.
 - Result nextRow() is a result interface method.
 - MariaDb nextRow() shan't always fail.
+- All multi-query features moved to separate (extending) interfaces and classes;
+  MS SQL implementation no longer relates to multi-querying at all.
 
 SimpleComplex/Database 1.x, 2018-05-01
 --------------------------------------

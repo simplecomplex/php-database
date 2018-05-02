@@ -22,10 +22,7 @@ interface DbQueryInterface
      * @param \SimpleComplex\Database\Interfaces\DbClientInterface $client
      *      Reference to parent client.
      * @param string $sql
-     * @param array $options {
-     *      @var bool $is_multi_query
-     *          True: arg $sql contains multiple queries.
-     * }
+     * @param array $options
      *
      * @throws \InvalidArgumentException
      *      Arg $sql empty.
@@ -34,6 +31,8 @@ interface DbQueryInterface
 
     /**
      * Turn query into prepared statement and bind parameters.
+     *
+     * Chainable.
      *
      * Types:
      * - i: integer.
@@ -61,6 +60,8 @@ interface DbQueryInterface
      * The base sql remains reusable allowing more ->parameters()->execute(),
      * much like a prepared statement (except arguments aren't referred).
      *
+     * Chainable.
+     *
      * Types:
      * - i: integer.
      * - d: float (double).
@@ -70,7 +71,7 @@ interface DbQueryInterface
      * @param string $types
      *      Empty: uses string for all.
      * @param array $arguments
-     *      Values to substitute sql ?-parameters with.
+     *      Values to substitute sql parameter markers with.
      *      Arguments are consumed once, not referred.
      *
      * @return $this|DbQueryInterface

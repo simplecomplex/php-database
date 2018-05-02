@@ -22,29 +22,32 @@ use SimpleComplex\Database\Exception\DbQueryException;
  * Maria DB query.
  *
  * Multi-query is supported by Maria DB.
- * @see DatabaseQuery
- *
+ * For multi-query explanation, see:
+ * @see DbClientMultiInterface
  *
  * NB: Prepared statement requires the mysqlnd driver.
  * Because a result set will eventually be handled as \mysqli_result
  * via mysqli_stmt::get_result(); only available with mysqlnd.
  * @see http://php.net/manual/en/mysqli-stmt.get-result.php
  *
+ * Inherited properties:
+ * @property-read string $id
  * @property-read bool $isPreparedStatement
- * @property-read bool $isMultiQuery
- * @property-read bool $isRepeatStatement
- * @property-read bool $sqlAppended
  * @property-read bool $hasLikeClause
  * @property-read string $sql
  * @property-read string $sqlTampered
  * @property-read array $arguments
+ * @property-read bool|null $statementClosed
+ * @property-read bool $isMultiQuery
+ * @property-read bool $isRepeatStatement
+ * @property-read bool $sqlAppended
  *
  * Own read-onlys:
  * @property-read string $cursorMode
  *
  * @package SimpleComplex\Database
  */
-class MariaDbQuery extends DatabaseQuery
+class MariaDbQuery extends DatabaseQueryMulti
 {
     /**
      * Class name of \SimpleComplex\Database\MariaDbResult or extending class.
@@ -59,13 +62,6 @@ class MariaDbQuery extends DatabaseQuery
      * @var string
      */
     const CLASS_RESULT = MariaDbResult::class;
-
-    /**
-     * MySQL (MySQLi) supports multi-query.
-     *
-     * @var bool
-     */
-    const MULTI_QUERY_SUPPORT = true;
 
     /**
      * Result set cursor modes.
@@ -157,8 +153,6 @@ class MariaDbQuery extends DatabaseQuery
             $this->cursorMode = static::CURSOR_MODE_DEFAULT;
         }
         $this->explorableIndex[] = 'cursorMode';
-
-        $this->isMultiQuery = !empty($options['is_multi_query']);
     }
 
     public function __destruct()
@@ -170,6 +164,8 @@ class MariaDbQuery extends DatabaseQuery
 
     /**
      * Turn query into server-side prepared statement and bind parameters.
+     *
+     * Chainable.
      *
      * NB: Requires the mysqlnd driver.
      * Because a result set will eventually be handled as \mysqli_result
@@ -286,6 +282,15 @@ class MariaDbQuery extends DatabaseQuery
     /**
      * Any query must be executed, even non-prepared statement.
      *
+     * Actual execution
+     * ----------------
+     * Prepared statement:
+     * @see \mysqli_stmt::execute()
+     * Multi-query:
+     * @see \MySQLi::multi_query()
+     * Simple query:
+     * @see \MySQLi::real_query()
+     *
      * @return DbResultInterface|MariaDbResult
      *
      * @throws DbLogicalException
@@ -339,7 +344,6 @@ class MariaDbQuery extends DatabaseQuery
                 );
             }
         }
-        // @todo: an sql string containing more non-SELECT statements (like INSERT...; SELECT...) must probably also be executed as multi-query.
         else {
             // Allow re-connection.
             /** @var \MySQLi $mysqli */
