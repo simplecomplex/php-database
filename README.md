@@ -73,15 +73,19 @@ $client = new MariaDbClient(
     ]
 );
 
-// Insert a row ----------------------------------------------------------------
-/** @var \SimpleComplex\Database\MariaDbQuery $query */
-$query = $client->query('INSERT INTO person (lastName, firstName, birthday) VALUES (?, ?, ?)');
+// Insert two rows, using a prepared statement ---------------------------------
 $arguments = [
     'lastName' => 'Doe',
-    'firstName' => 'John',
+    'firstName' => 'Jane',
     'birthday' => '1970-01-01',
 ];
-$query->prepare('sss', $arguments);
+/** @var \SimpleComplex\Database\MariaDbQuery $query */
+$query = $client->query('INSERT INTO person (lastName, firstName, birthday) VALUES (?, ?, ?)')
+    ->prepare('sss', $arguments)
+    // Insert first row.
+    ->execute();
+$arguments['firstName'] = 'John';
+// Insert second row.
 /** @var \SimpleComplex\Database\MariaDbResult $result */
 $result = $query->execute();
 $affected_rows = $result->affectedRows();
@@ -102,10 +106,10 @@ $everybody = $result->fetchAll(Database::FETCH_ASSOC, ['list_by_column' => 'pers
 
 - PHP >=7.0
 - [PSR-3 Log](https://github.com/php-fig/log)
-- [SimpleComplex Inspect](https://github.com/simplecomplex/inspect)
 - [SimpleComplex Utils](https://github.com/simplecomplex/php-utils)
 
-MariaDB equires the [mysqlnd driver](https://dev.mysql.com/downloads/connector/php-mysqlnd) (PHP default since v. 5.4), or better.
+MariaDB equires the [mysqlnd driver](https://dev.mysql.com/downloads/connector/php-mysqlnd) (PHP default since v. 5.4),
+or better.
 
 #### Suggestions ####
 
