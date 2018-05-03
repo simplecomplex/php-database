@@ -16,6 +16,7 @@ Dependency::genericSet('database-broker', function() {
 
 // HTTP service responder.------------------------------------------------------
 
+/** @var \Psr\Container\ContainerInterface $container */
 $container = Dependency::container();
 
 /** @var \Psr\Log\LoggerInterface $logger */
@@ -33,9 +34,9 @@ $client = $db_broker->getClient(
     'mariadb',
     $config_store->get('database-info.test_scx_mariadb', '*')
 );
-$client->optionsResolve();
+//$client->optionsResolve();
 
-$logger->debug('Client (mariadb)' . "\n" . $inspect->variable($client));
+//$logger->debug('Client (mariadb)' . "\n" . $inspect->variable($client));
 
 /** @noinspection SqlResolve */
 /** @var \SimpleComplex\Database\MariaDbQuery $query */
@@ -71,7 +72,6 @@ $logger->debug('fetchArray' . "\n" . $inspect->variable([
 
 //SELECT LAST_INSERT_ID()
 
-return;
 
 $query = $client->query('SELECT * FROM parent');
 //$logger->debug('query' . "\n" . $inspect->variable($query));
@@ -79,7 +79,6 @@ $query = $client->query('SELECT * FROM parent');
 $result = $query->execute();
 //$logger->debug('result' . "\n" . $inspect->variable($result));
 
-$logger->debug('row' . "\n" . $inspect->variable($result->fetchArray()));
 $logger->debug('all rows' . "\n" . $inspect->variable($result->fetchAll(Database::FETCH_ASSOC, ['list_by_column' => 'id'])));
 
 return;

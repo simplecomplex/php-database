@@ -1,44 +1,113 @@
-# Database #
+## (PHP) Database ##
 
-- [Examples - Maria DB](#maria-db)
+- [Examples - MariaDB](#mariadb)
 - [Examples - MS SQL](#ms-sql)
 - [Requirements](#requirements)
 
-## Features ##
+### Scope ###
 
-### Design ###
+Compact cross-engine relational database abstraction which handles all common engine-specific peculiarities.
+
+### Features ###
+
 - uniform classes and methods across database engines
-- _client_, _query_, _result_ architecture
+- _client_ - _query_ - _result_ architecture
 - chainable methods
+- a database broker to keep track of all created clients
+- extensive error handling/logging and defensive code style
 
-### Client ###
+#### Client ####
+- auto-reconnect, when reasonable
+- safe transaction handling
+- all connection options supported
+
+#### Query ####
 - prepared statements
-- multi-queries (Maria DB)
 - ?-parameter substitution in non-prepared statements
 
+#### Result ####
+- affected rows, insert ID, number of rows, number of columns
+- fetch array/object, fetch all rows
+- moving to next set/row
 
-MariaDB prepared statement equires the mysqlnd driver.  
-Because a result set will eventually be handled as \mysqli_result
-via mysqli_stmt::get_result(); only available with mysqlnd.
+#### MariaDB specials ####
+- multi-queries, repeat query, append query
+- cursor mode _store_ vs. _use_
 
-@see http://php.net/manual/en/mysqli-stmt.get-result.php
+#### MS SQL specials ####
+- automated (array) arguments handling (SQLSRV_PARAM_IN etc.)
+- automated insert ID retrieval
+- cursor mode (SQLSRV_CURSOR_FORWARD etc.) defense against wrong use
 
-## Examples ##
+### Examples ###
 
-### Maria DB ###
+#### MariaDB ####
+
+```php
+// Get or create client via the broker -----------------------------------------
+/** @var \Psr\Container\ContainerInterface $container */
+$container = Dependency::container();
+/** @var \SimpleComplex\Database\DatabaseBroker $db_broker */
+$db_broker = $container->get('database-broker');
+/** @var \SimpleComplex\Database\MariaDbClient $client */
+$client = $db_broker->getClient(
+    'some-client',
+    'mariadb',
+    [
+        'host' => 'localhost',
+        'database' => 'some_database',
+        'user' => 'some-user',
+        'pass' => '∙∙∙∙∙∙∙∙',
+    ]
+);
+
+// Or create client directly ---------------------------------------------------
+use SimpleComplex\Database\MariaDbClient;
+$client = new MariaDbClient(
+    'some-client',
+    [
+        'host' => 'localhost',
+        'database' => 'some_database',
+        'user' => 'some-user',
+        'pass' => '∙∙∙∙∙∙∙∙',
+    ]
+);
+
+// Insert a row ----------------------------------------------------------------
+/** @var \SimpleComplex\Database\MariaDbQuery $query */
+$query = $client->query('INSERT INTO person (lastName, firstName, birthday) VALUES (?, ?, ?)');
+$arguments = [
+    'lastName' => 'Doe',
+    'firstName' => 'John',
+    'birthday' => '1970-01-01',
+];
+$query->prepare('sss', $arguments);
+/** @var \SimpleComplex\Database\MariaDbResult $result */
+$result = $query->execute();
+$affected_rows = $result->affectedRows();
+$insert_id = $result->insertId();
+
+// Get all rows, and list them by the 'personId' column ------------------------
+/** @var \SimpleComplex\Database\MariaDbQuery $query */
+$query = $client->query('SELECT * FROM person');
+/** @var \SimpleComplex\Database\MariaDbResult $result */
+$result = $query->execute();
+$everybody = $result->fetchAll(Database::FETCH_ASSOC, ['list_by_column' => 'personId']))
+```
+
+#### MS SQL ####
 
 
-### MS SQL ###
-
-
-## Requirements ##
+### Requirements ###
 
 - PHP >=7.0
 - [PSR-3 Log](https://github.com/php-fig/log)
 - [SimpleComplex Inspect](https://github.com/simplecomplex/inspect)
 - [SimpleComplex Utils](https://github.com/simplecomplex/php-utils)
 
-### Suggestions ###
+MariaDB equires the [mysqlnd driver](https://dev.mysql.com/downloads/connector/php-mysqlnd) (PHP default since v. 5.4), or better.
+
+#### Suggestions ####
 
 - PHP MySQLi extension, if using Maria DB/MySQL database
 - PHP (PECL) Sqlsrv extension, if using MS SQL database
