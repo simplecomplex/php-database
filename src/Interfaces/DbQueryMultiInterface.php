@@ -21,9 +21,8 @@ namespace SimpleComplex\Database\Interfaces;
 interface DbQueryMultiInterface extends DbQueryInterface
 {
     /**
-     * Repeat base sql, and substitute it's parameter markers by arguments.
-     *
-     * Non-prepared statement only.
+     * Non-prepared statement: repeat base sql, and substitute it's parameter
+     * markers by arguments.
      *
      * Turns the full query into multi-query.
      *
@@ -47,9 +46,7 @@ interface DbQueryMultiInterface extends DbQueryInterface
     public function repeat(string $types, array $arguments) : DbQueryMultiInterface;
 
     /**
-     * Append sql to previously defined sql.
-     *
-     * Non-prepared statement only.
+     * Non-prepared statement: append sql to previously defined sql.
      *
      * Turns the full query into multi-query.
      *

@@ -235,7 +235,7 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
      *
      * @return $this|DbQueryInterface
      */
-    public function hasLikeClause()
+    public function hasLikeClause() : DbQueryInterface
     {
         $this->hasLikeClause = true;
         return $this;

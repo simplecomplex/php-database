@@ -115,9 +115,8 @@ abstract class DatabaseQueryMulti extends DatabaseQuery implements DbQueryMultiI
     }
 
     /**
-     * Repeat base sql, and substitute it's parameter markers by arguments.
-     *
-     * Non-prepared statement only.
+     * Non-prepared statement: repeat base sql, and substitute it's parameter
+     * markers by arguments.
      *
      * Turns the full query into multi-query.
      *

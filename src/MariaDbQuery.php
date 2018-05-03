@@ -279,6 +279,30 @@ class MariaDbQuery extends DatabaseQueryMulti
     }
 
     /**
+     * Non-prepared statement: set query arguments, for direct parameter marker
+     * substitution in the sql string.
+     *
+     * @see DatabaseQueryMulti::parameters()
+     * @see DatabaseQuery::parameters()
+     */
+    // public function parameters(string $types, array $arguments) : DbQueryInterface
+
+    /**
+     * Non-prepared statement: repeat base sql, and substitute it's parameter
+     * markers by arguments.
+     *
+     * @see DatabaseQueryMulti::repeat()
+     */
+    // public function repeat(string $types, array $arguments) : DbQueryMultiInterface
+
+    /**
+     * Non-prepared statement: append sql to previously defined sql.
+     *
+     * @see DatabaseQueryMulti::append()
+     */
+    // public function append(string $sql, string $types, array $arguments) : DbQueryMultiInterface
+
+    /**
      * Any query must be executed, even non-prepared statement.
      *
      * Actual execution
@@ -361,6 +385,13 @@ class MariaDbQuery extends DatabaseQueryMulti
         /** @var DbResultInterface|MariaDbResult */
         return new $class_result($this, $mysqli, $this->statement);
     }
+
+    /**
+     * Flag that the sql contains LIKE clause(s).
+     *
+     * @see DatabaseQuery::hasLikeClause()
+     */
+    // public function hasLikeClause() : DbQueryInterface
 
     /**
      * @see DatabaseQuery::$statementClosed

@@ -110,6 +110,16 @@ class MsSqlClient extends DatabaseClient
     }
 
     /**
+     * Create a query.
+     *
+     * For options, see:
+     * @see MsSqlQuery::__construct()
+     *
+     * @see DatabaseClient::query()
+     */
+    // public function query(string $sql, array $options = []) : DbQueryInterface
+
+    /**
      * Errs if previously started transaction isn't committed/rolled-back.
      *
      * @return void

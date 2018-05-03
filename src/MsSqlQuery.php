@@ -500,6 +500,13 @@ class MsSqlQuery extends DatabaseQuery
     }
 
     /**
+     * Flag that the sql contains LIKE clause(s).
+     *
+     * @see DatabaseQuery::hasLikeClause()
+     */
+    // public function hasLikeClause() : DbQueryInterface
+
+    /**
      * @see DatabaseQuery::$statementClosed
      *
      * @see DatabaseQuery::unsetReferences()

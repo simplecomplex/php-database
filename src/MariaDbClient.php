@@ -154,6 +154,26 @@ class MariaDbClient extends DatabaseClientMulti
     }
 
     /**
+     * Create a query.
+     *
+     * For options, see:
+     * @see MariaDbQuery::__construct()
+     *
+     * @see DatabaseClient::query()
+     */
+    // public function query(string $sql, array $options = []) : DbQueryInterface
+
+    /**
+     * Create a multi-query.
+     *
+     * For options, see:
+     * @see MariaDbQuery::__construct()
+     *
+     * @see DatabaseClientMulti::multiQuery()
+     */
+    // public function multiQuery(string $sql, array $options = []) : DbQueryMultiInterface
+
+    /**
      * Errs if previously started transaction isn't committed/rolled-back.
      *
      * Fails unless InnoDB.
