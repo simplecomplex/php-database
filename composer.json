@@ -1,8 +1,8 @@
 {
     "name": "simplecomplex/database",
     "type": "library",
-    "description": "Database abstraction for transparent Maria DB, MS SQL interaction.",
-    "keywords": ["database", "Maria Db", "MySQL", "MS SQL"],
+    "description": "Database abstraction for transparent MariaDB, MS SQL interaction.",
+    "keywords": ["database", "MariaDB", "MySQL", "MS SQL"],
     "homepage": "https://github.com/simplecomplex/php-database",
     "license": "MIT",
     "authors": [
@@ -17,7 +17,7 @@
         "simplecomplex/utils": "^1.2 || dev-develop"
     },
     "suggest": {
-        "ext-mysqli": "PHP MySQLi extension is required when using MySQL/Maria DB databases.",
+        "ext-mysqli": "PHP MySQLi extension is required when using MySQL/MariaDB databases.",
         "ext-sqlsrv": "PHP (PECL) Sqlsrv extension is required when using MS SQL DB databases.",
         "simplecomplex/inspect": "Great for logging; better variable dumps and traces."
     },

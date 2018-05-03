@@ -14,7 +14,7 @@ use SimpleComplex\Database\Exception\DbConnectionException;
 use SimpleComplex\Database\Exception\DbInterruptionException;
 
 /**
- * Maria DB client.
+ * MariaDB client.
  *
  * Suppresses PHP errors with @ to prevent dupe messages in logs.
  *

@@ -1,14 +1,15 @@
-## (PHP) Database ##
+# (PHP) Database #
 
-- [Examples - MariaDB](#mariadb)
+- [Database engine specifics](#database-engine-specifics)
+- [Examples - MariaDB/MySQL](#mariadb-mysql)
 - [Examples - MS SQL](#ms-sql)
 - [Requirements](#requirements)
 
-### Scope ###
+## Scope ##
 
 Compact cross-engine relational database abstraction which handles common engine-specific peculiarities.
 
-### Features ###
+## Features ##
 
 - uniform classes and methods across database engines
 - _client_ - _query_ - _result_ architecture
@@ -16,32 +17,60 @@ Compact cross-engine relational database abstraction which handles common engine
 - a database broker to keep track of all created clients
 - extensive error handling/logging and defensive code style
 
-#### Client ####
+### Client ###
 - auto-reconnects, when reasonable
 - safe transaction handling
 - all connection options supported
 
-#### Query ####
+### Query ###
 - prepared statements
 - ?-parameter substitution in non-prepared statements
 
-#### Result ####
+### Result ###
 - affected rows, insert ID, number of rows, number of columns
 - fetch array/object, fetch all rows
 - moving to next set/row
 
-#### MariaDB specials ####
+### MariaDB/MySQL features ###
 - multi-queries, repeat query, append query
 - cursor mode _store_ vs. _use_
 
-#### MS SQL specials ####
+### MS SQL features ###
 - automated (array) arguments handling (SQLSRV_PARAM_IN etc.)
 - automated insert ID retrieval
 - cursor mode (SQLSRV_CURSOR_FORWARD etc.) defense against wrong use
 
-### Examples ###
+## Database engine specifics ##
 
-#### MariaDB ####
+### MariaDB/MySQL (PHP MySQLi/mysqlnd) ###
+
+A MariaDB/MySQL **multi-query** is an SQL string containing more queries delimited by semicolon.  
+Every query may be a SELECT (or likewise) producing a result set.
+
+PHP's MySQLi extension only offers native ?-parameter substitution for prepared statements,
+however the **``` MariaDb::parameters() ```** method mends that (_somewhat_); for simple statements.  
+Still, **go for prepared statements if security is the major concern**.
+
+The MySQLi extension encompasses around 100 functions/methods/properties.
+Fairly confusing; this abstraction only utilizes a dozen or so of them.
+
+### MS SQL (PHP Sqlsrv) ###
+
+PHP's Sqlsrv offers native ?-parameter substitution for simple statements as well as prepared statements.
+
+There's no MS SQL **cursor mode** which supports (INSERT) affected-rows as well as (SELECT) num-rows.  
+So care should be taken to use 'forward' when inserting and 'static' or 'keyset' when selecting;  
+use **``` MsSqlClient::query() ```** option ``` (string) cursor_mode ```.
+
+MS SQL/Sqlsrv has no direct means for getting insert ID, but supports likewise via a 'magic' query
+appended to an INSERT statement.  
+**``` MsSqlQuery ```**+**``` MsSqlResult ```** handles the issue transparently when **``` MsSqlClient::query() ```** receives the option ``` (bool) get_insert_id ```.
+
+The Sqlsrv extension is a well-made tight no-nonsense API consisting of 20-odd functions.
+
+## Examples ##
+
+### MariaDB/MySQL ###
 
 ```php
 // Get or create client via the broker -----------------------------------------
@@ -103,7 +132,7 @@ $everybody = $client->query('SELECT * FROM person')
     ->fetchAll(Database::FETCH_ASSOC, ['list_by_column' => 'personId']));
 ```
 
-#### MS SQL ####
+### MS SQL ###
 
 ```php
 // Create client via the broker ------------------------------------------------
@@ -129,7 +158,12 @@ $arguments = [
     'birthday' => '1970-01-01',
 ];
 /** @var \SimpleComplex\Database\MsSqlQuery $query */
-$query = $client->query('INSERT INTO person (lastName, firstName, birthday) VALUES (?, ?, ?)')
+$query = $client->query('INSERT INTO person (lastName, firstName, birthday) VALUES (?, ?, ?)', [
+        // SQLSRV_CURSOR_FORWARD to get affected rows.
+        'cursor_mode' => 'forward',
+        // For MsSqlResult::insertId().
+        'get_insert_id' => true,
+    ])
     ->prepare('sss', $arguments)
     // Insert first row.
     ->execute();
@@ -180,7 +214,7 @@ $everybody = $client->query('SELECT * FROM person')
     ->fetchAll(Database::FETCH_ASSOC, ['list_by_column' => 'personId']));
 ```
 
-### Requirements ###
+## Requirements ##
 
 - PHP >=7.0
 - [PSR-3 Log](https://github.com/php-fig/log)
@@ -189,8 +223,8 @@ $everybody = $client->query('SELECT * FROM person')
 MariaDB equires the [mysqlnd driver](https://dev.mysql.com/downloads/connector/php-mysqlnd) (PHP default since v. 5.4),
 or better.
 
-#### Suggestions ####
+### Suggestions ###
 
-- PHP MySQLi extension, if using Maria DB/MySQL database
+- PHP MySQLi extension, if using MariaDB/MySQL database
 - PHP (PECL) Sqlsrv extension, if using MS SQL database
 - [SimpleComplex Inspect](https://github.com/simplecomplex/inspect) Great for logging; better variable dumps and traces.

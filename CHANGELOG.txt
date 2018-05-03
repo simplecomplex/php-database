@@ -5,7 +5,10 @@ SimpleComplex/Database 1.x, 2018-05-03
   are/inherit from a single class (DbRuntimeException).
 - (prepared statement) Prevent de-referencing when using an arguments list
   whose value buckets aren't set as &$value.
-- Release 0.9.0.
+- MsSqlQuery case-insentive search for insert ID magic extra query.
+- Readme MS SQL example must have certain options for providing affected rows
+  and insert ID.
+- Readme describe engines.
 
 SimpleComplex/Database 1.x, 2018-05-02
 --------------------------------------

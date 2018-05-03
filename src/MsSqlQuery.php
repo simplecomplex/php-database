@@ -238,7 +238,7 @@ class MsSqlQuery extends DatabaseQuery
         $this->explorableIndex[] = 'sendChunksLimit';
 
         $this->getInsertId = !empty($options['get_insert_id']);
-        if ($this->getInsertId && strpos($sql, static::SQL_INSERT_ID) === false) {
+        if ($this->getInsertId && stripos($sql, static::SQL_INSERT_ID) === false) {
             $this->sqlTampered = $this->sql . '; ' . static::SQL_INSERT_ID;
         }
         $this->explorableIndex[] = 'getInsertId';

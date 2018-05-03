@@ -13,7 +13,7 @@ use SimpleComplex\Utils\Explorable;
 use SimpleComplex\Database\Interfaces\DbClientInterface;
 
 /**
- * Database abstraction decoupling Maria DB, MS SQL interaction.
+ * Database abstraction decoupling MariaDB, MS SQL interaction.
  *
  * @dependency-injection-container database-broker
  *      Suggested ID of the DatabaseBroker instance.

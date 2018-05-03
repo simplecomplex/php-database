@@ -15,7 +15,7 @@ use SimpleComplex\Database\Exception\DbQueryException;
 use SimpleComplex\Database\Exception\DbResultException;
 
 /**
- * Maria DB result.
+ * MariaDB result.
  *
  * MySQLi's default stored procedure result handling is not used,
  * because binding result vars is useless; instead the result gets stored.

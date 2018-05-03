@@ -18,9 +18,9 @@ use SimpleComplex\Database\Exception\DbInterruptionException;
 use SimpleComplex\Database\Exception\DbQueryException;
 
 /**
- * Maria DB query.
+ * MariaDB query.
  *
- * Multi-query is supported by Maria DB.
+ * Multi-query is supported by MariaDB.
  * For multi-query explanation, see:
  * @see DbClientMultiInterface
  *
