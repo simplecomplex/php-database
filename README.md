@@ -91,16 +91,94 @@ $result = $query->execute();
 $affected_rows = $result->affectedRows();
 $insert_id = $result->insertId();
 
-// Get all rows, and list them by the 'personId' column ------------------------
-/** @var \SimpleComplex\Database\MariaDbQuery $query */
-$query = $client->query('SELECT * FROM person');
-/** @var \SimpleComplex\Database\MariaDbResult $result */
-$result = $query->execute();
-$everybody = $result->fetchAll(Database::FETCH_ASSOC, ['list_by_column' => 'personId']))
+// Get a row, using a simple statement -----------------------------------------
+$somebody = $client->query('SELECT * FROM person WHERE personId > ? AND personId < ?')
+    ->parameters('ii', [1, 3])
+    ->execute()
+    ->fetchArray();
+
+// Get all rows, using a simple statement, and list them by 'personId' column --
+$everybody = $client->query('SELECT * FROM person')
+    ->execute()
+    ->fetchAll(Database::FETCH_ASSOC, ['list_by_column' => 'personId']));
 ```
 
 #### MS SQL ####
 
+```php
+// Create client via the broker ------------------------------------------------
+/** @var \SimpleComplex\Database\MsSqlClient $client */
+$client = Dependency::container()
+    ->get('database-broker')
+    ->getClient(
+        'some-client',
+        'mssql',
+        [
+            'host' => 'localhost',
+            'database' => 'some_database',
+            'user' => 'some-user',
+            'pass' => '∙∙∙∙∙∙∙∙',
+        ]
+    );
+
+// Insert two rows, using a prepared statement
+// and arguments that aren't declared as sqlsrv typed arrays -------------------
+$arguments = [
+    'lastName' => 'Doe',
+    'firstName' => 'Jane',
+    'birthday' => '1970-01-01',
+];
+/** @var \SimpleComplex\Database\MsSqlQuery $query */
+$query = $client->query('INSERT INTO person (lastName, firstName, birthday) VALUES (?, ?, ?)')
+    ->prepare('sss', $arguments)
+    // Insert first row.
+    ->execute();
+$arguments['firstName'] = 'John';
+// Insert second row.
+/** @var \SimpleComplex\Database\MsSqlResult $result */
+$result = $query->execute();
+$affected_rows = $result->affectedRows();
+$insert_id = $result->insertId();
+
+// Insert two rows, using a prepared statement
+// and that _are_ declared as sqlsrv typed arrays ------------------------------
+$arguments = [
+    [
+        'Doe',
+        SQLSRV_PARAM_IN,
+        null,
+        SQLSRV_SQLTYPE_VARCHAR('max')
+    ],
+    'firstName' => [
+        'Jane',
+        SQLSRV_PARAM_IN,
+        null,
+        SQLSRV_SQLTYPE_VARCHAR('max')
+    ],
+    // Well, incomplete, but the $types arg for prepare() fixes that.
+    [
+        '1970-01-01',
+    ],
+];
+$query = $client->query('INSERT INTO person (lastName, firstName, birthday) VALUES (?, ?, ?)')
+    ->prepare('sss', $arguments)
+    // Insert first row.
+    ->execute();
+// Insert second row.
+$arguments['firstName'][0] = 'John';
+$query->execute();
+
+// Get a row, using a simple statement -----------------------------------------
+$somebody = $client->query('SELECT * FROM person WHERE personId > ? AND personId < ?')
+    ->parameters('ii', [1, 3])
+    ->execute()
+    ->fetchArray();
+
+// Get all rows, using a simple statement, and list them by 'personId' column --
+$everybody = $client->query('SELECT * FROM person')
+    ->execute()
+    ->fetchAll(Database::FETCH_ASSOC, ['list_by_column' => 'personId']));
+```
 
 ### Requirements ###
 

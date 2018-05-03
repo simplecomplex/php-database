@@ -694,8 +694,10 @@ class MsSqlQuery extends DatabaseQuery
         }
 
         if ($args_typed) {
-            // Support assoc array; sqlsrv_prepare() doesn't.
-            if ($arguments && !ctype_digit('' . join(array_keys($arguments)))) {
+            if ($this->isPreparedStatement) {
+                // Support assoc array; sqlsrv_prepare() doesn't.
+                // And prevent de-referencing when using an arguments list whose
+                // value buckets aren't set as &$value.
                 $args = [];
                 $i = -1;
                 foreach ($arguments as &$arg) {
@@ -703,22 +705,12 @@ class MsSqlQuery extends DatabaseQuery
                     $args[++$i][0] =& $arg[0];
                 }
                 unset($arg);
-                if ($this->isPreparedStatement) {
-                    $this->arguments['prepared'] =& $args;
-                } else {
-                    // Don't refer; cannot unset the reference on later execute()
-                    // because setting to an unset instance var is PHP illegal.
-                    $this->arguments['simple'] = $args;
-                }
+                $this->arguments['prepared'] =& $args;
             }
+            // Simple statement; don't refer.
+            // Support assoc array; sqlsrv_query() doesn't.
             else {
-                if ($this->isPreparedStatement) {
-                    $this->arguments['prepared'] =& $arguments;
-                } else {
-                    // Don't refer; cannot unset the reference on later execute()
-                    // because setting to an unset instance var is PHP illegal.
-                    $this->arguments['simple'] = $arguments;
-                }
+                $this->arguments['simple'] = array_values($arguments);
             }
 
             return;

@@ -251,16 +251,14 @@ class MariaDbQuery extends DatabaseQueryMulti
 
         if ($n_params) {
             // Support assoc array; \mysqli_stmt::bind_param() doesn't.
-            if ($arguments && !ctype_digit('' . join(array_keys($arguments)))) {
-                $args = [];
-                foreach ($arguments as &$arg) {
-                    $args[] =& $arg;
-                }
-                unset($arg);
-                $this->arguments['prepared'] =& $args;
-            } else {
-                $this->arguments['prepared'] =& $arguments;
+            // And prevent de-referencing when using an arguments list whose
+            // value buckets aren't set as &$value.
+            $args = [];
+            foreach ($arguments as &$arg) {
+                $args[] =& $arg;
             }
+            unset($arg);
+            $this->arguments['prepared'] =& $args;
 
             if (!@$mysqli_stmt->bind_param($tps, ...$this->arguments['prepared'])) {
                 // Unset prepared statement arguments reference.

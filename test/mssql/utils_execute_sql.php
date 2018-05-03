@@ -48,18 +48,21 @@ $age = 117;
 $arguments = [
     [
         &$last_name,
+        //'Mathiasen',
         SQLSRV_PARAM_IN,
         null,
         SQLSRV_SQLTYPE_VARCHAR('max')
     ],
     [
         &$first_name,
+        //'Jacob Friis',
         SQLSRV_PARAM_IN,
         null,
         SQLSRV_SQLTYPE_VARCHAR('max')
     ],
-    'age' => [
+    [
         &$age,
+        //15,
         SQLSRV_PARAM_IN,
         null,
         SQLSRV_SQLTYPE_SMALLINT
@@ -80,7 +83,13 @@ $arguments = [
         SQLSRV_SQLTYPE_SMALLINT
     ]
 ];*/
-
+/*
+$arguments = [
+    'lastName' => 'Mathiasen',
+    'firstName' => 'Jacob Friis',
+    'age' => 118,
+];
+*/
 /** @noinspection SqlResolve */
 /** @var \SimpleComplex\Database\MsSqlQuery $query */
 $query = $database->query('INSERT INTO Persons (LastName, FirstName, Age) VALUES (?, ?, ?)', [
@@ -88,8 +97,9 @@ $query = $database->query('INSERT INTO Persons (LastName, FirstName, Age) VALUES
     'cursor_mode' => 'forward',
     'get_insert_id' => true,
 ]);
-$query->prepare('', $arguments);
-$logger->debug('Query (mssql)' . "\n" . $inspect->variable($query));
+//$query->prepare('ssi', $arguments);
+$query->parameters('ssi', $arguments);
+//$logger->debug('Query (mssql)' . "\n" . $inspect->variable($query));
 
 /*$arguments = [10];
 $query = $database->query('SELECT * FROM Persons WHERE ID = ?', [
@@ -108,8 +118,13 @@ $query = $database->query('SELECT * FROM Persons WHERE ID = ?', [
 //$logger->debug('' . "\n" . $inspect->variable($query->preparedStatementArgs));
 
 //$variable = $query;
-$query->execute();
+//$query->execute();
 $age = 99;
+//$arguments['age'] = 99;
+//$arguments['age'][0] = 31;
+//$logger->debug('Query (mssql)' . "\n" . $inspect->variable($query));
+//$arguments[2][0] = 51;
+//$logger->debug('Query (mssql)' . "\n" . $inspect->variable($query));
 $result = $query->execute();
 
 $logger->debug('affectedRows' . "\n" . $inspect->variable($result->affectedRows()));
