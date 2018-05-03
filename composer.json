@@ -1,7 +1,7 @@
 {
     "name": "simplecomplex/database",
     "type": "library",
-    "description": "Database abstraction decoupling Maria DB, MS SQL interaction.",
+    "description": "Database abstraction for transparent Maria DB, MS SQL interaction.",
     "keywords": ["database", "Maria Db", "MySQL", "MS SQL"],
     "homepage": "https://github.com/simplecomplex/php-database",
     "license": "MIT",

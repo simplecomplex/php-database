@@ -6,7 +6,7 @@
 
 ### Scope ###
 
-Compact cross-engine relational database abstraction which handles all common engine-specific peculiarities.
+Compact cross-engine relational database abstraction which handles common engine-specific peculiarities.
 
 ### Features ###
 
@@ -17,7 +17,7 @@ Compact cross-engine relational database abstraction which handles all common en
 - extensive error handling/logging and defensive code style
 
 #### Client ####
-- auto-reconnect, when reasonable
+- auto-reconnects, when reasonable
 - safe transaction handling
 - all connection options supported
 
