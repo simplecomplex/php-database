@@ -14,12 +14,12 @@
     "require": {
         "php": ">=7.0",
         "psr/log": "^1.0",
-        "simplecomplex/utils": "^1.2 || dev-develop",
-        "simplecomplex/inspect": "^2.2 || dev-develop"
+        "simplecomplex/utils": "^1.2 || dev-develop"
     },
     "suggest": {
         "ext-mysqli": "PHP MySQLi extension is required when using MySQL/Maria DB databases.",
-        "ext-sqlsrv": "PHP (PECL) Sqlsrv extension is required when using MS SQL DB databases."
+        "ext-sqlsrv": "PHP (PECL) Sqlsrv extension is required when using MS SQL DB databases.",
+        "simplecomplex/inspect": "Great for logging; better variable dumps and traces."
     },
     "autoload": {
         "psr-4": {

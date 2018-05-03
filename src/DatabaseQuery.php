@@ -449,14 +449,7 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
      */
     public function log(string $method, bool $sqlOnly = false)
     {
-        $sql_only = $sqlOnly;
-        if (!$sql_only) {
-            try {
-                $sql_only = !Dependency::container()->has('inspect');
-            } catch (\Throwable $ignore) {
-                $sql_only = false;
-            }
-        }
+        $sql_only = $sqlOnly ? true : !Dependency::container()->has('inspect');
         $this->client->log(
             $this->errorMessagePrefix() . ' - ' . $method . '(), ' . (!$sqlOnly ? 'query' : 'sql') . ':',
             !$sql_only ? $this : substr(
