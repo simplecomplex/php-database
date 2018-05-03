@@ -1,3 +1,9 @@
+SimpleComplex/Database 1.x, 2018-05-03
+--------------------------------------
+- No custom LogicExceptions; logical exceptions should be detected during
+  dev/test, and it's better that all (unexpected) database exceptions
+  are/inherit from a single class (DbRuntimeException).
+
 SimpleComplex/Database 1.x, 2018-05-02
 --------------------------------------
 - Parameter value escaper shan't escape semicolon, not even when multi-query.

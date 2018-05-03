@@ -9,8 +9,6 @@ declare(strict_types=1);
 
 namespace SimpleComplex\Database;
 
-use SimpleComplex\Database\Exception\DbLogicalException;
-use SimpleComplex\Database\Exception\DbOptionException;
 use SimpleComplex\Database\Exception\DbRuntimeException;
 use SimpleComplex\Database\Exception\DbConnectionException;
 use SimpleComplex\Database\Exception\DbInterruptionException;
@@ -163,14 +161,14 @@ class MariaDbClient extends DatabaseClientMulti
      * @return void
      *      Throws exception on failure.
      *
-     * @throws DbLogicalException
+     * @throws \LogicException
      *      Previously started transaction isn't committed/rolled-back.
      * @throws DbRuntimeException
      */
     public function transactionStart()
     {
         if ($this->transactionStarted) {
-            throw new DbLogicalException(
+            throw new \LogicException(
                 $this->errorMessagePrefix() . ' - previously started transaction isn\'t committed/rolled-back.'
             );
         }
@@ -303,7 +301,7 @@ class MariaDbClient extends DatabaseClientMulti
      * @return $this|DatabaseClient|MariaDbClient
      *      Throws exception on error.
      *
-     * @throws DbOptionException
+     * @throws \LogicException
      *      Invalid option.
      */
     public function optionsResolve() : DatabaseClient
@@ -332,14 +330,14 @@ class MariaDbClient extends DatabaseClientMulti
             foreach ($options as $name => $value) {
                 // Name must be (string) name, not constant value.
                 if (ctype_digit('' . $name)) {
-                    throw new DbOptionException(
+                    throw new \LogicException(
                         $this->errorMessagePrefix()
                         . ' - option[' . $name . '] is integer, must be string name of PHP constant.'
                     );
                 }
                 $constant = @constant($name);
                 if ($constant === null) {
-                    throw new DbOptionException(
+                    throw new \LogicException(
                         $this->errorMessagePrefix() . ' - invalid option[' . $name . '] value[' . $value
                         . '], there\'s no PHP constant by that name.'
                     );
@@ -354,14 +352,14 @@ class MariaDbClient extends DatabaseClientMulti
                 foreach ($this->flags as $name) {
                     // Name must be (string) name, not constant value.
                     if (ctype_digit('' . $name)) {
-                        throw new DbOptionException(
+                        throw new \LogicException(
                             $this->errorMessagePrefix() . ' - flag[' . $name
                             . '] is integer, must be string name of MYSQLI_CLIENT_* PHP constant.'
                         );
                     }
                     $constant = @constant($name);
                     if ($constant === null) {
-                        throw new DbOptionException(
+                        throw new \LogicException(
                             $this->errorMessagePrefix()
                             . ' - invalid flag[' . $name . '], there\'s no PHP constant by that name.'
                         );
@@ -414,7 +412,7 @@ class MariaDbClient extends DatabaseClientMulti
      *      False: no connection and not arg $reConnect.
      *      \MySQLi: connection (re-)established.
      *
-     * @throws DbOptionException
+     * @throws \LogicException
      *      Propagated.
      *      Failure to set option.
      * @throws DbConnectionException
@@ -443,7 +441,7 @@ class MariaDbClient extends DatabaseClientMulti
 
             foreach ($this->optionsResolved as $int => $value) {
                 if (!@$mysqli->options($int, $value)) {
-                    throw new DbOptionException(
+                    throw new \LogicException(
                         $this->errorMessagePrefix()
                         . ' - failed to set ' . $this->type . ' option[' . $int . '] value[' . $value
                         // @todo: failure to set MySQLi connect options spell ordinary error or connect_error?
@@ -473,7 +471,7 @@ class MariaDbClient extends DatabaseClientMulti
             $this->mySqlI = $mysqli;
 
             if (!@$this->mySqlI->set_charset($this->characterSet)) {
-                throw new DbOptionException(
+                throw new \LogicException(
                     $this->errorMessagePrefix()
                     . ' - setting connection character set[' . $this->characterSet
                     . '] failed, with error: ' . $this->nativeError() . '.'

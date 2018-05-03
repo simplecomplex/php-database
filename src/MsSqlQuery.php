@@ -13,7 +13,6 @@ use SimpleComplex\Database\Interfaces\DbClientInterface;
 use SimpleComplex\Database\Interfaces\DbQueryInterface;
 use SimpleComplex\Database\Interfaces\DbResultInterface;
 
-use SimpleComplex\Database\Exception\DbLogicalException;
 use SimpleComplex\Database\Exception\DbRuntimeException;
 use SimpleComplex\Database\Exception\DbInterruptionException;
 use SimpleComplex\Database\Exception\DbQueryException;
@@ -201,7 +200,7 @@ class MsSqlQuery extends DatabaseQuery
      * }
      *
      * @throws \InvalidArgumentException
-     *      Propagated.
+     *      Propagated; arg $sql empty.
      *      Unsupported 'cursor_mode'.
      */
     public function __construct(DbClientInterface $client, string $sql, array $options = [])
@@ -210,7 +209,7 @@ class MsSqlQuery extends DatabaseQuery
 
         if (!empty($options['cursor_mode'])) {
             if (!in_array($options['cursor_mode'], static::CURSOR_MODES, true)) {
-                throw new DbLogicalException(
+                throw new \InvalidArgumentException(
                     $this->client->errorMessagePrefix()
                     . ' query option \'cursor_mode\' value[' . $options['cursor_mode'] . '] is invalid.'
                 );
@@ -289,7 +288,7 @@ class MsSqlQuery extends DatabaseQuery
      *
      * @throws \SimpleComplex\Database\Exception\DbConnectionException
      *      Propagated.
-     * @throws DbLogicalException
+     * @throws \LogicException
      *      Method called more than once for this query.
      * @throws \InvalidArgumentException
      *      Propagated; parameters/arguments count mismatch.
@@ -301,7 +300,7 @@ class MsSqlQuery extends DatabaseQuery
         if ($this->isPreparedStatement) {
             // Unset prepared statement arguments reference.
             $this->unsetReferences();
-            throw new DbLogicalException(
+            throw new \LogicException(
                 $this->client->errorMessagePrefix() . ' - query cannot prepare statement more than once.'
             );
         }
@@ -373,9 +372,7 @@ class MsSqlQuery extends DatabaseQuery
      *
      * @return $this|DbQueryInterface
      *
-     * @throws DbLogicalException
-     *      Base sql has been repeated.
-     *      Another sql string has been appended to base sql.
+     * @throws \LogicException
      *      Query is prepared statement.
      * @throws \InvalidArgumentException
      *      Propagated; parameters/arguments count mismatch.
@@ -387,7 +384,7 @@ class MsSqlQuery extends DatabaseQuery
         if ($this->isPreparedStatement) {
             // Unset prepared statement arguments reference.
             $this->unsetReferences();
-            throw new DbLogicalException(
+            throw new \LogicException(
                 $this->client->errorMessagePrefix()
                 . ' - passing parameters to prepared statement is illegal except via call to prepare().'
             );
@@ -410,7 +407,7 @@ class MsSqlQuery extends DatabaseQuery
      *
      * @return DbResultInterface|MsSqlResult
      *
-     * @throws DbLogicalException
+     * @throws \LogicException
      *      Query statement previously closed.
      * @throws DbInterruptionException
      *      Is prepared statement and connection lost.
@@ -422,7 +419,7 @@ class MsSqlQuery extends DatabaseQuery
     {
         // (Sqlsrv) Even a simple statement is a 'statement'.
         if ($this->statementClosed) {
-            throw new DbLogicalException(
+            throw new \LogicException(
                 $this->client->errorMessagePrefix()
                 . ' - query can\'t execute previously closed statement.'
             );

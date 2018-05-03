@@ -11,7 +11,6 @@ namespace SimpleComplex\Database;
 
 use SimpleComplex\Database\Interfaces\DbQueryInterface;
 
-use SimpleComplex\Database\Exception\DbLogicalException;
 use SimpleComplex\Database\Exception\DbRuntimeException;
 use SimpleComplex\Database\Exception\DbResultException;
 
@@ -65,8 +64,9 @@ class MsSqlResult extends DatabaseResult
      *
      * @return int
      *
-     * @throws DbLogicalException
+     * @throws DbRuntimeException
      *      No count, (probably) not a CRUD query.
+     * @throws \LogicException
      *      Bad query class cursor mode.
      * @throws DbResultException
      */
@@ -82,16 +82,16 @@ class MsSqlResult extends DatabaseResult
         $this->query->close();
         $this->query->log(__FUNCTION__);
         if ($count === -1) {
-            throw new DbLogicalException(
+            throw new DbRuntimeException(
                 $this->query->errorMessagePrefix()
                 . ' - rejected counting affected rows (returned -1), probably not a CRUD query.'
             );
         }
         // Cursor mode must be SQLSRV_CURSOR_FORWARD ('forward').
         if ($this->query->cursorMode != SQLSRV_CURSOR_FORWARD) {
-            throw new DbLogicalException(
+            throw new \LogicException(
                 $this->query->client->errorMessagePrefix() . ' - cursor mode[' . $this->query->cursorMode
-                . '] forbids getting affected rows.'
+                . '] forbids getting affected rows, use SQLSRV_CURSOR_FORWARD (\'forward\') instead.'
             );
         }
         throw new DbResultException(
@@ -118,7 +118,7 @@ class MsSqlResult extends DatabaseResult
      * @return mixed|null
      *      Null: The query didn't trigger setting an ID.
      *
-     * @throws DbLogicalException
+     * @throws \LogicException
      *      Sql misses secondary ID select statement.
      * @throws \InvalidArgumentException
      *      Invalid arg $getAsType value.
@@ -224,7 +224,7 @@ class MsSqlResult extends DatabaseResult
                 'SELECT SCOPE_IDENTITY() AS IDENTITY_COLUMN_NAME'
             ) === false
         ) {
-            throw new DbLogicalException(
+            throw new \LogicException(
                 $this->query->errorMessagePrefix() . ' - failed getting insert ID'
                 . ', sql misses secondary ID select statement, see query option \'get_insert_id\''
             );
@@ -244,7 +244,7 @@ class MsSqlResult extends DatabaseResult
      *
      * @return int
      *
-     * @throws DbLogicalException
+     * @throws \LogicException
      *      Statement cursor mode not 'static' or 'keyset'.
      * @throws DbResultException
      */
@@ -264,9 +264,10 @@ class MsSqlResult extends DatabaseResult
             case SQLSRV_CURSOR_KEYSET:
                 break;
             default:
-                throw new DbLogicalException(
+                throw new \LogicException(
                     $this->query->client->errorMessagePrefix() . ' - cursor mode[' . $this->query->cursorMode
-                    . '] forbids getting number of rows.'
+                    . '] forbids getting number of rows'
+                    . ', use SQLSRV_CURSOR_STATIC (\'static\') or SQLSRV_CURSOR_KEYSET (\'static\') instead.'
                 );
         }
         throw new DbResultException(
@@ -370,7 +371,7 @@ class MsSqlResult extends DatabaseResult
      *
      * @return array
      *
-     * @throws DbLogicalException
+     * @throws \LogicException
      *      Providing 'list_by_column' option when fetching as numeric array.
      * @throws \InvalidArgumentException
      *      Providing 'list_by_column' option and no such column in result row.
@@ -386,7 +387,7 @@ class MsSqlResult extends DatabaseResult
                     // Unset prepared statement arguments reference.
                     $this->query->close();
                     $this->query->log(__FUNCTION__);
-                    throw new DbLogicalException(
+                    throw new \LogicException(
                         $this->query->client->errorMessagePrefix()
                         . ' - arg $options \'list_by_column\' is not supported when fetching as numeric arrays.'
                     );

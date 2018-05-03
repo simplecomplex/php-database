@@ -11,7 +11,7 @@ namespace SimpleComplex\Database;
 
 use SimpleComplex\Database\Interfaces\DbQueryInterface;
 
-use SimpleComplex\Database\Exception\DbLogicalException;
+use SimpleComplex\Database\Exception\DbQueryException;
 use SimpleComplex\Database\Exception\DbResultException;
 
 /**
@@ -86,7 +86,7 @@ class MariaDbResult extends DatabaseResult
      *
      * @return int
      *
-     * @throws DbLogicalException
+     * @throws DbQueryException
      *      The query failed.
      * @throws DbResultException
      */
@@ -105,9 +105,9 @@ class MariaDbResult extends DatabaseResult
         $this->free();
         $this->query->log(__FUNCTION__);
         if ($count === -1) {
-            throw new DbLogicalException(
+            throw new DbQueryException(
                 $this->query->errorMessagePrefix()
-                . ' - rejected counting affected rows (returned -1), query failed.'
+                . ' - rejected counting affected rows (returned -1), the query failed.'
             );
         }
         throw new DbResultException(
@@ -196,7 +196,7 @@ class MariaDbResult extends DatabaseResult
      *
      * @return int
      *
-     * @throws DbLogicalException
+     * @throws \LogicException
      *      Statement cursor mode not 'store'.
      * @throws DbResultException
      *      Propagated; failure to get/store/use result set.
@@ -205,7 +205,7 @@ class MariaDbResult extends DatabaseResult
     public function numRows() : int
     {
         if ($this->query->cursorMode != 'use') {
-            throw new DbLogicalException(
+            throw new \LogicException(
                 $this->query->client->errorMessagePrefix() . ' - cursor mode[' . $this->query->cursorMode
                 . '] forbids getting number of rows.'
             );
@@ -341,7 +341,7 @@ class MariaDbResult extends DatabaseResult
      *
      * @throws DbResultException
      *      Propagated; failure to get/store/use result set.
-     * @throws DbLogicalException
+     * @throws \LogicException
      *      Providing 'list_by_column' option when fetching as numeric array.
      * @throws \InvalidArgumentException
      *      Providing 'list_by_column' option and no such column in result row.
@@ -360,7 +360,7 @@ class MariaDbResult extends DatabaseResult
                     $this->query->close();
                     $this->free();
                     $this->query->log(__FUNCTION__);
-                    throw new DbLogicalException(
+                    throw new \LogicException(
                         $this->query->client->errorMessagePrefix()
                         . ' - arg $options \'list_by_column\' is not supported when fetching as numeric arrays.'
                     );

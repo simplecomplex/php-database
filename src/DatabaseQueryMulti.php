@@ -13,8 +13,6 @@ use SimpleComplex\Database\Interfaces\DbClientInterface;
 use SimpleComplex\Database\Interfaces\DbQueryInterface;
 use SimpleComplex\Database\Interfaces\DbQueryMultiInterface;
 
-use SimpleComplex\Database\Exception\DbLogicalException;
-
 /**
  * Database query supporting multi-query.
  *
@@ -64,7 +62,7 @@ abstract class DatabaseQueryMulti extends DatabaseQuery implements DbQueryMultiI
      * }
      *
      * @throws \InvalidArgumentException
-     *      Arg $sql empty.
+     *      Propagated; arg $sql empty.
      */
     public function __construct(DbClientInterface $client, string $sql, array $options = [])
     {
@@ -91,7 +89,7 @@ abstract class DatabaseQueryMulti extends DatabaseQuery implements DbQueryMultiI
      *
      * @return $this|DbQueryInterface
      *
-     * @throws DbLogicalException
+     * @throws \LogicException
      *      Base sql has been repeated.
      *      Another sql string has been appended to base sql.
      *      Propagated.
@@ -101,13 +99,13 @@ abstract class DatabaseQueryMulti extends DatabaseQuery implements DbQueryMultiI
     public function parameters(string $types, array $arguments) : DbQueryInterface
     {
         if ($this->isRepeatStatement) {
-            throw new DbLogicalException(
+            throw new \LogicException(
                 $this->client->errorMessagePrefix()
                 . ' - passing parameters to base sql is illegal when base sql has been repeated.'
             );
         }
         if ($this->sqlAppended) {
-            throw new DbLogicalException(
+            throw new \LogicException(
                 $this->client->errorMessagePrefix()
                 . ' - passing parameters to base sql is illegal after another sql string has been appended.'
             );
@@ -139,7 +137,7 @@ abstract class DatabaseQueryMulti extends DatabaseQuery implements DbQueryMultiI
      *
      * @return $this|DbQueryMultiInterface
      *
-     * @throws DbLogicalException
+     * @throws \LogicException
      *      Query class doesn't support multi-query.
      *      Another sql string has been appended to base sql.
      *      Query is prepared statement.
@@ -149,14 +147,14 @@ abstract class DatabaseQueryMulti extends DatabaseQuery implements DbQueryMultiI
     public function repeat(string $types, array $arguments) : DbQueryMultiInterface
     {
         if ($this->sqlAppended) {
-            throw new DbLogicalException(
+            throw new \LogicException(
                 $this->client->errorMessagePrefix()
                 . ' - repeating base sql is illegal after another sql string has been appended.'
             );
         }
         if ($this->isPreparedStatement) {
             $this->unsetReferences();
-            throw new DbLogicalException(
+            throw new \LogicException(
                 $this->client->errorMessagePrefix() . ' - appending to prepared statement is illegal.'
             );
         }
@@ -195,8 +193,7 @@ abstract class DatabaseQueryMulti extends DatabaseQuery implements DbQueryMultiI
      *
      * @return $this|DbQueryMultiInterface
      *
-     * @throws DbLogicalException
-     *      Query class doesn't support multi-query.
+     * @throws \LogicException
      *      Query is prepared statement.
      * @throws \InvalidArgumentException
      *      Arg $sql empty.
@@ -212,7 +209,7 @@ abstract class DatabaseQueryMulti extends DatabaseQuery implements DbQueryMultiI
 
         if ($this->isPreparedStatement) {
             $this->unsetReferences();
-            throw new DbLogicalException(
+            throw new \LogicException(
                 $this->client->errorMessagePrefix() . ' - appending to prepared statement is illegal.'
             );
         }

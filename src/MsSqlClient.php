@@ -9,7 +9,6 @@ declare(strict_types=1);
 
 namespace SimpleComplex\Database;
 
-use SimpleComplex\Database\Exception\DbLogicalException;
 use SimpleComplex\Database\Exception\DbRuntimeException;
 use SimpleComplex\Database\Exception\DbConnectionException;
 use SimpleComplex\Database\Exception\DbInterruptionException;
@@ -116,14 +115,14 @@ class MsSqlClient extends DatabaseClient
      * @return void
      *      Throws exception on failure.
      *
-     * @throws DbLogicalException
+     * @throws \LogicException
      *      Previously started transaction isn't committed/rolled-back.
      * @throws DbRuntimeException
      */
     public function transactionStart()
     {
         if ($this->transactionStarted) {
-            throw new DbLogicalException(
+            throw new \LogicException(
                 $this->errorMessagePrefix() . ' - previously started transaction isn\'t committed/rolled-back.'
             );
         }

@@ -13,7 +13,6 @@ use SimpleComplex\Database\Interfaces\DbClientInterface;
 use SimpleComplex\Database\Interfaces\DbQueryInterface;
 use SimpleComplex\Database\Interfaces\DbResultInterface;
 
-use SimpleComplex\Database\Exception\DbLogicalException;
 use SimpleComplex\Database\Exception\DbRuntimeException;
 use SimpleComplex\Database\Exception\DbInterruptionException;
 use SimpleComplex\Database\Exception\DbQueryException;
@@ -134,7 +133,7 @@ class MariaDbQuery extends DatabaseQueryMulti
      * }
      *
      * @throws \InvalidArgumentException
-     *      Propagated.
+     *      Propagated; arg $sql empty.
      *      Unsupported 'cursor_mode'.
      */
     public function __construct(DbClientInterface $client, string $sql, array $options = [])
@@ -143,7 +142,7 @@ class MariaDbQuery extends DatabaseQueryMulti
 
         if (!empty($options['cursor_mode'])) {
             if (!in_array($options['cursor_mode'], static::CURSOR_MODES, true)) {
-                throw new DbLogicalException(
+                throw new \InvalidArgumentException(
                     $this->client->errorMessagePrefix()
                     . ' query option \'cursor_mode\' value[' . $options['cursor_mode'] . '] is invalid.'
                 );
@@ -187,13 +186,13 @@ class MariaDbQuery extends DatabaseQueryMulti
      *
      * @return $this|DbQueryInterface
      *
-     * @throws \SimpleComplex\Database\Exception\DbConnectionException
-     *      Propagated.
-     * @throws DbLogicalException
+     * @throws \LogicException
      *      Method called more than once for this query.
      * @throws \InvalidArgumentException
      *      Propagated; parameters/arguments count mismatch.
      *      Arg $types contains illegal char(s).
+     * @throws Exception\DbConnectionException
+     *      Propagated.
      * @throws DbRuntimeException
      *      Failure to bind $arguments to native layer.
      */
@@ -202,7 +201,7 @@ class MariaDbQuery extends DatabaseQueryMulti
         if ($this->isPreparedStatement) {
             // Unset prepared statement arguments reference.
             $this->unsetReferences();
-            throw new DbLogicalException(
+            throw new \LogicException(
                 $this->client->errorMessagePrefix() . ' - query cannot prepare statement more than once.'
             );
         }
@@ -293,7 +292,7 @@ class MariaDbQuery extends DatabaseQueryMulti
      *
      * @return DbResultInterface|MariaDbResult
      *
-     * @throws DbLogicalException
+     * @throws \LogicException
      *      Is prepared statement and the statement is previously closed.
      * @throws DbInterruptionException
      *      Is prepared statement and connection lost.
@@ -304,7 +303,7 @@ class MariaDbQuery extends DatabaseQueryMulti
         if ($this->isPreparedStatement) {
             // (MySQLi) Only a prepared statement is a 'statement'.
             if ($this->statementClosed) {
-                throw new DbLogicalException(
+                throw new \LogicException(
                     $this->client->errorMessagePrefix()
                     . ' - query can\'t execute previously closed prepared statement.'
                 );

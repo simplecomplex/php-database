@@ -16,8 +16,6 @@ use SimpleComplex\Utils\Dependency;
 use SimpleComplex\Database\Interfaces\DbClientInterface;
 use SimpleComplex\Database\Interfaces\DbQueryInterface;
 
-use SimpleComplex\Database\Exception\DbLogicalException;
-
 /**
  * Database query.
  *
@@ -190,9 +188,7 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
      *
      * @return $this|DbQueryInterface
      *
-     * @throws DbLogicalException
-     *      Base sql has been repeated.
-     *      Another sql string has been appended to base sql.
+     * @throws \LogicException
      *      Query is prepared statement.
      * @throws \InvalidArgumentException
      *      Propagated; parameters/arguments count mismatch.
@@ -203,7 +199,7 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
     {
         if ($this->isPreparedStatement) {
             $this->unsetReferences();
-            throw new DbLogicalException(
+            throw new \LogicException(
                 $this->client->errorMessagePrefix()
                 . ' - passing parameters to prepared statement is illegal except via call to prepare().'
             );
