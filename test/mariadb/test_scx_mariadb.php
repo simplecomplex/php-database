@@ -23,7 +23,7 @@ $container = Dependency::container();
 $logger = $container->get('logger');
 /** @var \SimpleComplex\Inspect\Inspect $inspect */
 $inspect = $container->get('inspect');
-/** @var \KkBase\Base\Config\IniSectionedConfig $config_store */
+/** @var \SimpleComplex\Config\IniSectionedConfig $config_store */
 $config_store = $container->get('config');
 /** @var \SimpleComplex\Database\DatabaseBroker $db_broker */
 $db_broker = $container->get('database-broker');

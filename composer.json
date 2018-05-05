@@ -14,7 +14,16 @@
     "require": {
         "php": ">=7.0",
         "psr/log": "^1.0",
-        "simplecomplex/utils": "^1.2 || dev-develop"
+        "simplecomplex/utils": "^1.3.2 || dev-develop"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^6.5",
+        "simplecomplex/cache": "^1.2.1 || dev-develop",
+        "simplecomplex/config": "^1.3.1 || dev-develop",
+        "simplecomplex/inspect": "^2.2.2 || dev-develop",
+        "simplecomplex/json-log": "^1.4.2 || dev-develop",
+        "simplecomplex/locale": "^1.1.1 || dev-develop",
+        "simplecomplex/validate": "^1.0.2 || dev-develop"
     },
     "suggest": {
         "ext-mysqli": "PHP MySQLi extension is required when using MySQL/MariaDB databases.",
@@ -23,7 +32,8 @@
     },
     "autoload": {
         "psr-4": {
-            "SimpleComplex\\Database\\": "src/"
+            "SimpleComplex\\Database\\": "src/",
+            "SimpleComplex\\Tests\\Database\\": "tests/src/"
         }
     }
 }
