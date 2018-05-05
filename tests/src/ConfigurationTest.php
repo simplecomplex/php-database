@@ -7,19 +7,15 @@
  */
 declare(strict_types=1);
 
-namespace SimpleComplex\Tests\Database;
+namespace SimpleComplex\Database\Tests;
 
 use PHPUnit\Framework\TestCase;
 
 use Psr\Container\ContainerInterface;
 use SimpleComplex\Database\DatabaseClient;
-use SimpleComplex\Utils\Dependency;
-use SimpleComplex\Database\DatabaseBroker;
-
-use SimpleComplex\Tests\Database\BootstrapTest;
 
 /**
- * @package SimpleComplex\Tests\Database
+ * @package SimpleComplex\Database\Tests
  */
 class ConfigurationTest extends TestCase
 {
@@ -74,19 +70,18 @@ class ConfigurationTest extends TestCase
 
 
     /**
-     * @depends BootstrapTest::boot
-     *
-     * @param ContainerInterface $container
+     * @see BootstrapTest::testDependencies
      *
      * @return array
      */
-    public function testMariaDb(ContainerInterface $container)
+    public function testMariaDb()
     {
+        $container = (new BootstrapTest())->testDependencies();
+
         $database_info = $this->getConfigIfExist($container);
         if (!$database_info) {
             $database_info = static::DATABASE_INFO['mariadb'];
         }
-        $database_info = [];
 
         $this->assertInternalType('array', $database_info);
         $this->assertNotEmpty($database_info);
@@ -104,14 +99,14 @@ class ConfigurationTest extends TestCase
     }
 
     /**
-     * @depends BootstrapTest::boot
-     *
-     * @param ContainerInterface $container
+     * @see BootstrapTest::testDependencies
      *
      * @return array
      */
-    public function testMsSql(ContainerInterface $container)
+    public function testMsSql()
     {
+        $container = (new BootstrapTest())->testDependencies();
+
         $database_info = $this->getConfigIfExist($container);
         if (!$database_info) {
             $database_info = static::DATABASE_INFO['mssql'];

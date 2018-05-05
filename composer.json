@@ -32,8 +32,12 @@
     },
     "autoload": {
         "psr-4": {
-            "SimpleComplex\\Database\\": "src/",
-            "SimpleComplex\\Tests\\Database\\": "tests/src/"
+            "SimpleComplex\\Database\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "SimpleComplex\\Database\\Tests\\": "tests/src/"
         }
     }
 }

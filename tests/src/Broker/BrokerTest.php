@@ -7,33 +7,33 @@
  */
 declare(strict_types=1);
 
-namespace SimpleComplex\Tests\Database\Broker;
+namespace SimpleComplex\Database\Tests\Broker;
 
 use PHPUnit\Framework\TestCase;
 
 use Psr\Container\ContainerInterface;
 use SimpleComplex\Database\DatabaseBroker;
 
-use SimpleComplex\Tests\Database\BootstrapTest;
+use SimpleComplex\Database\Tests\BootstrapTest;
 
 /**
- * @package SimpleComplex\Tests\Database
+ * @package SimpleComplex\Database\Tests
  */
 class BrokerTest extends TestCase
 {
     /**
-     * @depends BootstrapTest::boot
-     *
-     * @param ContainerInterface $container
+     * @see BootstrapTest::testDependencies
      *
      * @return DatabaseBroker
      */
-    public function testInstantiation(ContainerInterface $container)
+    public function testInstantiation()
     {
+        $container = (new BootstrapTest())->testDependencies();
+
         /** @var \SimpleComplex\Database\DatabaseBroker $db_broker */
         $db_broker = $container->get('database-broker');
 
-        $this->assertObjectHasAttribute('CLASS_CLIENT_MARIADB', $db_broker);
+        $this->assertInstanceOf(DatabaseBroker::class, $db_broker);
 
         return $db_broker;
     }

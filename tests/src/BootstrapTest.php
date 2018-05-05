@@ -7,7 +7,7 @@
  */
 declare(strict_types=1);
 
-namespace SimpleComplex\Tests\Database;
+namespace SimpleComplex\Database\Tests;
 
 use PHPUnit\Framework\TestCase;
 
@@ -16,7 +16,7 @@ use SimpleComplex\Utils\Dependency;
 use SimpleComplex\Utils\Bootstrap;
 
 /**
- * @package SimpleComplex\Tests\Database
+ * @package SimpleComplex\Database\Tests
  */
 class BootstrapTest extends TestCase
 {
@@ -27,16 +27,13 @@ class BootstrapTest extends TestCase
      *
      * @return ContainerInterface
      */
-    public function boot()
+    public function testDependencies()
     {
         // @todo: what about error handlers?
 
         if (!$this->booted) {
             $this->booted = true;
-
             Bootstrap::prepareDependenciesIfExist();
-
-            $this->assertClassHasStaticAttribute('CLASS_CONFIG', Bootstrap::class);
         }
 
         $container = Dependency::container();

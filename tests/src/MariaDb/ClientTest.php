@@ -7,7 +7,7 @@
  */
 declare(strict_types=1);
 
-namespace SimpleComplex\Tests\Database\MariaDb;
+namespace SimpleComplex\Database\Tests\MariaDb;
 
 use PHPUnit\Framework\TestCase;
 
@@ -15,26 +15,28 @@ use SimpleComplex\Database\DatabaseBroker;
 use SimpleComplex\Database\Interfaces\DbClientInterface;
 use SimpleComplex\Database\MariaDbClient;
 
-use SimpleComplex\Tests\Database\Log;
-use SimpleComplex\Tests\Database\Broker\BrokerTest;
-use SimpleComplex\Tests\Database\ConfigurationTest;
+use SimpleComplex\Database\Tests\Log;
+use SimpleComplex\Database\Tests\Broker\BrokerTest;
+use SimpleComplex\Database\Tests\ConfigurationTest;
 
 /**
- * @package SimpleComplex\Tests\Database
+ * @package SimpleComplex\Database\Tests
  */
 class ClientTest extends TestCase
 {
     /**
-     * @depends BrokerTest::testInstantiation
-     * @depends ConfigurationTest::testMariaDb()
-     *
-     * @param DatabaseBroker $dbBroker
-     * @param array $databaseInfo
+     * @see BrokerTest::testInstantiation
+     * @see ConfigurationTest::testMariaDb()
      *
      * @return DbClientInterface|MariaDbClient
      */
-    public function testInstantiation(DatabaseBroker $dbBroker, array $databaseInfo)
+    public function testInstantiation()
     {
+        //$client = new MariaDbClient('', []);
+
+        $dbBroker = (new BrokerTest())->testInstantiation();
+        $databaseInfo = (new ConfigurationTest())->testMariaDb();
+
         $client = $dbBroker->getClient('scx_mssql_test', 'mariadb', $databaseInfo);
         $this->assertInstanceOf(MariaDbClient::class, $client);
 

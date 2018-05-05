@@ -7,13 +7,13 @@
  */
 declare(strict_types=1);
 
-namespace SimpleComplex\Tests\Database;
+namespace SimpleComplex\Database\Tests;
 
 use SimpleComplex\Utils\CliEnvironment;
 use SimpleComplex\Utils\Dependency;
 
 /**
- * @package SimpleComplex\Tests\Database
+ * @package SimpleComplex\Database\Tests
  */
 class Log
 {
