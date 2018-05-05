@@ -15,11 +15,16 @@ use SimpleComplex\Database\DatabaseBroker;
 use SimpleComplex\Database\Interfaces\DbClientInterface;
 use SimpleComplex\Database\MariaDbClient;
 
-use SimpleComplex\Tests\Database\Log;
-use SimpleComplex\Tests\Database\Broker\BrokerTest;
+use SimpleComplex\Tests\Database\BrokerTest;
 use SimpleComplex\Tests\Database\ConfigurationTest;
 
 /**
+ *
+ * @code
+ * // CLI, in document root:
+ * vendor/bin/phpunit vendor/simplecomplex/database/tests/src/MariaDb/ClientTest.php
+ * @endcode
+ *
  * @package SimpleComplex\Tests\Database
  */
 class ClientTest extends TestCase
@@ -32,8 +37,7 @@ class ClientTest extends TestCase
      */
     public function testInstantiation()
     {
-        //$client = new MariaDbClient('', []);
-
+        /** @var DatabaseBroker $dbBroker */
         $dbBroker = (new BrokerTest())->testInstantiation();
         $databaseInfo = (new ConfigurationTest())->testMariaDb();
 
@@ -55,11 +59,14 @@ class ClientTest extends TestCase
     }*/
 
     /**
+     * @param DbClientInterface|MariaDbClient $client
+     *
      * @depends testInstantiation
      */
     public function testConnection(DbClientInterface $client)
     {
-        $client->getConnection();
+        $connection = $client->getConnection(true);
+        $this->assertInstanceOf(\mysqli::class, $connection);
         $connected = $client->isConnected();
         $this->assertTrue($connected, 'Not connected');
     }

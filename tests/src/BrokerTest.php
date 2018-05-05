@@ -7,16 +7,18 @@
  */
 declare(strict_types=1);
 
-namespace SimpleComplex\Tests\Database\Broker;
+namespace SimpleComplex\Tests\Database;
 
 use PHPUnit\Framework\TestCase;
 
-use Psr\Container\ContainerInterface;
 use SimpleComplex\Database\DatabaseBroker;
 
-use SimpleComplex\Tests\Database\BootstrapTest;
-
 /**
+ * @code
+ * // CLI, in document root:
+ * vendor/bin/phpunit vendor/simplecomplex/database/tests/src/BrokerTest.php
+ * @endcode
+ *
  * @package SimpleComplex\Tests\Database
  */
 class BrokerTest extends TestCase

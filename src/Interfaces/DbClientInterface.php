@@ -95,7 +95,8 @@ interface DbClientInterface
      *
      * @internal Package protected; for DbQueryInterface.
      *
-     * @param bool $reConnect.
+     * @param bool $reConnect
+     *
      *
      * @return mixed|bool
      *      False: no connection and not arg $reConnect.

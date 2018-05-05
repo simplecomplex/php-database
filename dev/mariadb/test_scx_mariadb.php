@@ -41,9 +41,6 @@ $client = $db_broker->getClient(
 //$logger->debug('Client (mariadb)' . "\n" . $inspect->variable($client));
 
 
-$whatever = new DatabaseTests\Broker\BrokerTest();
-
-
 /** @noinspection SqlResolve */
 /** @var \SimpleComplex\Database\MariaDbQuery $query */
 $query = $client->query('INSERT INTO parent (lastName, firstName, birthday) VALUES (?, ?, ?)');

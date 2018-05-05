@@ -15,6 +15,11 @@ use Psr\Container\ContainerInterface;
 use SimpleComplex\Database\DatabaseClient;
 
 /**
+ * @code
+ * // CLI, in document root:
+ * vendor/bin/phpunit vendor/simplecomplex/database/tests/src/ConfigurationTest.php
+ * @endcode
+ *
  * @package SimpleComplex\Tests\Database
  */
 class ConfigurationTest extends TestCase
@@ -92,8 +97,6 @@ class ConfigurationTest extends TestCase
                 $this->assertNotEmpty($database_info[$key]);
             }
         }
-
-        (new Log())->log(new \Exception(__FUNCTION__));
 
         return $database_info;
     }

@@ -17,12 +17,14 @@ use SimpleComplex\Utils\Dependency;
  */
 class Log
 {
+    const LOG_LEVEL = 'warning';
+
     /**
      * @param \Throwable $xcptn
      *
      * @return void
      */
-    public function log(\Throwable $xcptn) /*:void*/
+    public static function log(\Throwable $xcptn) /*:void*/
     {
         $msg = null;
         try {
@@ -32,12 +34,13 @@ class Log
                 $inspect = $container->get('inspect');
                 $msg = '' . $inspect->trace($xcptn, [
                         'wrappers' => 1,
+                        'trace_limit' => 1,
                     ]);
             }
             if ($container->has('logger')) {
                 /** @var \Psr\Log\LoggerInterface $logger */
                 $logger = $container->get('logger');
-                $logger->warning($msg ? $msg : '%exception', [
+                $logger->log(static::LOG_LEVEL, $msg ? $msg : '%exception', [
                     'exception' => $xcptn,
                 ]);
             }
@@ -45,6 +48,7 @@ class Log
         catch (\Throwable $ignore) {
         }
         if (CliEnvironment::cli()) {
+            ob_end_clean();
             echo "\n" . ($msg ?? $xcptn) . "\n";
         }
     }
