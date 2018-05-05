@@ -7,7 +7,7 @@
  */
 declare(strict_types=1);
 
-namespace SimpleComplex\Database\Tests;
+namespace SimpleComplex\Tests\Database;
 
 use PHPUnit\Framework\TestCase;
 
@@ -16,7 +16,7 @@ use SimpleComplex\Utils\Dependency;
 use SimpleComplex\Utils\Bootstrap;
 
 /**
- * @package SimpleComplex\Database\Tests
+ * @package SimpleComplex\Tests\Database
  */
 class BootstrapTest extends TestCase
 {

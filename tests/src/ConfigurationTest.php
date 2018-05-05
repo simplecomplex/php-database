@@ -7,7 +7,7 @@
  */
 declare(strict_types=1);
 
-namespace SimpleComplex\Database\Tests;
+namespace SimpleComplex\Tests\Database;
 
 use PHPUnit\Framework\TestCase;
 
@@ -15,7 +15,7 @@ use Psr\Container\ContainerInterface;
 use SimpleComplex\Database\DatabaseClient;
 
 /**
- * @package SimpleComplex\Database\Tests
+ * @package SimpleComplex\Tests\Database
  */
 class ConfigurationTest extends TestCase
 {

@@ -6,6 +6,8 @@ use \SimpleComplex\Utils\Dependency;
 
 use \SimpleComplex\Database\Database;
 
+use \SimpleComplex\Tests\Database as DatabaseTests;
+
 
 // Bootstrap.-------------------------------------------------------------------
 
@@ -37,6 +39,10 @@ $client = $db_broker->getClient(
 //$client->optionsResolve();
 
 //$logger->debug('Client (mariadb)' . "\n" . $inspect->variable($client));
+
+
+$whatever = new DatabaseTests\Broker\BrokerTest();
+
 
 /** @noinspection SqlResolve */
 /** @var \SimpleComplex\Database\MariaDbQuery $query */

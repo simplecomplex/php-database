@@ -27,7 +27,7 @@
     "autoload": {
         "psr-4": {
             "SimpleComplex\\Database\\": "src/",
-            "SimpleComplex\\Tests\\": "tests/src/"
+            "SimpleComplex\\Tests\\Database": "tests/src/"
         }
     }
 }
