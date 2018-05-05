@@ -16,7 +16,7 @@ use SimpleComplex\Database\Interfaces\DbClientInterface;
 use SimpleComplex\Database\MariaDbClient;
 
 use SimpleComplex\Tests\Database\Log;
-use SimpleComplex\Tests\Database\BrokerTest;
+use SimpleComplex\Tests\Database\Broker\BrokerTest;
 use SimpleComplex\Tests\Database\ConfigurationTest;
 
 /**
