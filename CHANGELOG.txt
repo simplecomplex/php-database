@@ -9,6 +9,9 @@ SimpleComplex/Database 1.x, 2018-05-06
 - MariaDb query must have own nativeError() because \mysqli_stmt has own
   separate error list.
 - Result fetchField method, which gets value; not column metadata.
+- Aborted columnMetadata() method, because for Sqlsrv it's a query thing
+  (sqlsrv_field_metadata(), no execution) whereas for MySQLi it's a result thing
+  (mysqli_fetch_field()); and too much work anyway.
 
 SimpleComplex/Database 1.x, 2018-05-03
 --------------------------------------

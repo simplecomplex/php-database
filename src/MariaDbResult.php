@@ -251,16 +251,6 @@ class MariaDbResult extends DatabaseResult
     }
 
     /**
-     * @param int $index
-     *      No argument: get current column in current row.
-     * @param string $column
-     *
-    public function columnMetadata(int $index = 0, string $column = '')
-    {
-
-    }*/
-
-    /**
      * Get value of a single column in a row.
      *
      * Nb: Don't call this more times for a single row;
