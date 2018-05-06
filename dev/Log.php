@@ -24,7 +24,7 @@ class Log
      *
      * @return void
      */
-    public static function log(\Throwable $xcptn) /*:void*/
+    public static function log(\Throwable $xcptn) /*: void*/
     {
         $msg = null;
         try {

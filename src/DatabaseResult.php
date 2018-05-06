@@ -52,6 +52,23 @@ abstract class DatabaseResult extends Explorable implements DbResultInterface
     protected $rowIndex = -1;
 
 
+    // Helpers.-----------------------------------------------------------------
+
+    /**
+     * Free result set, close query statement, and log.
+     *
+     * @param string $method
+     *
+     * @return void
+     */
+    protected function closeAndLog(string $method) /*: void*/
+    {
+        $this->free();
+        $this->query->close();
+        $this->query->log($method, false, 1);
+    }
+
+
     // Explorable.--------------------------------------------------------------
 
     /**

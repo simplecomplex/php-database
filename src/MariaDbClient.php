@@ -300,7 +300,7 @@ class MariaDbClient extends DatabaseClientMulti
      */
     public function nativeError(bool $emptyOnNone = false) : string
     {
-        if ($this->mySqlI && ($code = $this->mySqlI->errno)) {
+        if ($this->mySqlI && $this->mySqlI->errno) {
             return '(' . $this->mySqlI->errno . ') ' . rtrim($this->mySqlI->error, '.');
         }
         return $emptyOnNone ? '' : '- no native error recorded -';

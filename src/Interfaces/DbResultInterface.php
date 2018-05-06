@@ -134,5 +134,5 @@ interface DbResultInterface
     /**
      * @return void
      */
-    public function free() /*:void*/;
+    public function free() /*: void*/;
 }

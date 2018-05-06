@@ -262,7 +262,7 @@ abstract class DatabaseClient extends Explorable implements DbClientInterface
      * @return void
      *      Throws exception on error.
      */
-    abstract protected function characterSetResolve() /*:void*/;
+    abstract protected function characterSetResolve() /*: void*/;
 
     /**
      * @see DatabaseClient::disConnect()
@@ -301,7 +301,7 @@ abstract class DatabaseClient extends Explorable implements DbClientInterface
      *
      * @return void
      */
-    public function log(string $message, $variable = null, array $options = []) /*:void*/
+    public function log(string $message, $variable = null, array $options = []) /*: void*/
     {
         /** @var \Psr\Container\ContainerInterface $container */
         $container = Dependency::container();

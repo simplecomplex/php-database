@@ -252,9 +252,10 @@ class MariaDbQuery extends DatabaseQueryMulti
             $this->log(__FUNCTION__);
             throw new DbRuntimeException(
                 $this->errorMessagePrefix()
-                . ' - query failed to prepare statement, with error: ' . $this->client->nativeError() . '.'
+                . ' - query failed to prepare statement, with error: ' . $this->nativeError() . '.'
             );
         }
+        $this->statement = $mysqli_stmt;
 
         if ($n_params) {
             // Support assoc array; \mysqli_stmt::bind_param() doesn't.
@@ -269,16 +270,15 @@ class MariaDbQuery extends DatabaseQueryMulti
 
             if (!@$mysqli_stmt->bind_param($tps, ...$this->arguments['prepared'])) {
                 // Unset prepared statement arguments reference.
+                $error = $this->nativeError();
                 $this->unsetReferences();
                 $this->log(__FUNCTION__);
                 throw new DbRuntimeException(
                     $this->errorMessagePrefix()
-                    . ' - query failed to bind parameters prepare statement, with error: '
-                    . $this->client->nativeError() . '.'
+                    . ' - query failed to bind parameters prepare statement, with error: ' . $error . '.'
                 );
             }
         }
-        $this->statement = $mysqli_stmt;
 
         return $this;
     }
@@ -350,12 +350,13 @@ class MariaDbQuery extends DatabaseQueryMulti
             }
             // bool.
             if (!@$this->statement->execute()) {
+                $error = $this->nativeError();
                 // Unset prepared statement arguments reference.
                 $this->unsetReferences();
                 $this->log(__FUNCTION__);
                 throw new DbQueryException(
                     $this->errorMessagePrefix()
-                    . ' - failed executing prepared statement, with error: ' . $this->client->nativeError() . '.'
+                    . ' - failed executing prepared statement, with error: ' . $error . '.'
                 );
             }
         }
@@ -368,7 +369,7 @@ class MariaDbQuery extends DatabaseQueryMulti
                 $this->log(__FUNCTION__);
                 throw new DbQueryException(
                     $this->errorMessagePrefix()
-                    . ' - failed executing multi-query, with error: ' . $this->client->nativeError() . '.'
+                    . ' - failed executing multi-query, with error: ' . $this->nativeError() . '.'
                 );
             }
         }
@@ -381,7 +382,7 @@ class MariaDbQuery extends DatabaseQueryMulti
                 $this->log(__FUNCTION__);
                 throw new DbQueryException(
                     $this->errorMessagePrefix()
-                    . ' - failed executing simple query, with error: ' . $this->client->nativeError() . '.'
+                    . ' - failed executing simple query, with error: ' . $this->nativeError() . '.'
                 );
             }
         }
@@ -434,5 +435,42 @@ class MariaDbQuery extends DatabaseQueryMulti
             ->real_escape_string($str);
 
         return $this->hasLikeClause ? $s : addcslashes($s, '%_');
+    }
+
+    /**
+     * Query must append to (client) general error, because \mysqli_stmt
+     * has own separate error list.
+     *
+     * @param bool $emptyOnNone
+     *      False: on no error returns message indication just that.
+     *      True: on no error return empty string.
+     * @param \mysqli_stmt|null
+     *
+     * @return string
+     */
+    public function nativeError(bool $emptyOnNone = false) : string
+    {
+        $list = [];
+        if ($this->statement) {
+            $errors = $this->statement->error_list;
+            foreach ($errors as $error) {
+                if (!empty($error['sqlstate'])) {
+                    $em = '(SQLSTATE: ' . $error['sqlstate'] . ') ';
+                } elseif (!empty($error['errno'])) {
+                    $em = '(code: ' . $error['errno'] . ') ';
+                } else {
+                    $em = '';
+                }
+                $list[] = $em . $error['error'] ?? '';
+            }
+        }
+        $general_error = $this->client->nativeError($emptyOnNone);
+        if ($general_error) {
+            array_unshift($list, $general_error);
+        }
+        if ($list) {
+            return rtrim(join(' | ', $list), '.');
+        }
+        return $emptyOnNone ? '' : '- no native error recorded -';
     }
 }

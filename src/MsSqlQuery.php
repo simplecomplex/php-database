@@ -339,13 +339,13 @@ class MsSqlQuery extends DatabaseQuery
             $connection, $this->sqlTampered ?? $this->sql, $this->arguments['prepared'] ?? [], $options
         );
         if (!$statement) {
+            $error = $this->client->nativeError();
             // Unset prepared statement arguments reference.
             $this->unsetReferences();
             $this->log(__FUNCTION__);
             throw new DbRuntimeException(
                 $this->errorMessagePrefix()
-                . ' - query failed to prepare statement and bind parameters, with error: '
-                . $this->client->nativeError() . '.'
+                . ' - query failed to prepare statement and bind parameters, with error: ' . $error . '.'
             );
         }
         $this->statement = $statement;
@@ -445,12 +445,13 @@ class MsSqlQuery extends DatabaseQuery
             }
             // bool.
             if (!@sqlsrv_execute($this->statement)) {
+                $error = $this->client->nativeError();
                 // Unset prepared statement arguments reference.
                 $this->unsetReferences();
                 $this->log(__FUNCTION__);
                 throw new DbQueryException(
                     $this->errorMessagePrefix()
-                    . ' - failed executing prepared statement, with error: ' . $this->client->nativeError() . '.'
+                    . ' - failed executing prepared statement, with error: ' . $error . '.'
                 );
             }
         }
@@ -652,7 +653,7 @@ class MsSqlQuery extends DatabaseQuery
      * @throws \InvalidArgumentException
      *      Propagated; parameters/arguments count mismatch.
      */
-    protected function adaptArguments(string $types, array &$arguments) /*:void*/
+    protected function adaptArguments(string $types, array &$arguments) /*: void*/
     {
         // Checks for parameters/arguments count mismatch.
         $sql_fragments = $this->sqlFragments($this->sql, $arguments);

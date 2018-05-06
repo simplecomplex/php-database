@@ -46,7 +46,6 @@ class MsSqlResult extends DatabaseResult
     {
         $this->query = $query;
         if (!$statement) {
-            // Unset prepared statement arguments reference.
             $this->query->unsetReferences();
             throw new DbRuntimeException(
                 $this->query->client->errorMessagePrefix()
@@ -83,25 +82,25 @@ class MsSqlResult extends DatabaseResult
         if (($count && $count > 0) || $count === 0) {
             return $count;
         }
-        // Unset prepared statement arguments reference.
-        $this->query->close();
-        $this->query->log(__FUNCTION__);
         if ($count === -1) {
+            $this->closeAndLog(__FUNCTION__);
             throw new DbRuntimeException(
                 $this->query->errorMessagePrefix()
-                . ' - rejected counting affected rows (returned -1), probably not a CRUD query.'
+                . ' - rejected counting affected rows (native returned -1), probably not a CRUD query.'
             );
         }
         // Cursor mode must be SQLSRV_CURSOR_FORWARD ('forward').
         if ($this->query->cursorMode != SQLSRV_CURSOR_FORWARD) {
+            $this->closeAndLog(__FUNCTION__);
             throw new \LogicException(
                 $this->query->client->errorMessagePrefix() . ' - cursor mode[' . $this->query->cursorMode
                 . '] forbids getting affected rows, use SQLSRV_CURSOR_FORWARD (\'forward\') instead.'
             );
         }
+        $error = $this->query->client->nativeError();
+        $this->closeAndLog(__FUNCTION__);
         throw new DbResultException(
-            $this->query->errorMessagePrefix() . ' - failed counting affected rows, with error: '
-            . $this->query->client->nativeError() . '.'
+            $this->query->errorMessagePrefix() . ' - failed counting affected rows, with error: ' . $error . '.'
         );
     }
 
@@ -136,21 +135,26 @@ class MsSqlResult extends DatabaseResult
      */
     public function insertId($getAsType = null)
     {
+        /**
+         * Have to load first result set and row before sqlsrv_get_field()
+         * when looking for insert ID.
+         */
         if ($this->setIndex < 0) {
             $next = $this->nextSet(true);
             if (!$next) {
-                $this->query->close();
-                $this->query->log(__FUNCTION__);
                 if ($next === null) {
                     // No result at all.
+                    $this->closeAndLog(__FUNCTION__);
                     throw new DbResultException(
                         $this->query->errorMessagePrefix()
                         . ' - failed going to next set to get insert ID, no result at all.'
                     );
                 }
+                $error = $this->query->client->nativeError();
+                $this->closeAndLog(__FUNCTION__);
                 throw new DbResultException(
                     $this->query->errorMessagePrefix() . ' - failed going to next set to get insert ID, with error: '
-                    . $this->query->client->nativeError() . '.'
+                    . $error . '.'
                 );
             }
         }
@@ -164,11 +168,11 @@ class MsSqlResult extends DatabaseResult
                         . ' - failed going to next set to get insert ID, no result row at all.'
                     );
                 }
-                $this->query->close();
-                $this->query->log(__FUNCTION__);
+                $error = $this->query->client->nativeError();
+                $this->closeAndLog(__FUNCTION__);
                 throw new DbResultException(
                     $this->query->errorMessagePrefix() . ' - failed going to next row to get insert ID, with error: '
-                    . $this->query->client->nativeError() . '.'
+                    . $error . '.'
                 );
             }
         }
@@ -190,19 +194,14 @@ class MsSqlResult extends DatabaseResult
                         $type = SQLSRV_PHPTYPE_STRING($this->query->client->characterSet);
                         break;
                     default:
-                        // Unset prepared statement arguments reference.
-                        $this->query->close();
-                        $this->query->log(__FUNCTION__);
+                        $this->closeAndLog(__FUNCTION__);
                         throw new \InvalidArgumentException(
-                            $this->query->errorMessagePrefix()
-                            . ' - arg $getAsType as string isn\'t i|d|s|b.'
+                            $this->query->errorMessagePrefix() . ' - arg $getAsType as string isn\'t i|d|s|b.'
                         );
                 }
             }
             else {
-                // Unset prepared statement arguments reference.
-                $this->query->close();
-                $this->query->log(__FUNCTION__);
+                $this->closeAndLog(__FUNCTION__);
                 throw new \TypeError(
                     $this->query->errorMessagePrefix()
                     . ' - arg $getAsType type[' . gettype($getAsType) . '] isn\'t integer|string|null.'
@@ -214,12 +213,13 @@ class MsSqlResult extends DatabaseResult
         }
         ++$this->rowIndex;
         if ($id || $id === null) {
-            // Null: query didn't trigger setting an ID.
+            /**
+             * Null: query didn't trigger setting an ID;
+             * despite Sqlsrv documentation doesn't mention null return.
+             * @see sqlsrv_get_field()
+             */
             return $id;
         }
-        // Unset prepared statement arguments reference.
-        $this->query->close();
-        $this->query->log(__FUNCTION__);
         if (
             !$this->query->getInsertId
             && strpos(
@@ -227,14 +227,16 @@ class MsSqlResult extends DatabaseResult
                 'SELECT SCOPE_IDENTITY() AS IDENTITY_COLUMN_NAME'
             ) === false
         ) {
+            $this->closeAndLog(__FUNCTION__);
             throw new \LogicException(
                 $this->query->errorMessagePrefix() . ' - failed getting insert ID'
                 . ', sql misses secondary ID select statement, see query option \'get_insert_id\''
             );
         }
+        $error = $this->query->client->nativeError();
+        $this->closeAndLog(__FUNCTION__);
         throw new DbResultException(
-            $this->query->errorMessagePrefix()
-            . ' - failed getting insert ID, with error: ' . $this->query->client->nativeError() . '.'
+            $this->query->errorMessagePrefix() . ' - failed getting insert ID, with error: ' . $error . '.'
         );
     }
 
@@ -259,23 +261,22 @@ class MsSqlResult extends DatabaseResult
         if (($count && $count > 0) || $count === 0) {
             return $count;
         }
-        // Unset prepared statement arguments reference.
-        $this->query->close();
-        $this->query->log(__FUNCTION__);
         switch ($this->query->cursorMode) {
             case SQLSRV_CURSOR_STATIC:
             case SQLSRV_CURSOR_KEYSET:
                 break;
             default:
+                $this->closeAndLog(__FUNCTION__);
                 throw new \LogicException(
                     $this->query->client->errorMessagePrefix() . ' - cursor mode[' . $this->query->cursorMode
                     . '] forbids getting number of rows'
                     . ', use SQLSRV_CURSOR_STATIC (\'static\') or SQLSRV_CURSOR_KEYSET (\'static\') instead.'
                 );
         }
+        $error = $this->query->client->nativeError();
+        $this->closeAndLog(__FUNCTION__);
         throw new DbResultException(
-            $this->query->errorMessagePrefix() . ' - failed getting number of rows, with error: '
-            . $this->query->client->nativeError() . '.'
+            $this->query->errorMessagePrefix() . ' - failed getting number of rows, with error: ' . $error . '.'
         );
     }
 
@@ -294,12 +295,110 @@ class MsSqlResult extends DatabaseResult
         if (($count && $count > 0) || $count === 0) {
             return $count;
         }
-        // Unset prepared statement arguments reference.
-        $this->query->close();
-        $this->query->log(__FUNCTION__);
+        $error = $this->query->client->nativeError();
+        $this->closeAndLog(__FUNCTION__);
         throw new DbResultException(
-            $this->query->errorMessagePrefix() . ' - failed getting number of columns, with error: '
-            . $this->query->client->nativeError() . '.'
+            $this->query->errorMessagePrefix() . ' - failed getting number of columns, with error: ' . $error . '.'
+        );
+    }
+
+    /**
+     * Get value of a single column in a row.
+     *
+     * Nb: Don't call this more times for a single row using arg $column;
+     * will move cursor to next row.
+     *
+     * @param int $index
+     * @param string $column
+     *
+     * @return mixed|null
+     *      Null: No more rows.
+     *
+     * @throws \InvalidArgumentException
+     *      Arg $index negative.
+     * @throws \OutOfRangeException
+     *      Result row has no such $column.
+     * @throws DbResultException
+     */
+    public function fetchField(int $index = 0, string $column = '')
+    {
+        if (!$column) {
+            if ($index < 0) {
+                $this->closeAndLog(__FUNCTION__);
+                throw new \InvalidArgumentException(
+                    $this->query->errorMessagePrefix() . ' - failed fetching field, arg $index['
+                    . $index . '] cannot be negative.'
+                );
+            }
+            // @todo: do we have to load first row before sqlsrv_get_field() - this is not insertId().
+            if ($this->rowIndex < 0) {
+                $next = $this->nextRow(true);
+                if (!$next) {
+                    if ($next === null) {
+                        // No row at all because rowIndex was -1.
+                        throw new DbResultException(
+                            $this->query->errorMessagePrefix() . ' - failed getting field by '
+                            . (!$column ? ('$index[' . $index . ']') : ('$column[' . $column . ']'))
+                            . ', no result row at all.'
+                        );
+                    }
+                    $error = $this->query->client->nativeError();
+                    $this->closeAndLog(__FUNCTION__);
+                    throw new DbResultException(
+                        $this->query->errorMessagePrefix() . ' - failed going to next row to get field by '
+                        . (!$column ? ('$index[' . $index . ']') : ('$column[' . $column . ']')) . ', with error: '
+                        . $error . '.'
+                    );
+                }
+            }
+            $value = @sqlsrv_get_field($this->statement, $index);
+            /**
+             * Null: Sqlsrv documentation doesn't mention null return,
+             * but have observed such.
+             * @see sqlsrv_get_field()
+             * @see MsSqlResult::insertId()
+             */
+            if ($value || ($value !== false && $value !== null)) {
+                return $value;
+            }
+            // Try to detect out-of-range;
+            // falsy sqlsrv_get_field() and no native error
+            if (!$this->query->client->nativeError(true)) {
+                $this->closeAndLog(__FUNCTION__);
+                throw new \OutOfRangeException(
+                    $this->query->errorMessagePrefix() . ' - failed fetching field by $index[' . $index
+                    . '], presumably row has no such index.'
+                );
+            }
+            // Otherwise continue to exception at and of method.
+        }
+        else {
+            $row = @sqlsrv_fetch_array($this->statement, SQLSRV_FETCH_ASSOC);
+            // sqlsrv_fetch_array() implicitly moves to first set.
+            if ($this->setIndex < 0) {
+                ++$this->setIndex;
+            }
+            ++$this->rowIndex;
+            if ($row) {
+                if (array_key_exists($column, $row)) {
+                    return $row[$column];
+                }
+                $this->closeAndLog(__FUNCTION__);
+                throw new \OutOfRangeException(
+                    $this->query->errorMessagePrefix()
+                    . ' - failed fetching field, row has no $column[' . $column . '].'
+                );
+            }
+            elseif ($row === null) {
+                // No more rows.
+                return null;
+            }
+        }
+        $error = $this->query->client->nativeError();
+        $this->closeAndLog(__FUNCTION__);
+        throw new DbResultException(
+            $this->query->errorMessagePrefix() . ' - failed fetching field by '
+            . (!$column ? ('$index[' . $index . ']') : ('$column[' . $column . ']')) . ', with error: ' . $error . '.'
         );
     }
 
@@ -326,13 +425,11 @@ class MsSqlResult extends DatabaseResult
         if ($row || $row === null) {
             return $row;
         }
-        // Unset prepared statement arguments reference.
-        $this->query->close();
-        $this->query->log(__FUNCTION__);
+        $error = $this->query->client->nativeError();
+        $this->closeAndLog(__FUNCTION__);
         throw new DbResultException(
             $this->query->errorMessagePrefix() . ' - failed fetching row as '
-            . ($as == Database::FETCH_ASSOC ? 'assoc' : 'numeric') . ' array, with error: '
-            . $this->query->client->nativeError() . '.'
+            . ($as == Database::FETCH_ASSOC ? 'assoc' : 'numeric') . ' array, with error: ' . $error . '.'
         );
     }
 
@@ -358,12 +455,11 @@ class MsSqlResult extends DatabaseResult
         if ($row || $row === null) {
             return $row;
         }
-        // Unset prepared statement arguments reference.
-        $this->query->close();
-        $this->query->log(__FUNCTION__);
+        $error = $this->query->client->nativeError();
+        $this->closeAndLog(__FUNCTION__);
         throw new DbResultException(
             $this->query->errorMessagePrefix()
-            . ' - failed fetching row as object, with error: ' . $this->query->client->nativeError() . '.'
+            . ' - failed fetching row as object, with error: ' . $error . '.'
         );
     }
 
@@ -396,9 +492,7 @@ class MsSqlResult extends DatabaseResult
         switch ($as) {
             case Database::FETCH_NUMERIC:
                 if ($column_keyed) {
-                    // Unset prepared statement arguments reference.
-                    $this->query->close();
-                    $this->query->log(__FUNCTION__);
+                    $this->closeAndLog(__FUNCTION__);
                     throw new \LogicException(
                         $this->query->client->errorMessagePrefix()
                         . ' - arg $options \'list_by_column\' is not supported when fetching as numeric arrays.'
@@ -435,9 +529,7 @@ class MsSqlResult extends DatabaseResult
                         if ($first) {
                             $first = false;
                             if (!property_exists($row, $key_column)) {
-                                // Unset prepared statement arguments reference.
-                                $this->query->close();
-                                $this->query->log(__FUNCTION__);
+                                $this->closeAndLog(__FUNCTION__);
                                 throw new \InvalidArgumentException(
                                     $this->query->errorMessagePrefix()
                                     . ' - failed fetching all rows as objects keyed by column[' . $key_column
@@ -469,9 +561,7 @@ class MsSqlResult extends DatabaseResult
                         if ($first) {
                             $first = false;
                             if (!array_key_exists($key_column, $row)) {
-                                // Unset prepared statement arguments reference.
-                                $this->query->close();
-                                $this->query->log(__FUNCTION__);
+                                $this->closeAndLog(__FUNCTION__);
                                 throw new \InvalidArgumentException(
                                     $this->query->errorMessagePrefix()
                                     . ' - failed fetching all rows as assoc arrays keyed by column[' . $key_column
@@ -499,13 +589,11 @@ class MsSqlResult extends DatabaseResult
                 default:
                     $em = 'assoc array';
             }
-            // Unset prepared statement arguments reference.
-            $this->query->close();
-            $this->query->log(__FUNCTION__);
+            $error = $this->query->client->nativeError();
+            $this->closeAndLog(__FUNCTION__);
             throw new DbResultException(
                 $this->query->errorMessagePrefix()
-                . ' - failed fetching all rows as ' . $em . ', with error: '
-                . $this->query->client->nativeError() . '.'
+                . ' - failed fetching all rows as ' . $em . ', with error: ' . $error . '.'
             );
         }
         return $list;
@@ -538,13 +626,10 @@ class MsSqlResult extends DatabaseResult
         if ($noException) {
             return false;
         }
-        // Unset prepared statement arguments reference.
-        $this->query->close();
-        $this->query->log(__FUNCTION__);
+        $error = $this->query->client->nativeError();
+        $this->closeAndLog(__FUNCTION__);
         throw new DbResultException(
-            $this->query->errorMessagePrefix()
-            . ' - failed going to next set, with error: '
-            . $this->query->client->nativeError() . '.'
+            $this->query->errorMessagePrefix() . ' - failed going to next set, with error: ' . $error . '.'
         );
     }
 
@@ -572,13 +657,10 @@ class MsSqlResult extends DatabaseResult
         if ($noException) {
             return false;
         }
-        // Unset prepared statement arguments reference.
-        $this->query->close();
-        $this->query->log(__FUNCTION__);
+        $error = $this->query->client->nativeError();
+        $this->closeAndLog(__FUNCTION__);
         throw new DbResultException(
-            $this->query->errorMessagePrefix()
-            . ' - failed going to next row, with error: '
-            . $this->query->client->nativeError() . '.'
+            $this->query->errorMessagePrefix() . ' - failed going to next row, with error: ' . $error . '.'
         );
     }
 
@@ -589,7 +671,7 @@ class MsSqlResult extends DatabaseResult
      *
      * @return void
      */
-    public function free() /*:void*/
+    public function free() /*: void*/
     {
     }
 }

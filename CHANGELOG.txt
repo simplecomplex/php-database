@@ -5,6 +5,10 @@ SimpleComplex/Database 1.x, 2018-05-06
 - Result nextSet/nextRow() shall optionally not throw exception on error.
 - Query constructor must trim arg sql before checking for emptyness.
 - Error message prefix is now Database[client name][rmdbs type][database name].
+- Do NOT close statement/free result before getting native error.
+- MariaDb query must have own nativeError() because \mysqli_stmt has own
+  separate error list.
+- Result fetchField method, which gets value; not column metadata.
 
 SimpleComplex/Database 1.x, 2018-05-03
 --------------------------------------

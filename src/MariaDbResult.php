@@ -100,19 +100,17 @@ class MariaDbResult extends DatabaseResult
         if (($count && $count > 0) || $count === 0) {
             return $count;
         }
-        // Unset prepared statement arguments reference.
-        $this->query->close();
-        $this->free();
-        $this->query->log(__FUNCTION__);
         if ($count === -1) {
+            $this->closeAndLog(__FUNCTION__);
             throw new DbQueryException(
                 $this->query->errorMessagePrefix()
                 . ' - rejected counting affected rows (returned -1), the query failed.'
             );
         }
+        $error = $this->query->nativeError();
+        $this->closeAndLog(__FUNCTION__);
         throw new DbResultException(
-            $this->query->errorMessagePrefix() . ' - failed counting affected rows, with error: '
-            . $this->query->client->nativeError() . '.'
+            $this->query->errorMessagePrefix() . ' - failed counting affected rows, with error: '. $error . '.'
         );
     }
 
@@ -151,10 +149,7 @@ class MariaDbResult extends DatabaseResult
                         case 'b':
                             return '' . $id;
                         default:
-                            // Unset prepared statement arguments reference.
-                            $this->query->close();
-                            $this->free();
-                            $this->query->log(__FUNCTION__);
+                            $this->closeAndLog(__FUNCTION__);
                             throw new \InvalidArgumentException(
                                 $this->query->errorMessagePrefix()
                                 . ' - arg $getAsType as string isn\'t i|d|s|b.'
@@ -162,10 +157,7 @@ class MariaDbResult extends DatabaseResult
                     }
                 }
                 else {
-                    // Unset prepared statement arguments reference.
-                    $this->query->close();
-                    $this->free();
-                    $this->query->log(__FUNCTION__);
+                    $this->closeAndLog(__FUNCTION__);
                     throw new \TypeError(
                         $this->query->errorMessagePrefix()
                         . ' - arg $getAsType type[' . gettype($getAsType) . '] isn\'t string|null.'
@@ -174,17 +166,24 @@ class MariaDbResult extends DatabaseResult
             }
             return $id;
         }
+        /**
+         * mysqli::$insert_id:
+         * Returns zero if there was no previous query on the connection
+         * or if the query did not update an AUTO_INCREMENT value.
+         * @see http://php.net/manual/en/mysqli.insert-id.php
+         *
+         * mysqli_stmt::$insert_id
+         * Has no documenation at all.
+         * @see http://php.net/manual/en/mysqli-stmt.insert-id.php
+         */
         elseif ($id === 0) {
             // Query didn't trigger setting an ID.
             return null;
         }
-        // Unset prepared statement arguments reference.
-        $this->query->close();
-        $this->free();
-        $this->query->log(__FUNCTION__);
+        $error = $this->query->nativeError();
+        $this->closeAndLog(__FUNCTION__);
         throw new DbResultException(
-            $this->query->errorMessagePrefix() . ' - failed getting insert ID, with error: '
-            . $this->query->client->nativeError() . '.'
+            $this->query->errorMessagePrefix() . ' - failed getting insert ID, with error: ' . $error . '.'
         );
     }
 
@@ -210,20 +209,20 @@ class MariaDbResult extends DatabaseResult
                 . '] forbids getting number of rows.'
             );
         }
-        if (!$this->result) {
-            $this->loadResult();
+        if (!$this->result && !$this->loadResult()) {
+            $this->closeAndLog(__FUNCTION__);
+            throw new DbResultException(
+                $this->query->errorMessagePrefix() . ' - failed getting number of rows, no result set.'
+            );
         }
         $count = @$this->result->num_rows;
         if (($count && $count > 0) || $count === 0) {
             return $count;
         }
-        // Unset prepared statement arguments reference.
-        $this->query->close();
-        $this->free();
-        $this->query->log(__FUNCTION__);
+        $error = $this->query->nativeError();
+        $this->closeAndLog(__FUNCTION__);
         throw new DbResultException(
-            $this->query->errorMessagePrefix() . ' - failed getting number of rows, with error: '
-            . $this->query->client->nativeError() . '.'
+            $this->query->errorMessagePrefix() . ' - failed getting number of rows, with error: ' . $error . '.'
         );
     }
 
@@ -244,13 +243,94 @@ class MariaDbResult extends DatabaseResult
         if (($count && $count > 0) || $count === 0) {
             return $count;
         }
-        // Unset prepared statement arguments reference.
-        $this->query->close();
-        $this->free();
-        $this->query->log(__FUNCTION__);
+        $error = $this->query->nativeError();
+        $this->closeAndLog(__FUNCTION__);
         throw new DbResultException(
-            $this->query->errorMessagePrefix() . ' - failed getting number of columns, with error: '
-            . $this->query->client->nativeError() . '.'
+            $this->query->errorMessagePrefix() . ' - failed getting number of columns, with error: ' . $error . '.'
+        );
+    }
+
+    /**
+     * @param int $index
+     *      No argument: get current column in current row.
+     * @param string $column
+     *
+    public function columnMetadata(int $index = 0, string $column = '')
+    {
+
+    }*/
+
+    /**
+     * Get value of a single column in a row.
+     *
+     * Nb: Don't call this more times for a single row;
+     * will move cursor to next row.
+     *
+     * @param int $index
+     * @param string $column
+     *
+     * @return mixed|null
+     *      Null: No more rows.
+     *
+     * @throws \InvalidArgumentException
+     *      Arg $index negative.
+     * @throws \OutOfRangeException
+     *      Result row has no such $index or $column.
+     * @throws DbResultException
+     */
+    public function fetchField(int $index = 0, string $column = '')
+    {
+        if (!$this->result && !$this->loadResult()) {
+            $this->closeAndLog(__FUNCTION__);
+            throw new DbResultException(
+                $this->query->errorMessagePrefix() . ' - failed fetching field by '
+                . (!$column ? ('$index[' . $index . ']') : ('$column[' . $column . ']')) . ', no result set.'
+            );
+        }
+        if (!$column) {
+            if ($index < 0) {
+                $this->closeAndLog(__FUNCTION__);
+                throw new \InvalidArgumentException(
+                    $this->query->errorMessagePrefix() . ' - failed fetching field, arg $index['
+                    . $index . '] is negative.'
+                );
+            }
+            $row = @$this->result->fetch_array(MYSQLI_NUM);
+        }
+        else {
+            $row = @$this->result->fetch_assoc();
+        }
+        // fetch_assoc/fetch_array() implicitly moves to first set.
+        if ($this->setIndex < 0) {
+            ++$this->setIndex;
+        }
+        ++$this->rowIndex;
+        if ($row) {
+            $length = null;
+            if (!$column) {
+                $length = count($row);
+                if ($index < $length) {
+                    return $row[$index];
+                }
+            } elseif (array_key_exists($column, $row)) {
+                return $row[$column];
+            }
+            $this->closeAndLog(__FUNCTION__);
+            throw new \OutOfRangeException(
+                $this->query->errorMessagePrefix() . ' - failed fetching field, row '
+                . (!$column ? (' length[' .  $length . '] has no $index[' . $index . '].') :
+                    ('has no $column[' . $column . '].')
+                )
+            );
+        }
+        elseif ($row === null) {
+            return null;
+        }
+        $error = $this->query->nativeError();
+        $this->closeAndLog(__FUNCTION__);
+        throw new DbResultException(
+            $this->query->errorMessagePrefix() . ' - failed fetching field by '
+            . (!$column ? ('$index[' . $index . ']') : ('$column[' . $column . ']')) . ', with error: ' . $error . '.'
         );
     }
 
@@ -269,8 +349,11 @@ class MariaDbResult extends DatabaseResult
      */
     public function fetchArray(int $as = Database::FETCH_ASSOC)
     {
-        if (!$this->result) {
-            $this->loadResult();
+        if (!$this->result && !$this->loadResult()) {
+            $this->closeAndLog(__FUNCTION__);
+            throw new DbResultException(
+                $this->query->errorMessagePrefix() . ' - failed fetching row as array, no result set.'
+            );
         }
         $row = $as == Database::FETCH_ASSOC ? @$this->result->fetch_assoc() : @$this->result->fetch_array(MYSQLI_NUM);
         // fetch_assoc/fetch_array() implicitly moves to first set.
@@ -281,14 +364,10 @@ class MariaDbResult extends DatabaseResult
         if ($row || $row === null) {
             return $row;
         }
-        // Unset prepared statement arguments reference.
-        $this->query->close();
-        $this->free();
-        $this->query->log(__FUNCTION__);
+        $error = $this->query->nativeError();
+        $this->closeAndLog(__FUNCTION__);
         throw new DbResultException(
-            $this->query->errorMessagePrefix() . ' - failed fetching row as '
-            . ($as == Database::FETCH_ASSOC ? 'assoc' : 'numeric') . ' array, with error: '
-            . $this->query->client->nativeError() . '.'
+            $this->query->errorMessagePrefix() . ' - failed fetching row as array, with error: ' . $error . '.'
         );
     }
 
@@ -309,8 +388,11 @@ class MariaDbResult extends DatabaseResult
      */
     public function fetchObject(string $class = '', array $args = [])
     {
-        if (!$this->result) {
-            $this->loadResult();
+        if (!$this->result && !$this->loadResult()) {
+            $this->closeAndLog(__FUNCTION__);
+            throw new DbResultException(
+                $this->query->errorMessagePrefix() . ' - failed fetching row as object, no result set.'
+            );
         }
         $row = @$this->result->fetch_object($class, $args);
         // fetch_object() implicitly moves to first set.
@@ -321,13 +403,11 @@ class MariaDbResult extends DatabaseResult
         if ($row || $row === null) {
             return $row;
         }
-        // Unset prepared statement arguments reference.
-        $this->query->close();
-        $this->free();
-        $this->query->log(__FUNCTION__);
+        $error = $this->query->nativeError();
+        $this->closeAndLog(__FUNCTION__);
         throw new DbResultException(
             $this->query->errorMessagePrefix()
-            . ' - failed fetching row as object, with error: ' . $this->query->client->nativeError() . '.'
+            . ' - failed fetching row as object, with error: ' . $error . '.'
         );
     }
 
@@ -357,17 +437,17 @@ class MariaDbResult extends DatabaseResult
      */
     public function fetchAll(int $as = Database::FETCH_ASSOC, array $options = []) : array
     {
-        if (!$this->result) {
-            $this->loadResult();
+        if (!$this->result && !$this->loadResult()) {
+            $this->closeAndLog(__FUNCTION__);
+            throw new DbResultException(
+                $this->query->errorMessagePrefix() . ' - failed fetching all rows, no result set.'
+            );
         }
         $column_keyed = !empty($options['list_by_column']);
         switch ($as) {
             case Database::FETCH_NUMERIC:
                 if ($column_keyed) {
-                    // Unset prepared statement arguments reference.
-                    $this->query->close();
-                    $this->free();
-                    $this->query->log(__FUNCTION__);
+                    $this->closeAndLog(__FUNCTION__);
                     throw new \LogicException(
                         $this->query->client->errorMessagePrefix()
                         . ' - arg $options \'list_by_column\' is not supported when fetching as numeric arrays.'
@@ -375,13 +455,11 @@ class MariaDbResult extends DatabaseResult
                 }
                 $list = @$this->result->fetch_all(MYSQLI_NUM);
                 if (!is_array($list)) {
-                    // Unset prepared statement arguments reference.
-                    $this->query->close();
-                    $this->query->log(__FUNCTION__);
+                    $error = $this->query->nativeError();
+                    $this->closeAndLog(__FUNCTION__);
                     throw new DbResultException(
                         $this->query->errorMessagePrefix()
-                        . ' - failed fetching all rows as numeric array, with error: '
-                        . $this->query->client->nativeError() . '.'
+                        . ' - failed fetching all rows as numeric array, with error: ' . $error . '.'
                     );
                 }
                 return $list;
@@ -404,10 +482,7 @@ class MariaDbResult extends DatabaseResult
                         if ($first) {
                             $first = false;
                             if (!property_exists($row, $key_column)) {
-                                // Unset prepared statement arguments reference.
-                                $this->query->close();
-                                $this->free();
-                                $this->query->log(__FUNCTION__);
+                                $this->closeAndLog(__FUNCTION__);
                                 throw new \InvalidArgumentException(
                                     $this->query->errorMessagePrefix()
                                     . ' - failed fetching all rows as objects keyed by column[' . $key_column
@@ -431,14 +506,11 @@ class MariaDbResult extends DatabaseResult
                         ++$this->setIndex;
                     }
                     if (!is_array($list)) {
-                        // Unset prepared statement arguments reference.
-                        $this->query->close();
-                        $this->free();
-                        $this->query->log(__FUNCTION__);
+                        $error = $this->query->nativeError();
+                        $this->closeAndLog(__FUNCTION__);
                         throw new DbResultException(
                             $this->query->errorMessagePrefix()
-                            . ' - failed fetching all rows as assoc array, with error: '
-                            . $this->query->client->nativeError() . '.'
+                            . ' - failed fetching all rows as assoc array, with error: ' . $error . '.'
                         );
                     }
                     if ($list) {
@@ -458,10 +530,7 @@ class MariaDbResult extends DatabaseResult
                     if ($first) {
                         $first = false;
                         if (!array_key_exists($key_column, $row)) {
-                            // Unset prepared statement arguments reference.
-                            $this->query->close();
-                            $this->free();
-                            $this->query->log(__FUNCTION__);
+                            $this->closeAndLog(__FUNCTION__);
                             throw new \InvalidArgumentException(
                                 $this->query->errorMessagePrefix()
                                 . ' - failed fetching all rows as assoc arrays keyed by column[' . $key_column
@@ -478,14 +547,12 @@ class MariaDbResult extends DatabaseResult
         }
         // Last fetched row must be null; no more rows.
         if ($row !== null) {
-            // Unset prepared statement arguments reference.
-            $this->query->close();
-            $this->free();
-            $this->query->log(__FUNCTION__);
+            $error = $this->query->nativeError();
+            $this->closeAndLog(__FUNCTION__);
             throw new DbResultException(
                 $this->query->errorMessagePrefix()
                 . ' - failed fetching all rows as ' . ($as == Database::FETCH_OBJECT ? 'object' : 'assoc array')
-                . ', with error: ' . $this->query->client->nativeError() . '.'
+                . ', with error: ' . $error . '.'
             );
         }
         return $list;
@@ -524,14 +591,11 @@ class MariaDbResult extends DatabaseResult
         if ($noException) {
             return false;
         }
-        // Unset prepared statement arguments reference.
-        $this->query->close();
-        $this->free();
-        $this->query->log(__FUNCTION__);
+        $error = $this->query->nativeError();
+        $this->closeAndLog(__FUNCTION__);
         throw new DbResultException(
             $this->query->errorMessagePrefix()
-            . ' - failed going to next set, with error: '
-            . $this->query->client->nativeError() . '.'
+            . ' - failed going to next set, with error: ' . $error . '.'
         );
     }
 
@@ -561,21 +625,18 @@ class MariaDbResult extends DatabaseResult
         if ($noException) {
             return false;
         }
-        // Unset prepared statement arguments reference.
-        $this->query->close();
-        $this->free();
-        $this->query->log(__FUNCTION__);
+        $error = $this->query->nativeError();
+        $this->closeAndLog(__FUNCTION__);
         throw new DbResultException(
             $this->query->errorMessagePrefix()
-            . ' - failed going to next row, with error: '
-            . $this->query->client->nativeError() . '.'
+            . ' - failed going to next row, with error: ' . $error . '.'
         );
     }
 
     /**
      * @return void
      */
-    public function free() /*:void*/
+    public function free() /*: void*/
     {
         if ($this->result) {
             @$this->result->free();
@@ -585,11 +646,12 @@ class MariaDbResult extends DatabaseResult
     // Helpers.-----------------------------------------------------------------
 
     /**
-     * @return void
+     * @return bool
+     *      False: no result set and no native error recorded.
      *
      * @throws DbResultException
      */
-    protected function loadResult() /*:void*/
+    protected function loadResult() : bool
     {
         if (!$this->result) {
             if ($this->isPreparedStatement) {
@@ -607,15 +669,17 @@ class MariaDbResult extends DatabaseResult
                 ++$this->setIndex;
             }
             if (!$result) {
-                // Unset prepared statement arguments reference.
-                $this->query->close();
-                $this->query->log(__FUNCTION__);
+                $error = $this->query->nativeError(true);
+                if (!$error) {
+                    return false;
+                }
+                $this->closeAndLog(__FUNCTION__);
                 throw new DbResultException(
-                    $this->query->errorMessagePrefix() . ' - failed getting result, with error: '
-                    . $this->query->client->nativeError() . '.'
+                    $this->query->errorMessagePrefix() . ' - failed getting result, with error: ' . $error . '.'
                 );
             }
             $this->result = $result;
         }
+        return true;
     }
 }

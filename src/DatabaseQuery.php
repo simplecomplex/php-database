@@ -454,8 +454,9 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
      *
      * @param string $method
      * @param bool $sqlOnly
+     * @param int $wrappers
      */
-    public function log(string $method, bool $sqlOnly = false)
+    public function log(string $method, bool $sqlOnly = false, int $wrappers = 0)
     {
         $sql_only = $sqlOnly ? true : !Dependency::container()->has('inspect');
         $this->client->log(
@@ -466,7 +467,7 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
                 static::LOG_SQL_TRUNCATE
             ),
             [
-                'wrappers' => 1,
+                'wrappers' => $wrappers + 1,
             ]
         );
     }
@@ -480,7 +481,7 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
      *
      * @return void
      */
-    public function unsetReferences() /*:void*/
+    public function unsetReferences() /*: void*/
     {
         // Prepared statement arguments refer.
         // If not unset, the point of reference could get messed up.
