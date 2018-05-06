@@ -193,7 +193,8 @@ abstract class DatabaseClient extends Explorable implements DbClientInterface
             if (empty($databaseInfo[$key])) {
                 throw new \LogicException(
                     'Database arg databaseInfo key[' . $key  . '] '
-                    . (array_key_exists($key, $databaseInfo) ? ('has empty value[' . $databaseInfo[$key] . ']') :
+                    . (array_key_exists($key, $databaseInfo) ?
+                        ('type[' . gettype($databaseInfo[$key]) . '] is empty') :
                         'is missing')
                     . '. Required keys are ' . join(', ', $requireds) . '; saw keys '
                     . (!$databaseInfo ? '- none -' : join(', ', array_keys($databaseInfo))) . '.'
@@ -275,13 +276,15 @@ abstract class DatabaseClient extends Explorable implements DbClientInterface
     // Package protected.-------------------------------------------------------
 
     /**
+     * Database[client name][rmdbs type][database name].
+     *
      * @internal Package protected.
      *
      * @return string
      */
     public function errorMessagePrefix() : string
     {
-        return 'Database[' . $this->type . '][' . $this->name . '][' . $this->database . ']';
+        return 'Database[' . $this->name . '][' . $this->type . '][' . $this->database . ']';
     }
 
     /**

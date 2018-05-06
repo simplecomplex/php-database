@@ -12,6 +12,14 @@ namespace SimpleComplex\Database\Interfaces;
 /**
  * Database query interface.
  *
+ * @property-read string $id
+ * @property-read bool $isPreparedStatement
+ * @property-read bool $hasLikeClause
+ * @property-read string $sql
+ * @property-read string $sqlTampered
+ * @property-read array $arguments
+ * @property-read bool|null $statementClosed
+ *
  * @package SimpleComplex\Database
  */
 interface DbQueryInterface

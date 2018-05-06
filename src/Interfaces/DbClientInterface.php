@@ -12,6 +12,17 @@ namespace SimpleComplex\Database\Interfaces;
 /**
  * Database client interface.
  *
+ * @property-read string $type
+ * @property-read string $name
+ * @property-read string $host
+ * @property-read int $port
+ * @property-read string $database
+ * @property-read string $user
+ * @property-read array $options
+ * @property-read array $optionsResolved
+ * @property-read string $characterSet
+ * @property-read bool $transactionStarted
+ *
  * @package SimpleComplex\Database
  */
 interface DbClientInterface

@@ -75,6 +75,11 @@ class MsSqlResult extends DatabaseResult
         $count = @sqlsrv_rows_affected(
             $this->statement
         );
+        // sqlsrv_rows_affected() probably moves to first result set
+        // since it requires cursor mode 'forward'.
+        if ($this->setIndex < 0) {
+            ++$this->setIndex;
+        }
         if (($count && $count > 0) || $count === 0) {
             return $count;
         }
@@ -131,9 +136,8 @@ class MsSqlResult extends DatabaseResult
      */
     public function insertId($getAsType = null)
     {
-        // Fetch first row, unless already done.
-        if ($this->rowIndex < 0) {
-            $next = @sqlsrv_next_result($this->statement);
+        if ($this->setIndex < 0) {
+            $next = $this->nextSet(true);
             if (!$next) {
                 $this->query->close();
                 $this->query->log(__FUNCTION__);
@@ -149,26 +153,25 @@ class MsSqlResult extends DatabaseResult
                     . $this->query->client->nativeError() . '.'
                 );
             }
-            else {
-                $next = @sqlsrv_fetch($this->statement);
-                if (!$next) {
-                    if ($next === null) {
-                        // No row at all because rowIndex was -1.
-                        throw new DbResultException(
-                            $this->query->errorMessagePrefix()
-                            . ' - failed going to next set to get insert ID, no result row at all.'
-                        );
-                    }
-                    $this->query->close();
-                    $this->query->log(__FUNCTION__);
+        }
+        if ($this->rowIndex < 0) {
+            $next = $this->nextRow(true);
+            if (!$next) {
+                if ($next === null) {
+                    // No row at all because rowIndex was -1.
                     throw new DbResultException(
-                        $this->query->errorMessagePrefix() . ' - failed going to next row to get insert ID, with error: '
-                        . $this->query->client->nativeError() . '.'
+                        $this->query->errorMessagePrefix()
+                        . ' - failed going to next set to get insert ID, no result row at all.'
                     );
                 }
+                $this->query->close();
+                $this->query->log(__FUNCTION__);
+                throw new DbResultException(
+                    $this->query->errorMessagePrefix() . ' - failed going to next row to get insert ID, with error: '
+                    . $this->query->client->nativeError() . '.'
+                );
             }
         }
-        ++$this->rowIndex;
 
         if ($getAsType) {
             if (is_int($getAsType)) {
@@ -209,11 +212,11 @@ class MsSqlResult extends DatabaseResult
         } else {
             $id = @sqlsrv_get_field($this->statement, 0);
         }
+        ++$this->rowIndex;
         if ($id || $id === null) {
             // Null: query didn't trigger setting an ID.
             return $id;
         }
-        // $id == false.
         // Unset prepared statement arguments reference.
         $this->query->close();
         $this->query->log(__FUNCTION__);
@@ -315,6 +318,10 @@ class MsSqlResult extends DatabaseResult
             $this->statement,
             $as == Database::FETCH_ASSOC ? SQLSRV_FETCH_ASSOC : SQLSRV_FETCH_NUMERIC
         );
+        // sqlsrv_fetch_array() implicitly moves to first set.
+        if ($this->setIndex < 0) {
+            ++$this->setIndex;
+        }
         ++$this->rowIndex;
         if ($row || $row === null) {
             return $row;
@@ -343,6 +350,11 @@ class MsSqlResult extends DatabaseResult
     public function fetchObject(string $class = '', array $args = [])
     {
         $row = @sqlsrv_fetch_object($this->statement, $class, $args);
+        // sqlsrv_fetch_object() implicitly moves to first set.
+        if ($this->setIndex < 0) {
+            ++$this->setIndex;
+        }
+        ++$this->rowIndex;
         if ($row || $row === null) {
             return $row;
         }
@@ -393,8 +405,17 @@ class MsSqlResult extends DatabaseResult
                     );
                 }
                 while (($row = @sqlsrv_fetch_array($this->statement, SQLSRV_FETCH_NUMERIC))) {
+                    // sqlsrv_fetch_array() implicitly moves to first set.
+                    if ($this->setIndex < 0) {
+                        ++$this->setIndex;
+                    }
+                    ++$this->rowIndex;
                     $list[] = $row;
                 }
+                if ($this->setIndex < 0) {
+                    ++$this->setIndex;
+                }
+                ++$this->rowIndex;
                 break;
             case Database::FETCH_OBJECT:
                 $key_column = !$column_keyed ? null : $options['list_by_column'];
@@ -402,6 +423,11 @@ class MsSqlResult extends DatabaseResult
                 while (
                     ($row = @sqlsrv_fetch_object($this->statement, $options['class'] ?? '', $options['args'] ?? []))
                 ) {
+                    // sqlsrv_fetch_object() implicitly moves to first set.
+                    if ($this->setIndex < 0) {
+                        ++$this->setIndex;
+                    }
+                    ++$this->rowIndex;
                     if (!$column_keyed) {
                         $list[] = $row;
                     }
@@ -422,11 +448,20 @@ class MsSqlResult extends DatabaseResult
                         $list[$row->{$key_column}] = $row;
                     }
                 }
+                if ($this->setIndex < 0) {
+                    ++$this->setIndex;
+                }
+                ++$this->rowIndex;
                 break;
             default:
                 $key_column = !$column_keyed ? null : $options['list_by_column'];
                 $first = true;
                 while (($row = @sqlsrv_fetch_array($this->statement, SQLSRV_FETCH_ASSOC))) {
+                    // sqlsrv_fetch_array() implicitly moves to first set.
+                    if ($this->setIndex < 0) {
+                        ++$this->setIndex;
+                    }
+                    ++$this->rowIndex;
                     if (!$column_keyed) {
                         $list[] = $row;
                     }
@@ -447,6 +482,10 @@ class MsSqlResult extends DatabaseResult
                         $list[$row[$key_column]] = $row;
                     }
                 }
+                if ($this->setIndex < 0) {
+                    ++$this->setIndex;
+                }
+                ++$this->rowIndex;
         }
         // Last fetched row must be null; no more rows.
         if ($row !== null) {
@@ -475,20 +514,29 @@ class MsSqlResult extends DatabaseResult
     /**
      * Move cursor to next result set.
      *
+     * @param bool $noException
+     *      True: return false on failure, don't throw exception.
+     *
      * @return bool|null
      *      Null: No next result set.
-     *      Throws throwable on failure.
+     *
+     * @throws DbResultException
      */
-    public function nextSet()
+    public function nextSet(bool $noException = false)
     {
         $next = @sqlsrv_next_result($this->statement);
+        ++$this->setIndex;
+        $this->rowIndex = -1;
         if ($next) {
-            ++$this->setIndex;
-            $this->rowIndex = -1;
+            // Calling free() is obsolete; no action.
+            // $this->free();
             return $next;
         }
         if ($next === null) {
             return null;
+        }
+        if ($noException) {
+            return false;
         }
         // Unset prepared statement arguments reference.
         $this->query->close();
@@ -503,19 +551,26 @@ class MsSqlResult extends DatabaseResult
     /**
      * Go to next row in the result set.
      *
+     * @param bool $noException
+     *      True: return false on failure, don't throw exception.
+     *
      * @return bool|null
      *      Null: No next row.
-     *      Throws throwable on failure.
+     *
+     * @throws DbResultException
      */
-    public function nextRow()
+    public function nextRow(bool $noException = false)
     {
         $next = @sqlsrv_fetch($this->statement);
+        ++$this->rowIndex;
         if ($next) {
-            ++$this->rowIndex;
             return $next;
         }
         if ($next === null) {
             null;
+        }
+        if ($noException) {
+            return false;
         }
         // Unset prepared statement arguments reference.
         $this->query->close();

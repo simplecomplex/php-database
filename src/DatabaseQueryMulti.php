@@ -200,9 +200,10 @@ abstract class DatabaseQueryMulti extends DatabaseQuery implements DbQueryMultiI
      */
     public function append(string $sql, string $types, array $arguments) : DbQueryMultiInterface
     {
-        if (!$sql) {
+        $sql_appendix = trim($sql, static::SQL_TRIM);
+        if ($sql_appendix) {
             throw new \InvalidArgumentException(
-                $this->client->errorMessagePrefix() . ' - arg $sql cannot be empty.'
+                $this->client->errorMessagePrefix() . ' - arg $sql length[' . strlen($sql) . '] is effectively empty.'
             );
         }
 
@@ -221,10 +222,10 @@ abstract class DatabaseQueryMulti extends DatabaseQuery implements DbQueryMultiI
         }
 
         // Checks for parameters/arguments count mismatch.
-        $sql_fragments = $this->sqlFragments($sql, $arguments);
+        $sql_fragments = $this->sqlFragments($sql_appendix, $arguments);
 
         $this->sqlTampered .= '; ' . (
-            !$sql_fragments ? $sql :
+            !$sql_fragments ? $sql_appendix :
                 $this->substituteParametersByArgs($sql_fragments, $types, $arguments)
             );
 

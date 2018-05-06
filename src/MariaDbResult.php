@@ -273,6 +273,10 @@ class MariaDbResult extends DatabaseResult
             $this->loadResult();
         }
         $row = $as == Database::FETCH_ASSOC ? @$this->result->fetch_assoc() : @$this->result->fetch_array(MYSQLI_NUM);
+        // fetch_assoc/fetch_array() implicitly moves to first set.
+        if ($this->setIndex < 0) {
+            ++$this->setIndex;
+        }
         ++$this->rowIndex;
         if ($row || $row === null) {
             return $row;
@@ -309,6 +313,10 @@ class MariaDbResult extends DatabaseResult
             $this->loadResult();
         }
         $row = @$this->result->fetch_object($class, $args);
+        // fetch_object() implicitly moves to first set.
+        if ($this->setIndex < 0) {
+            ++$this->setIndex;
+        }
         ++$this->rowIndex;
         if ($row || $row === null) {
             return $row;
@@ -384,6 +392,11 @@ class MariaDbResult extends DatabaseResult
                 while (
                     ($row = @$this->result->fetch_object($options['class'] ?? '', $options['args'] ?? []))
                 ) {
+                    // fetch_object() implicitly moves to first set.
+                    if ($this->setIndex < 0) {
+                        ++$this->setIndex;
+                    }
+                    ++$this->rowIndex;
                     if (!$column_keyed) {
                         $list[] = $row;
                     }
@@ -405,10 +418,18 @@ class MariaDbResult extends DatabaseResult
                         $list[$row->{$key_column}] = $row;
                     }
                 }
+                if ($this->setIndex < 0) {
+                    ++$this->setIndex;
+                }
+                ++$this->rowIndex;
                 break;
             default:
                 if (!$column_keyed) {
                     $list = @$this->result->fetch_all(MYSQLI_ASSOC);
+                    // fetch_all() implicitly moves to first set.
+                    if ($this->setIndex < 0) {
+                        ++$this->setIndex;
+                    }
                     if (!is_array($list)) {
                         // Unset prepared statement arguments reference.
                         $this->query->close();
@@ -420,12 +441,20 @@ class MariaDbResult extends DatabaseResult
                             . $this->query->client->nativeError() . '.'
                         );
                     }
+                    if ($list) {
+                        $this->rowIndex += count($list[0]);
+                    }
                     return $list;
                 }
                 $key_column = !$column_keyed ? null : $options['list_by_column'];
                 $list = [];
                 $first = true;
                 while (($row = @$this->result->fetch_assoc())) {
+                    // fetch_assoc() implicitly moves to first set.
+                    if ($this->setIndex < 0) {
+                        ++$this->setIndex;
+                    }
+                    ++$this->rowIndex;
                     if ($first) {
                         $first = false;
                         if (!array_key_exists($key_column, $row)) {
@@ -442,6 +471,10 @@ class MariaDbResult extends DatabaseResult
                     }
                     $list[$row[$key_column]] = $row;
                 }
+                if ($this->setIndex < 0) {
+                    ++$this->setIndex;
+                }
+                ++$this->rowIndex;
         }
         // Last fetched row must be null; no more rows.
         if ($row !== null) {
@@ -461,26 +494,35 @@ class MariaDbResult extends DatabaseResult
     /**
      * Move cursor to next result set.
      *
+     * @param bool $noException
+     *      True: return false on failure, don't throw exception.
+     *
      * @return bool|null
      *      Null: No next result set.
-     *      Throws throwable on failure.
+     *
+     * @throws DbResultException
      */
-    public function nextSet()
+    public function nextSet(bool $noException = false)
     {
         if ($this->isPreparedStatement) {
+            if (!@$this->statement->more_results()) {
+                return null;
+            }
             $next = @$this->statement->next_result();
         } else {
+            if (!@$this->mySqlI->more_results()) {
+                return null;
+            }
             $next = @$this->mySqlI->next_result();
         }
+        ++$this->setIndex;
+        $this->rowIndex = -1;
         if ($next) {
-            $this->result = null;
-            ++$this->setIndex;
-            $this->rowIndex = -1;
+            $this->free();
             return $next;
         }
-        // @todo: neither next_result() seem to return null.
-        if ($next === null) {
-            return null;
+        if ($noException) {
+            return false;
         }
         // Unset prepared statement arguments reference.
         $this->query->close();
@@ -496,23 +538,28 @@ class MariaDbResult extends DatabaseResult
     /**
      * Go to next row in the result set.
      *
+     * @param bool $noException
+     *      True: return false on failure, don't throw exception.
+     *
      * @return bool|null
-     *      Null: No next row.
-     *      Throws throwable on failure.
+     *      Null: No next result set.
      */
-    public function nextRow()
+    public function nextRow(bool $noException = false)
     {
         if (!$this->result) {
             $this->loadResult();
         }
         // There's no MySQLi direct equivalent; use lightest alternative.
         $row = $this->result->fetch_array(MYSQL_NUM);
+        ++$this->rowIndex;
         if ($row || is_array($row)) {
-            ++$this->rowIndex;
             return true;
         }
         if ($row === null) {
             null;
+        }
+        if ($noException) {
+            return false;
         }
         // Unset prepared statement arguments reference.
         $this->query->close();
@@ -555,6 +602,9 @@ class MariaDbResult extends DatabaseResult
                 } else {
                     $result = @$this->mySqlI->use_result();
                 }
+            }
+            if ($this->setIndex == -1) {
+                ++$this->setIndex;
             }
             if (!$result) {
                 // Unset prepared statement arguments reference.

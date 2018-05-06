@@ -36,14 +36,16 @@ abstract class DatabaseResult extends Explorable implements DbResultInterface
     /**
      * Index of current result set.
      *
+     * Is minus one until nextRow() or any method has fetched a (first) row.
+     *
      * @var int
      */
-    protected $setIndex = 0;
+    protected $setIndex = -1;
 
     /**
      * Index of current row in current result set.
      *
-     * Value is minus one until any method has fetched a (first) row.
+     * Is minus one until any method has fetched a (first) row.
      *
      * @var int
      */

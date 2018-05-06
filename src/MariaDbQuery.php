@@ -93,6 +93,13 @@ class MariaDbQuery extends DatabaseQueryMulti
     const CURSOR_MODE_DEFAULT = 'store';
 
     /**
+     * @var string[]
+     */
+    const SQL_SNIPPET = [
+        'select_uuid' => 'SELECT UUID()',
+    ];
+
+    /**
      * Ought to be protected, but too costly since result instance
      * may use it repetetively; via the query instance.
      *

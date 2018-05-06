@@ -108,20 +108,28 @@ interface DbResultInterface
     /**
      * Move cursor to next result set.
      *
+     * @param bool $noException
+     *      True: return false on failure, don't throw exception.
+     *
      * @return bool|null
      *      Null: No next result set.
-     *      Throws throwable on failure.
+     *
+     * @throws \Throwable
      */
-    public function nextSet();
+    public function nextSet(bool $noException = false);
 
     /**
      * Go to next row in the result set.
      *
+     * @param bool $noException
+     *      True: return false on failure, don't throw exception.
+     *
      * @return bool|null
      *      Null: No next row.
-     *      Throws throwable on failure.
+     *
+     * @throws \Throwable
      */
-    public function nextRow();
+    public function nextRow(bool $noException = false);
 
     /**
      * @return void

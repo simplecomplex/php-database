@@ -37,26 +37,15 @@ class ClientTest extends TestCase
      */
     public function testInstantiation()
     {
-        /** @var DatabaseBroker $dbBroker */
-        $dbBroker = (new BrokerTest())->testInstantiation();
-        $databaseInfo = (new ConfigurationTest())->testMariaDb();
+        /** @var DatabaseBroker $db_broker */
+        $db_broker = (new BrokerTest())->testInstantiation();
+        $database_info = (new ConfigurationTest())->testMariaDb();
 
-        $client = $dbBroker->getClient('scx_mssql_test', 'mariadb', $databaseInfo);
+        $client = $db_broker->getClient('test_scx_mariadb', 'mariadb', $database_info);
         $this->assertInstanceOf(MariaDbClient::class, $client);
 
         return $client;
     }
-
-    /**
-     *
-     * @depends testInstantiation
-     *
-     * @param DbClientInterface|MariaDbClient $client
-     *
-    public function testOptions(DbClientInterface $client)
-    {
-        $client->optionsResolve();
-    }*/
 
     /**
      * @param DbClientInterface|MariaDbClient $client
@@ -67,7 +56,48 @@ class ClientTest extends TestCase
     {
         $connection = $client->getConnection(true);
         $this->assertInstanceOf(\mysqli::class, $connection);
-        $connected = $client->isConnected();
-        $this->assertTrue($connected, 'Not connected');
+    }
+
+    /**
+     * Throw \LogicException: client arg databaseInfo[pass] is empty.
+     *
+     * @see BrokerTest::testInstantiation
+     * @see ConfigurationTest::testMariaDb()
+     *
+     * @expectedException \LogicException
+     */
+    public function testOptionEmpty()
+    {
+        /** @var DatabaseBroker $db_broker */
+        $db_broker = (new BrokerTest())->testInstantiation();
+        $database_info = (new ConfigurationTest())->testMariaDb();
+
+        $database_info['pass'] = '';
+        $client = $db_broker->getClient('option-empty-client', 'mariadb', $database_info);
+        $this->assertInstanceOf(MariaDbClient::class, $client);
+
+        // Options get resolved on demand.
+        $client->getConnection(true);
+    }
+
+    /**
+     * Throw DbConnectionException: client databaseInfo[database] doesn't exist.
+     *
+     * @see BrokerTest::testInstantiation
+     * @see ConfigurationTest::testMariaDb()
+     *
+     * @expectedException \SimpleComplex\Database\Exception\DbConnectionException
+     */
+    public function testMalConnectionDatabaseNonexist()
+    {
+        /** @var DatabaseBroker $db_broker */
+        $db_broker = (new BrokerTest())->testInstantiation();
+        $database_info = (new ConfigurationTest())->testMariaDb();
+
+        $database_info['database'] = 'nonexistent_database';
+        $client = $db_broker->getClient('database-non-exist-client', 'mariadb', $database_info);
+        $this->assertInstanceOf(MariaDbClient::class, $client);
+
+        $client->getConnection(true);
     }
 }

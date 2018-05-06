@@ -120,6 +120,13 @@ class MsSqlQuery extends DatabaseQuery
     const SQL_INSERT_ID = 'SELECT SCOPE_IDENTITY() AS IDENTITY_COLUMN_NAME';
 
     /**
+     * @var string[]
+     */
+    const SQL_SNIPPET = [
+        'select_uuid' => 'SELECT NEWID()',
+    ];
+
+    /**
      * Ought to be protected, but too costly since result instance
      * may use it repetetively; via the query instance.
      *

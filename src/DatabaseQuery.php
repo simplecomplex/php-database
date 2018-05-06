@@ -58,6 +58,16 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
     const SQL_PARAMETER = '?';
 
     /**
+     * Remove trailing (and leading) semicolon,
+     * to prevent appearance as more queries.
+     *
+     * @see DatabaseQuery::__construct()
+     *
+     * @var string
+     */
+    const SQL_TRIM = " \t\n\r\0\x0B;";
+
+    /**
      * Truncate sql to that length when logging.
      *
      * @int
@@ -144,19 +154,17 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
      * @param array $options
      *
      * @throws \InvalidArgumentException
-     *      Arg $sql empty.
+     *      Arg $sql effectively empty.
      */
     public function __construct(DbClientInterface $client, string $sql, array $options = [])
     {
         $this->client = $client;
-
-        if (!$sql) {
+        $this->sql = trim($sql, static::SQL_TRIM);
+        if (!$this->sql) {
             throw new \InvalidArgumentException(
-                $this->client->errorMessagePrefix() . ' - arg $sql cannot be empty.'
+                $this->client->errorMessagePrefix() . ' - arg $sql length[' . strlen($sql) . '] is effectively empty.'
             );
         }
-        // Remove trailing (and leading) semicolon; for multi-query.
-        $this->sql = trim($sql, " \t\n\r\0\x0B;");
     }
 
     /**
