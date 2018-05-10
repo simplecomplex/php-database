@@ -14,7 +14,7 @@ use SimpleComplex\Database\Interfaces\DbQueryInterface;
 use SimpleComplex\Database\Interfaces\DbResultInterface;
 
 use SimpleComplex\Database\Exception\DbRuntimeException;
-use SimpleComplex\Database\Exception\DbInterruptionException;
+use SimpleComplex\Database\Exception\DbConnectionException;
 use SimpleComplex\Database\Exception\DbQueryException;
 
 /**
@@ -29,7 +29,7 @@ use SimpleComplex\Database\Exception\DbQueryException;
  * via mysqli_stmt::get_result(); only available with mysqlnd.
  * @see http://php.net/manual/en/mysqli-stmt.get-result.php
  *
- * Inherited properties:
+ * Properties inherited from DatabaseQuery:
  * @property-read string $id
  * @property-read bool $isPreparedStatement
  * @property-read bool $hasLikeClause
@@ -37,11 +37,14 @@ use SimpleComplex\Database\Exception\DbQueryException;
  * @property-read string $sqlTampered
  * @property-read array $arguments
  * @property-read bool|null $statementClosed
+ * @property-read bool $transactionStarted  Value of client ditto.
+ *
+ * Properties inherited from DatabaseQueryMulti:
  * @property-read bool $isMultiQuery
  * @property-read bool $isRepeatStatement
  * @property-read bool $sqlAppended
  *
- * Own read-onlys:
+ * Own properties:
  * @property-read string $cursorMode
  *
  * @package SimpleComplex\Database
@@ -251,8 +254,8 @@ class MariaDbQuery extends DatabaseQueryMulti
         if (!$mysqli_stmt) {
             $this->log(__FUNCTION__);
             throw new DbRuntimeException(
-                $this->errorMessagePrefix()
-                . ' - query failed to prepare statement, with error: ' . $this->nativeError() . '.'
+                $this->errorMessagePrefix() . ' - query failed to prepare statement, with error: '
+                . $this->nativeErrors(Database::ERRORS_STRING) . '.'
             );
         }
         $this->statement = $mysqli_stmt;
@@ -270,7 +273,7 @@ class MariaDbQuery extends DatabaseQueryMulti
 
             if (!@$mysqli_stmt->bind_param($tps, ...$this->arguments['prepared'])) {
                 // Unset prepared statement arguments reference.
-                $error = $this->nativeError();
+                $error = $this->nativeErrors(Database::ERRORS_STRING);
                 $this->unsetReferences();
                 $this->log(__FUNCTION__);
                 throw new DbRuntimeException(
@@ -310,6 +313,8 @@ class MariaDbQuery extends DatabaseQueryMulti
     /**
      * Any query must be executed, even non-prepared statement.
      *
+     * NB: MySQL multi-queries aren't executed until getting result sets.
+     *
      * Actual execution
      * ----------------
      * Prepared statement:
@@ -323,7 +328,7 @@ class MariaDbQuery extends DatabaseQueryMulti
      *
      * @throws \LogicException
      *      Is prepared statement and the statement is previously closed.
-     * @throws DbInterruptionException
+     * @throws DbConnectionException
      *      Is prepared statement and connection lost.
      * @throws DbQueryException
      */
@@ -343,20 +348,19 @@ class MariaDbQuery extends DatabaseQueryMulti
             if (!$mysqli) {
                 // Unset prepared statement arguments reference.
                 $this->unsetReferences();
-                throw new DbInterruptionException(
+                throw new DbConnectionException(
                     $this->client->errorMessagePrefix()
                     . ' - query can\'t execute prepared statement when connection lost.'
                 );
             }
             // bool.
             if (!@$this->statement->execute()) {
-                $error = $this->nativeError();
+                $error = $this->nativeErrors(Database::ERRORS_STRING);
                 // Unset prepared statement arguments reference.
                 $this->unsetReferences();
                 $this->log(__FUNCTION__);
                 throw new DbQueryException(
-                    $this->errorMessagePrefix()
-                    . ' - failed executing prepared statement, with error: ' . $error . '.'
+                    $this->errorMessagePrefix() . ' - failed executing prepared statement, with error: ' . $error . '.'
                 );
             }
         }
@@ -364,12 +368,13 @@ class MariaDbQuery extends DatabaseQueryMulti
             // Allow re-connection.
             /** @var \MySQLi $mysqli */
             $mysqli = $this->client->getConnection(true);
+            $errors = [];
             // bool.
-            if (!@$mysqli->multi_query($this->sqlTampered ?? $this->sql)) {
+            if (!@$mysqli->multi_query($this->sqlTampered ?? $this->sql) || ($errors = $this->nativeErrors())) {
                 $this->log(__FUNCTION__);
                 throw new DbQueryException(
-                    $this->errorMessagePrefix()
-                    . ' - failed executing multi-query, with error: ' . $this->nativeError() . '.'
+                    $this->errorMessagePrefix() . ' - failed executing multi-query, with error: '
+                    . $this->client->nativeErrorsToString($errors) . '.'
                 );
             }
         }
@@ -381,8 +386,8 @@ class MariaDbQuery extends DatabaseQueryMulti
             if (!@$mysqli->real_query($this->sqlTampered ?? $this->sql)) {
                 $this->log(__FUNCTION__);
                 throw new DbQueryException(
-                    $this->errorMessagePrefix()
-                    . ' - failed executing simple query, with error: ' . $this->nativeError() . '.'
+                    $this->errorMessagePrefix() . ' - failed executing simple query, with error: '
+                    . $this->nativeErrors(Database::ERRORS_STRING) . '.'
                 );
             }
         }
@@ -438,39 +443,39 @@ class MariaDbQuery extends DatabaseQueryMulti
     }
 
     /**
-     * Query must append to (client) general error, because \mysqli_stmt
+     * Get RMDBS/driver native error(s) recorded as array,
+     * concatenated string or empty string.
+     *
+     * Query must append to (client) general errors, because \mysqli_stmt
      * has own separate error list.
      *
-     * @param bool $emptyOnNone
-     *      False: on no error returns message indication just that.
-     *      True: on no error return empty string.
-     * @param \mysqli_stmt|null
+     * @see MariaDbClient::nativeErrors()
+     * @see DatabaseClient::formatNativeErrors()
      *
-     * @return string
+     * @param int $toString
+     *      1: on no error returns message indication just that.
+     *      2: on no error return empty string.
+     *
+     * @return array|string
+     *      Array: key is error code.
      */
-    public function nativeError(bool $emptyOnNone = false) : string
+    public function nativeErrors(int $toString = 0)
     {
-        $list = [];
-        if ($this->statement) {
-            $errors = $this->statement->error_list;
-            foreach ($errors as $error) {
-                if (!empty($error['sqlstate'])) {
-                    $em = '(SQLSTATE: ' . $error['sqlstate'] . ') ';
-                } elseif (!empty($error['errno'])) {
-                    $em = '(code: ' . $error['errno'] . ') ';
-                } else {
-                    $em = '';
+        $list = $this->client->nativeErrors();
+        if ($this->statement && ($errors = $this->statement->error_list)) {
+            if (!$list) {
+                $list =& $errors;
+            }
+            else {
+                $errors = $this->client->formatNativeErrors($errors);
+                foreach ($errors as $code => $error) {
+                    if (!isset($list[$code])) {
+                        $list[$code] = $error;
+                    }
                 }
-                $list[] = $em . $error['error'] ?? '';
             }
         }
-        $general_error = $this->client->nativeError($emptyOnNone);
-        if ($general_error) {
-            array_unshift($list, $general_error);
-        }
-        if ($list) {
-            return rtrim(join(' | ', $list), '.');
-        }
-        return $emptyOnNone ? '' : '- no native error recorded -';
+        return !$toString ? $list :
+            $this->client->nativeErrorsToString($list, $toString == Database::ERRORS_STRING_EMPTY_NONE);
     }
 }

@@ -59,23 +59,31 @@ class ConfigurationTest extends TestCase
     protected function getConfigIfExist(ContainerInterface $container)
     {
         $database_info = null;
+
         if ($container->has('config')) {
             /** @var \SimpleComplex\Config\IniSectionedConfig $config_store */
             $config_store = $container->get('config');
             $config_class = '\\SimpleComplex\\Config\\IniSectionedConfig\\SectionedConfigInterface';
             if (is_a($config_store, $config_class)) {
-                $database_info = $config_store->get('database-info.test_scx_mssql', '*', []);
+                try {
+                    $database_info = $config_store->get('database-info.test_scx_mssql', '*', []);
+                }
+                // Nope, config cache key is valid; for IDE.
+                catch (\Psr\SimpleCache\InvalidArgumentException $xcptn) {
+                    $database_info = [];
+                }
                 if (!is_array($database_info) || !$database_info) {
                     $database_info = null;
                 }
             }
         }
+
         return $database_info;
     }
 
 
     /**
-     * @see BootstrapTest::testDependencies
+     * @see BootstrapTest::testDependencies()
      *
      * @return array
      */
@@ -102,7 +110,7 @@ class ConfigurationTest extends TestCase
     }
 
     /**
-     * @see BootstrapTest::testDependencies
+     * @see BootstrapTest::testDependencies()
      *
      * @return array
      */

@@ -13,6 +13,8 @@ use SimpleComplex\Utils\CliEnvironment;
 use SimpleComplex\Utils\Dependency;
 
 /**
+ * @deprecated No use, can't log from within test cases.
+ *
  * @package SimpleComplex\Tests\Database
  */
 class Log

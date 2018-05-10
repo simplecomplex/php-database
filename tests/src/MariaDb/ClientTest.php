@@ -30,7 +30,7 @@ use SimpleComplex\Tests\Database\ConfigurationTest;
 class ClientTest extends TestCase
 {
     /**
-     * @see BrokerTest::testInstantiation
+     * @see BrokerTest::testInstantiation()
      * @see ConfigurationTest::testMariaDb()
      *
      * @return DbClientInterface|MariaDbClient
@@ -61,7 +61,7 @@ class ClientTest extends TestCase
     /**
      * Throw \LogicException: client arg databaseInfo[pass] is empty.
      *
-     * @see BrokerTest::testInstantiation
+     * @see BrokerTest::testInstantiation()
      * @see ConfigurationTest::testMariaDb()
      *
      * @expectedException \LogicException
@@ -83,7 +83,7 @@ class ClientTest extends TestCase
     /**
      * Throw DbConnectionException: client databaseInfo[database] doesn't exist.
      *
-     * @see BrokerTest::testInstantiation
+     * @see BrokerTest::testInstantiation()
      * @see ConfigurationTest::testMariaDb()
      *
      * @expectedException \SimpleComplex\Database\Exception\DbConnectionException

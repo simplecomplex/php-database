@@ -24,7 +24,7 @@ use SimpleComplex\Database\DatabaseBroker;
 class BrokerTest extends TestCase
 {
     /**
-     * @see BootstrapTest::testDependencies
+     * @see BootstrapTest::testDependencies()
      *
      * @return DatabaseBroker
      */

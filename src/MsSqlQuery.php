@@ -14,7 +14,7 @@ use SimpleComplex\Database\Interfaces\DbQueryInterface;
 use SimpleComplex\Database\Interfaces\DbResultInterface;
 
 use SimpleComplex\Database\Exception\DbRuntimeException;
-use SimpleComplex\Database\Exception\DbInterruptionException;
+use SimpleComplex\Database\Exception\DbConnectionException;
 use SimpleComplex\Database\Exception\DbQueryException;
 
 /**
@@ -32,8 +32,9 @@ use SimpleComplex\Database\Exception\DbQueryException;
  * @property-read string $sqlTampered
  * @property-read array $arguments
  * @property-read bool|null $statementClosed
+ * @property-read bool $transactionStarted  Value of client ditto.
  *
- * Own read-onlys:
+ * Own properties:
  * @property-read string $cursorMode
  * @property-read int $queryTimeout
  * @property-read bool $sendDataChunked
@@ -339,7 +340,7 @@ class MsSqlQuery extends DatabaseQuery
             $connection, $this->sqlTampered ?? $this->sql, $this->arguments['prepared'] ?? [], $options
         );
         if (!$statement) {
-            $error = $this->client->nativeError();
+            $error = $this->client->nativeErrors(Database::ERRORS_STRING);
             // Unset prepared statement arguments reference.
             $this->unsetReferences();
             $this->log(__FUNCTION__);
@@ -416,7 +417,7 @@ class MsSqlQuery extends DatabaseQuery
      *
      * @throws \LogicException
      *      Query statement previously closed.
-     * @throws DbInterruptionException
+     * @throws DbConnectionException
      *      Is prepared statement and connection lost.
      * @throws DbQueryException
      * @throws DbRuntimeException
@@ -438,14 +439,14 @@ class MsSqlQuery extends DatabaseQuery
                 // Unset prepared statement arguments reference.
                 $this->unsetReferences();
                 $this->log(__FUNCTION__);
-                throw new DbInterruptionException(
+                throw new DbConnectionException(
                     $this->errorMessagePrefix()
                     . ' - query can\'t execute prepared statement when connection lost.'
                 );
             }
             // bool.
             if (!@sqlsrv_execute($this->statement)) {
-                $error = $this->client->nativeError();
+                $error = $this->client->nativeErrors(Database::ERRORS_STRING);
                 // Unset prepared statement arguments reference.
                 $this->unsetReferences();
                 $this->log(__FUNCTION__);
@@ -474,8 +475,8 @@ class MsSqlQuery extends DatabaseQuery
             if (!$statement) {
                 $this->log(__FUNCTION__);
                 throw new DbQueryException(
-                    $this->errorMessagePrefix()
-                    . ' - failed executing simple query, with error: ' . $this->client->nativeError() . '.'
+                    $this->errorMessagePrefix() . ' - failed executing simple query, with error: '
+                    . $this->client->nativeErrors(Database::ERRORS_STRING) . '.'
                 );
             }
             $this->statement = $statement;
@@ -489,7 +490,7 @@ class MsSqlQuery extends DatabaseQuery
             ) {
                 ++$chunks;
             }
-            $error = $this->client->nativeError(true);
+            $error = $this->client->nativeErrors(Database::ERRORS_STRING_EMPTY_NONE);
             if ($error) {
                 // Unset prepared statement arguments reference.
                 $this->unsetReferences();

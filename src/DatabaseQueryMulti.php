@@ -27,6 +27,7 @@ use SimpleComplex\Database\Interfaces\DbQueryMultiInterface;
  * @property-read string $sqlTampered
  * @property-read array $arguments
  * @property-read bool|null $statementClosed
+ * @property-read bool $transactionStarted  Value of client ditto.
  *
  * Own properties:
  * @property-read bool $isMultiQuery

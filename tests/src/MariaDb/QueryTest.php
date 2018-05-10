@@ -27,8 +27,7 @@ class QueryTest extends TestCase
     /**
      * Throw \InvalidArgumentException: query arg $sql effectively empty.
      *
-     * @see BrokerTest::testInstantiation
-     * @see ConfigurationTest::testMariaDb()
+     * @see ClientTest::testInstantiation()
      *
      * @expectedException \InvalidArgumentException
      */
@@ -37,14 +36,17 @@ class QueryTest extends TestCase
         /** @var MariaDbClient $client */
         $client = (new ClientTest())->testInstantiation();
 
+        /**
+         * @throws \InvalidArgumentException
+         *      Arg $sql resolves to empty.
+         */
         $client->query(MariaDbQuery::SQL_TRIM . MariaDbQuery::SQL_TRIM);
     }
 
     /**
      * Throw \InvalidArgumentException: query option[cursor_mode] value invalid.
      *
-     * @see BrokerTest::testInstantiation
-     * @see ConfigurationTest::testMariaDb()
+     * @see ClientTest::testInstantiation()
      *
      * @expectedException \InvalidArgumentException
      */
@@ -53,6 +55,10 @@ class QueryTest extends TestCase
         /** @var MariaDbClient $client */
         $client = (new ClientTest())->testInstantiation();
 
+        /**
+         * @throws \InvalidArgumentException
+         *      Arg $option['cursor_mode'] invalid.
+         */
         $client->query(MariaDbQuery::SQL_SNIPPET['select_uuid'], [
             'cursor_mode' => 'rubbish',
         ]);

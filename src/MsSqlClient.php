@@ -11,7 +11,6 @@ namespace SimpleComplex\Database;
 
 use SimpleComplex\Database\Exception\DbRuntimeException;
 use SimpleComplex\Database\Exception\DbConnectionException;
-use SimpleComplex\Database\Exception\DbInterruptionException;
 
 /**
  * MS SQL client.
@@ -33,7 +32,7 @@ use SimpleComplex\Database\Exception\DbInterruptionException;
  * @property-read string $characterSet
  * @property-read bool $transactionStarted
  *
- * Own read-onlys:
+ * Own properties:
  * @property-read array|string $info  Driver info, string if not connected.
  *
  * @package SimpleComplex\Database
@@ -53,6 +52,16 @@ class MsSqlClient extends DatabaseClient
      * @var string
      */
     const CLASS_QUERY = MsSqlQuery::class;
+
+    /**
+     * Class name of DatabaseErrorCodes class.
+     *
+     * @see MsSqlErrorCodes
+     * @see DatabaseClient::errorsToException()
+     *
+     * @var string
+     */
+    const CLASS_ERROR_CODES = MsSqlErrorCodes::class;
 
     /**
      * Default database server port.
@@ -139,9 +148,11 @@ class MsSqlClient extends DatabaseClient
         // Allow re-connection.
         $this->getConnection(true);
         if (!@sqlsrv_begin_transaction($this->connection)) {
-            throw new DbRuntimeException(
-                $this->errorMessagePrefix()
-                . ' - failed to start transaction, with error: ' . $this->nativeError() . '.'
+            $errors = $this->nativeErrors();
+            $class = $this->errorsToException($errors, DbRuntimeException::class);
+            throw new $class(
+                $this->errorMessagePrefix() . ' - failed to start transaction, with error: '
+                . $this->nativeErrorsToString($errors) . '.'
             );
         }
     }
@@ -152,7 +163,7 @@ class MsSqlClient extends DatabaseClient
      * @return void
      *      Throws exception on failure.
      *
-     * @throws DbInterruptionException
+     * @throws DbConnectionException
      *      Connection lost.
      * @throws DbRuntimeException
      */
@@ -161,14 +172,16 @@ class MsSqlClient extends DatabaseClient
         if ($this->transactionStarted) {
             // Require unbroken connection.
             if (!$this->isConnected()) {
-                throw new DbInterruptionException(
+                throw new DbConnectionException(
                     $this->errorMessagePrefix() . ' - can\'t commit, connection lost.'
                 );
             }
             if (!@sqlsrv_commit($this->connection)) {
-                throw new DbRuntimeException(
-                    $this->errorMessagePrefix()
-                    . ' - failed to commit transaction, with error: ' . $this->nativeError() . '.'
+                $errors = $this->nativeErrors();
+                $class = $this->errorsToException($errors, DbRuntimeException::class);
+                throw new $class(
+                    $this->errorMessagePrefix() . ' - failed to commit transaction, with error:  '
+                    . $this->nativeErrorsToString($errors) . '.'
                 );
             }
             $this->transactionStarted = false;
@@ -181,7 +194,7 @@ class MsSqlClient extends DatabaseClient
      * @return void
      *      Throws exception on failure.
      *
-     * @throws DbInterruptionException
+     * @throws DbConnectionException
      *      Connection lost.
      * @throws DbRuntimeException
      */
@@ -190,14 +203,16 @@ class MsSqlClient extends DatabaseClient
         if ($this->transactionStarted) {
             // Require unbroken connection.
             if (!$this->isConnected()) {
-                throw new DbInterruptionException(
+                throw new DbConnectionException(
                     $this->errorMessagePrefix() . ' - can\'t rollback, connection lost.'
                 );
             }
             if (!@sqlsrv_rollback($this->connection)) {
-                throw new DbRuntimeException(
-                    $this->errorMessagePrefix()
-                    . ' - failed to rollback transaction, with error: ' . $this->nativeError() . '.'
+                $errors = $this->nativeErrors();
+                $class = $this->errorsToException($errors, DbRuntimeException::class);
+                throw new $class(
+                    $this->errorMessagePrefix() . ' - failed to rollback transaction, with error: '
+                    . $this->nativeErrorsToString($errors) . '.'
                 );
             }
             $this->transactionStarted = false;
@@ -229,32 +244,34 @@ class MsSqlClient extends DatabaseClient
     // Helpers.-----------------------------------------------------------------
 
     /**
+     * Get RMDBS/driver native error(s) recorded as array,
+     * concatenated string or empty string.
+     *
      * NB: An error may not belong to current connection;
      * Sqlsrv's error getter takes no connection argument.
      *
-     * @param bool $emptyOnNone
-     *      False: on no error returns message indication just that.
-     *      True: on no error return empty string.
+     * @see DatabaseClient::formatNativeErrors()
      *
-     * @return string
+     * @param int $toString
+     *      1: on no error returns message indication just that.
+     *      2: on no error return empty string.
+     *
+     * @return array|string
+     *      Array: key is error code.
      */
-    public function nativeError(bool $emptyOnNone = false) : string
+    public function nativeErrors(int $toString = 0)
     {
+        $list = [];
         if (($errors = sqlsrv_errors())) {
-            $list = [];
             foreach ($errors as $error) {
-                if (!empty($error['SQLSTATE'])) {
-                    $em = '(SQLSTATE: ' . $error['SQLSTATE'] . ') ';
-                } elseif (!empty($error['code'])) {
-                    $em = '(code: ' . $error['code'] . ') ';
-                } else {
-                    $em = '';
-                }
-                $list[] = $em . $error['message'] ?? '';
+                $list[] = [
+                    'code' => $error['code'] ?? 0,
+                    'sqlstate' => $error['SQLSTATE'] ?? '00000',
+                    'msg' => $error['message'] ?? '',
+                ];
             }
-            return rtrim(join(' | ', $list), '.');
         }
-        return $emptyOnNone ? '' : '- no native error recorded -';
+        return $this->formatNativeErrors($list, $toString);
     }
 
     /**
@@ -371,8 +388,8 @@ class MsSqlClient extends DatabaseClient
      *      Resource: connection (re-)established.
      *
      * @throws DbConnectionException
-     * @throws DbInterruptionException
      *      Connection lost during unfinished transaction.
+     *      Failure to (re)connect.
      */
     public function getConnection(bool $reConnect = false)
     {
@@ -381,7 +398,7 @@ class MsSqlClient extends DatabaseClient
                 return false;
             }
             if ($this->transactionStarted) {
-                throw new DbInterruptionException(
+                throw new DbConnectionException(
                     $this->errorMessagePrefix() . ' - connection lost during unfinished transaction.'
                 );
             }
@@ -399,9 +416,8 @@ class MsSqlClient extends DatabaseClient
             );
             if (!$connection) {
                 throw new DbConnectionException(
-                    $this->errorMessagePrefix()
-                    . ' connect to host[' . $this->host . '] port[' . $this->port
-                    . '] failed, with error: ' . $this->nativeError() . '.'
+                    $this->errorMessagePrefix() . ' connect to host[' . $this->host . '] port[' . $this->port
+                    . '] failed, with error: ' . $this->nativeErrors(Database::ERRORS_STRING) . '.'
                 );
             }
             $this->connection = $connection;

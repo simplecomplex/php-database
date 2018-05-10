@@ -42,6 +42,7 @@ use SimpleComplex\Database\Interfaces\DbQueryInterface;
  * @property-read string $sqlTampered
  * @property-read array $arguments
  * @property-read bool|null $statementClosed
+ * @property-read bool $transactionStarted  Value of client ditto.
  *
  * @package SimpleComplex\Database
  */
@@ -436,6 +437,19 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
         return $sql_with_args . $sqlFragments[$i];
     }
 
+    /**
+     * Close query statement, and log.
+     *
+     * @param string $method
+     *
+     * @return void
+     */
+    protected function closeAndLog(string $method) /*: void*/
+    {
+        $this->close();
+        $this->log($method, false, 1);
+    }
+
 
     // Package protected.-------------------------------------------------------
 
@@ -514,6 +528,8 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
         'sqlTampered',
         'arguments',
         'statementClosed',
+        // Value of client ditto.
+        'transactionStarted',
     ];
 
     /**
@@ -529,11 +545,17 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
     public function __get(string $name)
     {
         if (in_array($name, $this->explorableIndex, true)) {
-            // Set 'id' on demand.
-            if ($name == 'id' && !$this->id) {
-                $c = explode('.', $uni = uniqid('', TRUE));
-                $utils = Utils::getInstance();
-                $this->id = $utils->baseConvert($c[0], 16, 62) . $utils->baseConvert($c[1], 16, 62);
+            switch ($name) {
+                case 'id':
+                    // Set 'id' on demand.
+                    if (!$this->id) {
+                        $c = explode('.', $uni = uniqid('', TRUE));
+                        $utils = Utils::getInstance();
+                        $this->id = $utils->baseConvert($c[0], 16, 62) . $utils->baseConvert($c[1], 16, 62);
+                    }
+                    break;
+                case 'transactionStarted':
+                    return $this->client->transactionStarted;
             }
             return $this->{$name};
         }

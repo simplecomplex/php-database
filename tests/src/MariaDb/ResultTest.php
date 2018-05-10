@@ -26,12 +26,42 @@ use SimpleComplex\Database\MariaDbResult;
 class ResultTest extends TestCase
 {
     /**
-     * Throw \InvalidArgumentException: query arg $sql effectively empty.
+     * Throw DbQueryException: can't truncate due to foreign key constraint.
      *
-     * @see BrokerTest::testInstantiation
-     * @see ConfigurationTest::testMariaDb()
+     * @see ClientTest::testInstantiation
+     *
+     * @expectedException \SimpleComplex\Database\Exception\DbQueryException
      */
-    public function testMalArgSqlEmpty()
+    public function testMalTruncateForeignKeys()
+    {
+        /** @var MariaDbClient $client */
+        $client = (new ClientTest())->testInstantiation();
+
+        /** @var MariaDbQuery $query */
+        $query = $client->multiQuery(
+            'TRUNCATE TABLE child; TRUNCATE TABLE relationship; TRUNCATE TABLE parent'
+        );
+
+        /** @var MariaDbResult $result */
+        $result = $query->execute();
+        $this->assertInstanceOf(MariaDbResult::class, $result);
+
+        // NB: MySQL multi-queries aren't executed until getting result sets,
+        // not when execute()/MySQLi::multi_query().
+
+        /**
+         * @throws \SimpleComplex\Database\Exception\DbQueryException
+         *      Due to foreign key constraint.
+         */
+        while($result->nextSet() !== null) {}
+    }
+
+    /**
+     * Truncates all database tables, to reset.
+     *
+     * @see ClientTest::testInstantiation
+     */
+    public function testResetMultiQueryTruncate()
     {
         /** @var MariaDbClient $client */
         $client = (new ClientTest())->testInstantiation();
@@ -39,17 +69,20 @@ class ResultTest extends TestCase
         /** @var MariaDbQuery $query */
         $query = $client->multiQuery(
             'SET FOREIGN_KEY_CHECKS=0; TRUNCATE TABLE child; TRUNCATE TABLE relationship; TRUNCATE TABLE parent'
-            //'TRUNCATE TABLE child; TRUNCATE TABLE relationship; TRUNCATE TABLE parent'
         );
 
         /** @var MariaDbResult $result */
         $result = $query->execute();
         $this->assertInstanceOf(MariaDbResult::class, $result);
 
-        $client->log('result', $result->nextSet());
-        $client->log('result', $result->nextSet());
-        $client->log('result', $result->nextSet());
-        $client->log('result', $result->nextSet());
+        $i = -1;
+        while(($success = $result->nextSet()) !== null) {
+            $this->assertSame(
+                true,
+                $success,
+                'Result set[' . (++$i) . '] was type[' . gettype($success) . '] ~bool[' . !!$success . '].'
+            );
+        }
     }
 
 }

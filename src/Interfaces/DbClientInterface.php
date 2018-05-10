@@ -57,7 +57,7 @@ interface DbClientInterface
      * @return void
      *      Throws exception on failure.
      *
-     * @throws \SimpleComplex\Database\Exception\DbInterruptionException
+     * @throws \SimpleComplex\Database\Exception\DbConnectionException
      *      Connection lost.
      */
     public function transactionCommit();
@@ -66,7 +66,7 @@ interface DbClientInterface
      * @return void
      *      Throws exception on failure.
      *
-     * @throws \SimpleComplex\Database\Exception\DbInterruptionException
+     * @throws \SimpleComplex\Database\Exception\DbConnectionException
      *      Connection lost.
      */
     public function transactionRollback();
@@ -85,15 +85,17 @@ interface DbClientInterface
     // Helpers.-----------------------------------------------------------------
 
     /**
-     * Get last driver native error(s) recorded.
+     * Get RMDBS/driver native error(s) recorded as array,
+     * concatenated string or empty string.
      *
-     * @param bool $emptyOnNone
-     *      False: on no error returns message indication just that.
-     *      True: on no error return empty string.
+     * @param int $stringed
+     *      1: on no error returns message indication just that.
+     *      2: on no error return empty string.
      *
-     * @return string
+     * @return array|string
+     *      Array: key is error code.
      */
-    public function nativeError(bool $emptyOnNone = false) : string;
+    public function nativeErrors(int $stringed = 0);
 
 
     // Package protected.-------------------------------------------------------

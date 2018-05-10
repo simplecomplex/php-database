@@ -10,7 +10,6 @@ CREATE TABLE parent (
     id int(11) NOT NULL AUTO_INCREMENT,
     lastName varchar(128) NOT NULL,
     firstName varchar(128) NOT NULL,
-    spouse int(11) DEFAULT NULL,
     birthday date NOT NULL,
     PRIMARY KEY (id)
 ) ENGINE=InnoDB;
