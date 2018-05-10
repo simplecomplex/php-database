@@ -349,6 +349,7 @@ class MsSqlQuery extends DatabaseQuery
                 . ' - query failed to prepare statement and bind parameters, with error: ' . $error . '.'
             );
         }
+        $this->statementClosed = false;
         $this->statement = $statement;
 
         return $this;
@@ -479,6 +480,7 @@ class MsSqlQuery extends DatabaseQuery
                     . $this->client->nativeErrors(Database::ERRORS_STRING) . '.'
                 );
             }
+            $this->statementClosed = false;
             $this->statement = $statement;
         }
 
@@ -524,10 +526,13 @@ class MsSqlQuery extends DatabaseQuery
      */
     public function close()
     {
-        $this->statementClosed = true;
         $this->unsetReferences();
-        if ($this->statement) {
-            @sqlsrv_free_stmt($this->statement);
+        if ($this->statementClosed === false) {
+            $this->statementClosed = true;
+            if ($this->statement) {
+                @sqlsrv_free_stmt($this->statement);
+            }
+            $this->statement = null;
         }
     }
 

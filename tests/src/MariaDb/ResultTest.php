@@ -57,7 +57,7 @@ class ResultTest extends TestCase
     }
 
     /**
-     * Truncates all database tables, to reset.
+     * Truncates all database tables, to reset test data.
      *
      * @see ClientTest::testInstantiation
      */

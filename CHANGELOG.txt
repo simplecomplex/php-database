@@ -5,6 +5,9 @@ SimpleComplex/Database 1.x, 2018-05-10
 - NB: MySQLi multi-query isn't executed until getting result set.
 - Classify native error codes, to discern connection|query|result error
   in places where ambiguous.
+- Query statementClosed must remain null if no statement (successfully) opened.
+- MariaDb result fix setIndex/rowIndex.
+- Result logger prepend 'result[setIndex][rowIndex]' to 'method'.
 
 SimpleComplex/Database 1.x, 2018-05-06
 --------------------------------------

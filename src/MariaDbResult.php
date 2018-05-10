@@ -18,11 +18,18 @@ use SimpleComplex\Database\Exception\DbResultException;
 /**
  * MariaDB result.
  *
+ * Both setIndex and rowIndex deliberately go out-of-bounds when first/next
+ * set/row is called for and there aren't any more sets/rows.
+ *
  * MySQLi's default stored procedure result handling is not used,
  * because binding result vars is useless; instead the result gets stored.
  * @see \mysqli_stmt::get_result()
  * When stored procedure, query class cursorMode is ignored.
  * @see MariaDbQuery::$cursorMode
+ *
+ * Properties inherited from DatabaseResult:
+ * @property-read bool $setIndex
+ * @property-read bool $rowIndex
  *
  * @package SimpleComplex\Database
  */
@@ -48,7 +55,8 @@ class MariaDbResult extends DatabaseResult
     protected $statement;
 
     /**
-     * @var \mysqli_result|null
+     * @var \mysqli_result|bool|null
+     *      True if successful CRUD statement.
      */
     protected $result;
 
@@ -271,6 +279,7 @@ class MariaDbResult extends DatabaseResult
      */
     public function fetchField(int $index = 0, string $column = '')
     {
+        ++$this->rowIndex;
         if (!$this->result && !$this->loadResult()) {
             $this->closeAndLog(__FUNCTION__);
             throw new DbResultException(
@@ -291,11 +300,6 @@ class MariaDbResult extends DatabaseResult
         else {
             $row = @$this->result->fetch_assoc();
         }
-        // fetch_assoc/fetch_array() implicitly moves to first set.
-        if ($this->setIndex < 0) {
-            ++$this->setIndex;
-        }
-        ++$this->rowIndex;
         if ($row) {
             $length = null;
             if (!$column) {
@@ -340,6 +344,7 @@ class MariaDbResult extends DatabaseResult
      */
     public function fetchArray(int $as = Database::FETCH_ASSOC)
     {
+        ++$this->rowIndex;
         if (!$this->result && !$this->loadResult()) {
             $this->closeAndLog(__FUNCTION__);
             throw new DbResultException(
@@ -347,11 +352,6 @@ class MariaDbResult extends DatabaseResult
             );
         }
         $row = $as == Database::FETCH_ASSOC ? @$this->result->fetch_assoc() : @$this->result->fetch_array(MYSQLI_NUM);
-        // fetch_assoc/fetch_array() implicitly moves to first set.
-        if ($this->setIndex < 0) {
-            ++$this->setIndex;
-        }
-        ++$this->rowIndex;
         if ($row || $row === null) {
             return $row;
         }
@@ -379,6 +379,7 @@ class MariaDbResult extends DatabaseResult
      */
     public function fetchObject(string $class = '', array $args = [])
     {
+        ++$this->rowIndex;
         if (!$this->result && !$this->loadResult()) {
             $this->closeAndLog(__FUNCTION__);
             throw new DbResultException(
@@ -386,11 +387,6 @@ class MariaDbResult extends DatabaseResult
             );
         }
         $row = @$this->result->fetch_object($class, $args);
-        // fetch_object() implicitly moves to first set.
-        if ($this->setIndex < 0) {
-            ++$this->setIndex;
-        }
-        ++$this->rowIndex;
         if ($row || $row === null) {
             return $row;
         }
@@ -453,6 +449,7 @@ class MariaDbResult extends DatabaseResult
                         . ' - failed fetching all rows as numeric array, with error: ' . $error . '.'
                     );
                 }
+                $this->rowIndex += count($list);
                 return $list;
             case Database::FETCH_OBJECT:
                 $key_column = !$column_keyed ? null : $options['list_by_column'];
@@ -461,10 +458,6 @@ class MariaDbResult extends DatabaseResult
                 while (
                     ($row = @$this->result->fetch_object($options['class'] ?? '', $options['args'] ?? []))
                 ) {
-                    // fetch_object() implicitly moves to first set.
-                    if ($this->setIndex < 0) {
-                        ++$this->setIndex;
-                    }
                     ++$this->rowIndex;
                     if (!$column_keyed) {
                         $list[] = $row;
@@ -484,18 +477,11 @@ class MariaDbResult extends DatabaseResult
                         $list[$row->{$key_column}] = $row;
                     }
                 }
-                if ($this->setIndex < 0) {
-                    ++$this->setIndex;
-                }
                 ++$this->rowIndex;
                 break;
             default:
                 if (!$column_keyed) {
                     $list = @$this->result->fetch_all(MYSQLI_ASSOC);
-                    // fetch_all() implicitly moves to first set.
-                    if ($this->setIndex < 0) {
-                        ++$this->setIndex;
-                    }
                     if (!is_array($list)) {
                         $error = $this->query->nativeErrors(Database::ERRORS_STRING);
                         $this->closeAndLog(__FUNCTION__);
@@ -504,19 +490,13 @@ class MariaDbResult extends DatabaseResult
                             . ' - failed fetching all rows as assoc array, with error: ' . $error . '.'
                         );
                     }
-                    if ($list) {
-                        $this->rowIndex += count($list[0]);
-                    }
+                    $this->rowIndex += count($list);
                     return $list;
                 }
                 $key_column = !$column_keyed ? null : $options['list_by_column'];
                 $list = [];
                 $first = true;
                 while (($row = @$this->result->fetch_assoc())) {
-                    // fetch_assoc() implicitly moves to first set.
-                    if ($this->setIndex < 0) {
-                        ++$this->setIndex;
-                    }
                     ++$this->rowIndex;
                     if ($first) {
                         $first = false;
@@ -530,9 +510,6 @@ class MariaDbResult extends DatabaseResult
                         }
                     }
                     $list[$row[$key_column]] = $row;
-                }
-                if ($this->setIndex < 0) {
-                    ++$this->setIndex;
                 }
                 ++$this->rowIndex;
         }
@@ -562,6 +539,9 @@ class MariaDbResult extends DatabaseResult
      */
     public function nextSet(bool $noException = false)
     {
+        $this->result = null;
+        ++$this->setIndex;
+        $this->rowIndex = -1;
         if ($this->isPreparedStatement) {
             if (!@$this->statement->more_results()) {
                 return null;
@@ -573,10 +553,9 @@ class MariaDbResult extends DatabaseResult
             }
             $next = @$this->mySqlI->next_result();
         }
-        ++$this->setIndex;
-        $this->rowIndex = -1;
         if ($next) {
             $this->free();
+            $this->result = $next;
             return $next;
         }
         if ($noException) {
@@ -595,6 +574,9 @@ class MariaDbResult extends DatabaseResult
     /**
      * Go to next row in the result set.
      *
+     * NB: effectively skips a row;
+     * MySQLi has no real means of going to next row.
+     *
      * @param bool $noException
      *      True: return false on failure, don't throw exception.
      *
@@ -607,8 +589,8 @@ class MariaDbResult extends DatabaseResult
             $this->loadResult();
         }
         // There's no MySQLi direct equivalent; use lightest alternative.
+        $this->rowIndex = -1;
         $row = $this->result->fetch_array(MYSQLI_NUM);
-        ++$this->rowIndex;
         if ($row || is_array($row)) {
             return true;
         }
@@ -649,6 +631,8 @@ class MariaDbResult extends DatabaseResult
     protected function loadResult() : bool
     {
         if (!$this->result) {
+            ++$this->setIndex;
+            $this->rowIndex = -1;
             if ($this->isPreparedStatement) {
                 // Apparantly equivalent of \MySQLi::store_result().
                 $result = @$this->statement->get_result();
@@ -660,17 +644,16 @@ class MariaDbResult extends DatabaseResult
                     $result = @$this->mySqlI->use_result();
                 }
             }
-            if ($this->setIndex == -1) {
-                ++$this->setIndex;
-            }
             if (!$result) {
-                $error = $this->query->nativeErrors(Database::ERRORS_STRING_EMPTY_NONE);
-                if (!$error) {
+                $errors = $this->query->nativeErrors();
+                if (!$errors) {
+                    // $this->result stays null.
                     return false;
                 }
                 $this->closeAndLog(__FUNCTION__);
                 throw new DbResultException(
-                    $this->query->errorMessagePrefix() . ' - failed getting result, with error: ' . $error . '.'
+                    $this->query->errorMessagePrefix() . ' - failed getting result, with error: '
+                    . $this->query->client->nativeErrorsToString($errors) . '.'
                 );
             }
             $this->result = $result;

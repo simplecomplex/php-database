@@ -17,6 +17,13 @@ use SimpleComplex\Database\Exception\DbResultException;
 /**
  * MS SQL result.
  *
+ * Both setIndex and rowIndex deliberately go out-of-bounds when first/next
+ * set/row is called for and there aren't any more sets/rows.
+ *
+ * Properties inherited from DatabaseResult:
+ * @property-read bool $setIndex
+ * @property-read bool $rowIndex
+ *
  * @package SimpleComplex\Database
  */
 class MsSqlResult extends DatabaseResult
@@ -74,11 +81,9 @@ class MsSqlResult extends DatabaseResult
         $count = @sqlsrv_rows_affected(
             $this->statement
         );
-        // sqlsrv_rows_affected() probably moves to first result set
-        // since it requires cursor mode 'forward'.
-        if ($this->setIndex < 0) {
-            ++$this->setIndex;
-        }
+        // @todo: does sqlsrv_rows_affected() move to first result set, since requiring cursor mode 'forward'?
+        // @todo: ++$this->setIndex;
+
         if (($count && $count > 0) || $count === 0) {
             return $count;
         }
@@ -177,6 +182,8 @@ class MsSqlResult extends DatabaseResult
             }
         }
 
+        ++$this->rowIndex;
+
         if ($getAsType) {
             if (is_int($getAsType)) {
                 $type = $getAsType;
@@ -211,7 +218,6 @@ class MsSqlResult extends DatabaseResult
         } else {
             $id = @sqlsrv_get_field($this->statement, 0);
         }
-        ++$this->rowIndex;
         if ($id || $id === null) {
             /**
              * Null: query didn't trigger setting an ID;

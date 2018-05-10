@@ -16,6 +16,9 @@ use SimpleComplex\Database\Interfaces\DbResultInterface;
 /**
  * Database result.
  *
+ * Both setIndex and rowIndex must go out-of-bounds when first/next set/row
+ * is called for and there aren't any more sets/rows.
+ *
  * @property-read int $setIndex
  * @property-read int $rowIndex
  *
@@ -29,7 +32,11 @@ abstract class DatabaseResult extends Explorable implements DbResultInterface
     protected $query;
 
     /**
-     * @var mixed
+     * Reference to query statement, if any.
+     *
+     * @see DatabaseQuery::$statement
+     *
+     * @var mixed|null
      */
     protected $statement;
 
@@ -65,7 +72,7 @@ abstract class DatabaseResult extends Explorable implements DbResultInterface
     {
         $this->free();
         $this->query->close();
-        $this->query->log($method, false, 1);
+        $this->query->log('result[' . $this->setIndex . '][' . $this->rowIndex . ']->' . $method, false, 1);
     }
 
 

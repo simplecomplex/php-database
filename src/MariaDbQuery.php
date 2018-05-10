@@ -15,7 +15,6 @@ use SimpleComplex\Database\Interfaces\DbResultInterface;
 
 use SimpleComplex\Database\Exception\DbRuntimeException;
 use SimpleComplex\Database\Exception\DbConnectionException;
-use SimpleComplex\Database\Exception\DbQueryException;
 
 /**
  * MariaDB query.
@@ -260,6 +259,7 @@ class MariaDbQuery extends DatabaseQueryMulti
                 . $this->client->nativeErrorsToString($errors) . '.'
             );
         }
+        $this->statementClosed = false;
         $this->statement = $mysqli_stmt;
 
         if ($n_params) {
@@ -421,11 +421,13 @@ class MariaDbQuery extends DatabaseQueryMulti
      */
     public function close()
     {
-        $this->statementClosed = true;
         $this->unsetReferences();
-        if ($this->statement) {
-            @$this->statement->close();
-            $this->statement = null;
+        if ($this->statementClosed === false) {
+            $this->statementClosed = true;
+            if ($this->statement) {
+                @$this->statement->close();
+                $this->statement = null;
+            }
         }
     }
 
