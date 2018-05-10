@@ -205,8 +205,8 @@ class MariaDbClient extends DatabaseClientMulti
         $this->getConnection(true);
         if (!@$this->mySqlI->begin_transaction()) {
             $errors = $this->nativeErrors();
-            $class = $this->errorsToException($errors, DbRuntimeException::class);
-            throw new $class(
+            $cls_xcptn = $this->errorsToException($errors, DbRuntimeException::class);
+            throw new $cls_xcptn(
                 $this->errorMessagePrefix() . ' - failed to start transaction, with error: '
                 . $this->nativeErrorsToString($errors) . '.'
             );
@@ -237,8 +237,8 @@ class MariaDbClient extends DatabaseClientMulti
             }
             if (!@$this->mySqlI->commit()) {
                 $errors = $this->nativeErrors();
-                $class = $this->errorsToException($errors, DbRuntimeException::class);
-                throw new $class(
+                $cls_xcptn = $this->errorsToException($errors, DbRuntimeException::class);
+                throw new $cls_xcptn(
                     $this->errorMessagePrefix() . ' - failed to commit transaction, with error:  '
                     . $this->nativeErrorsToString($errors) . '.'
                 );
@@ -270,8 +270,8 @@ class MariaDbClient extends DatabaseClientMulti
             }
             if (!@$this->mySqlI->rollback()) {
                 $errors = $this->nativeErrors();
-                $class = $this->errorsToException($errors, DbRuntimeException::class);
-                throw new $class(
+                $cls_xcptn = $this->errorsToException($errors, DbRuntimeException::class);
+                throw new $cls_xcptn(
                     $this->errorMessagePrefix() . ' - failed to rollback transaction, with error: '
                     . $this->nativeErrorsToString($errors) . '.'
                 );
@@ -489,15 +489,10 @@ class MariaDbClient extends DatabaseClientMulti
 
             foreach ($this->optionsResolved as $int => $value) {
                 if (!@$mysqli->options($int, $value)) {
+                    // There's no means of getting native error (yet).
                     throw new \LogicException(
                         $this->errorMessagePrefix()
-                        . ' - failed to set ' . $this->type . ' option[' . $int . '] value[' . $value
-
-
-
-
-                        // @todo: failure to set MySQLi connect options spell ordinary error or connect_error?
-                        . '], with error: ' . $this->nativeErrors(Database::ERRORS_STRING)
+                        . ' - failed to set ' . $this->type . ' option[' . $int . '] value[' . $value . '].'
                     );
                 }
             }
@@ -514,16 +509,15 @@ class MariaDbClient extends DatabaseClientMulti
                 )
                 || $mysqli->connect_errno
             ) {
+                // Can only access connect_errno, not \MySQLi::errno (yet).
                 throw new DbConnectionException(
                     $this->errorMessagePrefix()
                     . ' - connect to host[' . $this->host . '] port[' . $this->port
-
-
-
-                        // @todo: test using ordinary error list.
                     . '] failed, with error: (' . $mysqli->connect_errno . ') ' . $mysqli->connect_error . '.'
                 );
             }
+
+            // Can't access native errors prior to successful connection.
             $this->mySqlI = $mysqli;
 
             if (!@$this->mySqlI->set_charset($this->characterSet)) {

@@ -618,11 +618,13 @@ class MariaDbResult extends DatabaseResult
         if ($noException) {
             return false;
         }
-        $error = $this->query->nativeErrors(Database::ERRORS_STRING);
+        $errors = $this->query->nativeErrors();
         $this->closeAndLog(__FUNCTION__);
-        throw new DbResultException(
+        $cls_xcptn = $this->query->client->errorsToException($errors, DbResultException::class);
+        throw new $cls_xcptn(
             $this->query->errorMessagePrefix()
-            . ' - failed going to next row, with error: ' . $error . '.'
+            . ' - failed going to set[' . $this->setIndex . '] row[' . $this->rowIndex . '], with error: '
+            . $this->query->client->nativeErrorsToString($errors) . '.'
         );
     }
 

@@ -9,8 +9,6 @@ declare(strict_types=1);
 
 namespace SimpleComplex\Database;
 
-use SimpleComplex\Database\Interfaces\DbClientInterface;
-
 /**
  * A constant value is the same as \PDO equivalent, when such available.
  *
@@ -36,14 +34,14 @@ abstract class Database
     const FETCH_OBJECT = 5;
 
     /**
-     * @see DbClientInterface::nativeErrors()
+     * @see \SimpleComplex\Database\Interfaces\DbClientInterface::nativeErrors()
      *
      * @var int
      */
     const ERRORS_STRING = 1;
 
     /**
-     * @see DbClientInterface::nativeErrors()
+     * @see \SimpleComplex\Database\Interfaces\DbClientInterface::nativeErrors()
      *
      * @var int
      */

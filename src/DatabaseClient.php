@@ -12,14 +12,13 @@ namespace SimpleComplex\Database;
 use SimpleComplex\Utils\Explorable;
 use SimpleComplex\Utils\Dependency;
 
-use SimpleComplex\Database\Exception\DbConnectionException;
-use SimpleComplex\Database\Exception\DbQueryException;
-use SimpleComplex\Database\Exception\DbResultException;
-
 use SimpleComplex\Database\Interfaces\DbClientInterface;
 use SimpleComplex\Database\Interfaces\DbQueryInterface;
 
 use SimpleComplex\Database\Exception\DbRuntimeException;
+use SimpleComplex\Database\Exception\DbConnectionException;
+use SimpleComplex\Database\Exception\DbQueryException;
+use SimpleComplex\Database\Exception\DbResultException;
 
 /**
  * Database client.

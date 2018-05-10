@@ -1,3 +1,11 @@
+SimpleComplex/Database 1.x, 2018-05-10
+--------------------------------------
+- MariaDb client: there's no means of getting native error until successful
+  connection.
+- NB: MySQLi multi-query isn't executed until getting result set.
+- Classify native error codes, to discern connection|query|result error
+  in places where ambiguous.
+
 SimpleComplex/Database 1.x, 2018-05-06
 --------------------------------------
 - Result set index initial value -1.

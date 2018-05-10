@@ -149,8 +149,8 @@ class MsSqlClient extends DatabaseClient
         $this->getConnection(true);
         if (!@sqlsrv_begin_transaction($this->connection)) {
             $errors = $this->nativeErrors();
-            $class = $this->errorsToException($errors, DbRuntimeException::class);
-            throw new $class(
+            $cls_xcptn = $this->errorsToException($errors, DbRuntimeException::class);
+            throw new $cls_xcptn(
                 $this->errorMessagePrefix() . ' - failed to start transaction, with error: '
                 . $this->nativeErrorsToString($errors) . '.'
             );
@@ -178,8 +178,8 @@ class MsSqlClient extends DatabaseClient
             }
             if (!@sqlsrv_commit($this->connection)) {
                 $errors = $this->nativeErrors();
-                $class = $this->errorsToException($errors, DbRuntimeException::class);
-                throw new $class(
+                $cls_xcptn = $this->errorsToException($errors, DbRuntimeException::class);
+                throw new $cls_xcptn(
                     $this->errorMessagePrefix() . ' - failed to commit transaction, with error:  '
                     . $this->nativeErrorsToString($errors) . '.'
                 );
@@ -209,8 +209,8 @@ class MsSqlClient extends DatabaseClient
             }
             if (!@sqlsrv_rollback($this->connection)) {
                 $errors = $this->nativeErrors();
-                $class = $this->errorsToException($errors, DbRuntimeException::class);
-                throw new $class(
+                $cls_xcptn = $this->errorsToException($errors, DbRuntimeException::class);
+                throw new $cls_xcptn(
                     $this->errorMessagePrefix() . ' - failed to rollback transaction, with error: '
                     . $this->nativeErrorsToString($errors) . '.'
                 );
