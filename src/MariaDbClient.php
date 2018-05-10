@@ -322,7 +322,7 @@ class MariaDbClient extends DatabaseClientMulti
     public function nativeErrors(int $toString = 0)
     {
         $list = [];
-        if ($this->mySqlI && ($errors = $this->mySqlI->error_list)) {
+        if ($this->mySqlI && ($errors = @$this->mySqlI->error_list)) {
             foreach ($errors as $error) {
                 $list[] = [
                     'code' => $error['errno'] ?? 0,
