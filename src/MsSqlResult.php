@@ -114,7 +114,7 @@ class MsSqlResult extends DatabaseResult
      *
      * NB: Requires that the sql contains a secondary ID selecting statement
      * ; SELECT SCOPE_IDENTITY() AS IDENTITY_COLUMN_NAME
-     * Use query class option 'get_insert_id'.
+     * Use query class option 'insert_id'.
      * @see MsSqlQuery::__constructor()
      * @see https://blogs.msdn.microsoft.com/nickhodge/2008/09/22/sql-server-driver-for-php-last-inserted-row-id/
      * @see https://docs.microsoft.com/en-us/sql/t-sql/functions/scope-identity-transact-sql
@@ -236,7 +236,7 @@ class MsSqlResult extends DatabaseResult
             $this->closeAndLog(__FUNCTION__);
             throw new \LogicException(
                 $this->query->errorMessagePrefix() . ' - failed getting insert ID'
-                . ', sql misses secondary ID select statement, see query option \'get_insert_id\''
+                . ', sql misses secondary ID select statement, see query option \'insert_id\''
             );
         }
         $error = $this->query->client->nativeErrors(Database::ERRORS_STRING);

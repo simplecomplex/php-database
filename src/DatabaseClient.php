@@ -239,12 +239,19 @@ abstract class DatabaseClient extends Explorable implements DbClientInterface
     /**
      * Create a query.
      *
-     * For options, see DbQueryInterface implementation's constructor.
+     * Options affected_rows and num_rows may override cursor_mode
+     * and adjust cursor mode to support result affectedRows/insertId/numRows().
+     *
+     * For more options, see:
      * @see MariaDbQuery::__construct()
      * @see MsSqlQuery::__construct()
      *
      * @param string $sql
-     * @param array $options
+     * @param array $options {
+     *      @var string $cursor_mode
+     *      @var bool $affected_rows
+     *      @var bool $num_rows
+     * }
      *
      * @return DbQueryInterface
      */

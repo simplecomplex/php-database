@@ -36,6 +36,8 @@ use SimpleComplex\Database\Interfaces\DbQueryInterface;
  * Non-CRUD: (at least) SELECT, DESCRIBE, EXPLAIN, HELP, USE.
  *
  * @property-read string $id
+ * @property-read int $execution
+ * @property-read string $cursorMode
  * @property-read bool $isPreparedStatement
  * @property-read bool $hasLikeClause
  * @property-read string $sql
@@ -89,6 +91,11 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
      * @var string
      */
     protected $id;
+
+    /**
+     * @var int
+     */
+    protected $execution = -1;
 
     /**
      * @var string
@@ -149,10 +156,24 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
     protected $statementClosed;
 
     /**
+     * Create a query.
+     *
+     * Options affected_rows and num_rows may override default
+     * cursor mode (not option cursor_mode) and adjust to support result
+     * affectedRows/insertId/numRows().
+     *
+     * For more options, see:
+     * @see MariaDbQuery::__construct()
+     * @see MsSqlQuery::__construct()
+     *
      * @param DbClientInterface|DatabaseClient $client
      *      Reference to parent client.
      * @param string $sql
-     * @param array $options
+     * @param array $options {
+     *      @var string $cursor_mode
+     *      @var bool $affected_rows
+     *      @var bool $num_rows
+     * }
      *
      * @throws \InvalidArgumentException
      *      Arg $sql effectively empty.
@@ -522,6 +543,8 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
     protected $explorableIndex = [
         // Protected; readable via 'magic' __get().
         'id',
+        'execution',
+        'cursorMode',
         'isPreparedStatement',
         'hasLikeClause',
         'sql',

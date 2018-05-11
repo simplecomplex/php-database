@@ -202,6 +202,9 @@ class MariaDbResult extends DatabaseResult
      * NB: Query class cursor mode must be 'store'.
      * @see MsSqlQuery::__constructor()
      *
+     * Effectively not available for prepared statement, because
+     * prepared statement cannot be 'store' in this implementation.
+     *
      * @return int
      *
      * @throws \LogicException
@@ -212,10 +215,10 @@ class MariaDbResult extends DatabaseResult
      */
     public function numRows() : int
     {
-        if ($this->query->cursorMode != 'use') {
+        if ($this->query->cursorMode != MariaDbQuery::CURSOR_STORE) {
             throw new \LogicException(
                 $this->query->client->errorMessagePrefix() . ' - cursor mode[' . $this->query->cursorMode
-                . '] forbids getting number of rows.'
+                . '] forbids getting number of rows, because unreliable.'
             );
         }
         if (!$this->result && !$this->loadResult()) {
@@ -539,7 +542,9 @@ class MariaDbResult extends DatabaseResult
      */
     public function nextSet(bool $noException = false)
     {
-        $this->result = null;
+        if ($this->result) {
+            $this->free();
+        }
         ++$this->setIndex;
         $this->rowIndex = -1;
         if ($this->isPreparedStatement) {
@@ -554,9 +559,7 @@ class MariaDbResult extends DatabaseResult
             $next = @$this->mySqlI->next_result();
         }
         if ($next) {
-            $this->free();
-            $this->result = $next;
-            return $next;
+            return true;
         }
         if ($noException) {
             return false;
@@ -618,6 +621,7 @@ class MariaDbResult extends DatabaseResult
         if ($this->result) {
             @$this->result->free();
         }
+        $this->result = null;
     }
 
     // Helpers.-----------------------------------------------------------------
@@ -631,14 +635,25 @@ class MariaDbResult extends DatabaseResult
     protected function loadResult() : bool
     {
         if (!$this->result) {
-            ++$this->setIndex;
+            /**
+             * nextSet() updates setIndex.
+             * @see MariaDbResult::nextSet()
+             */
+            if ($this->setIndex == -1) {
+                ++$this->setIndex;
+            }
             $this->rowIndex = -1;
             if ($this->isPreparedStatement) {
-                // Apparantly equivalent of \MySQLi::store_result().
+                /**
+                 * Cursor mode 'store' is not supported for prepared statements
+                 * by this implementation, because useless.
+                 * @see MariaDbQuery
+                 * @see \mysqli_stmt::store_result()
+                 */
                 $result = @$this->statement->get_result();
             }
             else {
-                if ($this->query->cursorMode == 'store') {
+                if ($this->query->cursorMode == MariaDbQuery::CURSOR_STORE) {
                     $result = @$this->mySqlI->store_result();
                 } else {
                     $result = @$this->mySqlI->use_result();

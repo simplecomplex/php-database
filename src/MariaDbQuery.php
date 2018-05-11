@@ -23,13 +23,19 @@ use SimpleComplex\Database\Exception\DbConnectionException;
  * For multi-query explanation, see:
  * @see DbClientMultiInterface
  *
- * NB: Prepared statement requires the mysqlnd driver.
+ * Cursor mode 'store' is not supported for prepared statements (by this
+ * implementation) because result binding is the only way to work with 'store'd
+ * prepared statement results - and result binding sucks IMHO.
+ *
+ * Prepared statement requires the mysqlnd driver.
  * Because a result set will eventually be handled as \mysqli_result
  * via mysqli_stmt::get_result(); only available with mysqlnd.
  * @see http://php.net/manual/en/mysqli-stmt.get-result.php
  *
  * Properties inherited from DatabaseQuery:
  * @property-read string $id
+ * @property-read int $execution
+ * @property-read string $cursorMode
  * @property-read bool $isPreparedStatement
  * @property-read bool $hasLikeClause
  * @property-read string $sql
@@ -42,9 +48,6 @@ use SimpleComplex\Database\Exception\DbConnectionException;
  * @property-read bool $isMultiQuery
  * @property-read bool $isRepeatStatement
  * @property-read bool $sqlAppended
- *
- * Own properties:
- * @property-read string $cursorMode
  *
  * @package SimpleComplex\Database
  */
@@ -65,34 +68,51 @@ class MariaDbQuery extends DatabaseQueryMulti
     const CLASS_RESULT = MariaDbResult::class;
 
     /**
-     * Result set cursor modes.
+     * @var string
+     */
+    const CURSOR_USE = 'use';
+    const CURSOR_READ_ONLY = 'read_only';
+    const CURSOR_STORE = 'store';
+
+    /**
+     * Cursor modes.
+     *
+     * 'use':
+     * - unbuffered
+     * - heavy serverside, light clientside
+     * - forbids getting number of rows until all rows have been retrieved
+     * - MYSQLI_CURSOR_TYPE_NO_CURSOR
+     *
+     * 'read_only':
+     * - unbuffered
+     * - MYSQLI_CURSOR_TYPE_READ_ONLY
+     * - spells segmentation fault
+     *
+     * 'store':
+     * - buffered clientside
+     * - light serverside, heavy clientside
+     * - allows number of rows
+     * - illegal for prepared statement in this implemention because useless
      *
      * @see http://php.net/manual/en/mysqli.use-result.php
      *
      * Store vs. use at Stackoverflow:
      * @see https://stackoverflow.com/questions/9876730/mysqli-store-result-vs-mysqli-use-result
      *
-     * @var int[]
+     * @var string[]
      */
     const CURSOR_MODES = [
-        'use',
-        'store',
+        MariaDbQuery::CURSOR_USE,
+        MariaDbQuery::CURSOR_READ_ONLY,
+        MariaDbQuery::CURSOR_STORE,
     ];
 
     /**
-     * Default result set cursor mode.
-     *
-     * 'use':
-     * - heavy serverside, light clientside
-     * - doesn't allow getting number of rows until all rows have been retrieved
-     *
-     * This class' default is 'store':
-     * - light serverside, heavy clientside
-     * - we like getting number of rows
+     * Default cursor mode.
      *
      * @var string
      */
-    const CURSOR_MODE_DEFAULT = 'store';
+    const CURSOR_MODE_DEFAULT = MariaDbQuery::CURSOR_USE;
 
     /**
      * @var string[]
@@ -120,9 +140,6 @@ class MariaDbQuery extends DatabaseQueryMulti
     /**
      * Option (str) cursor_mode.
      *
-     * Will always be 'store' when making a stored procedure.
-     * @see \mysqli_stmt::get_result()
-     *
      * @see MariaDbQuery::CURSOR_MODES
      * @see MariaDbQuery::CURSOR_MODE_DEFAULT
      *
@@ -131,12 +148,18 @@ class MariaDbQuery extends DatabaseQueryMulti
     protected $cursorMode;
 
     /**
+     * Create query.
+     *
+     * Option num_rows may override default cursor mode (not option cursor_mode)
+     * and adjust to support result numRows().
+     * Option affected_rows is ignored, irrelevant.
+     *
      * @param DbClientInterface|DatabaseClient|MariaDbClient $client
      *      Reference to parent client.
      * @param string $sql
      * @param array $options {
      *      @var string $cursor_mode
-     *          Ignored if making prepared statement; will always be 'store'.
+     *      @var bool $num_rows  May adjust cursor mode to 'store'.
      *      @var bool $is_multi_query
      *          True: arg $sql contains multiple queries.
      * }
@@ -149,6 +172,11 @@ class MariaDbQuery extends DatabaseQueryMulti
     {
         parent::__construct($client, $sql, $options);
 
+        /**
+         * Option is_multi_query is handled by parent
+         * @see DatabaseQueryMulti::__constructor()
+         */
+
         if (!empty($options['cursor_mode'])) {
             if (!in_array($options['cursor_mode'], static::CURSOR_MODES, true)) {
                 throw new \InvalidArgumentException(
@@ -157,10 +185,13 @@ class MariaDbQuery extends DatabaseQueryMulti
                 );
             }
             $this->cursorMode = $options['cursor_mode'];
-        } else {
+        }
+        elseif (!empty($options['num_rows'])) {
+            $this->cursorMode = MariaDbQuery::CURSOR_STORE;
+        }
+        else {
             $this->cursorMode = static::CURSOR_MODE_DEFAULT;
         }
-        $this->explorableIndex[] = 'cursorMode';
     }
 
     public function __destruct()
@@ -197,6 +228,7 @@ class MariaDbQuery extends DatabaseQueryMulti
      *
      * @throws \LogicException
      *      Method called more than once for this query.
+     *      Cursor mode is 'store'; illegal for prepared statement.
      * @throws \InvalidArgumentException
      *      Propagated; parameters/arguments count mismatch.
      *      Arg $types contains illegal char(s).
@@ -215,10 +247,20 @@ class MariaDbQuery extends DatabaseQueryMulti
             );
         }
         $this->isPreparedStatement = true;
-        // Prepared statement's result will be store'd
-        // - via \mysqli_stmt::get_result() - because \mysqli_stmt misses
-        // result methods like fetch_array().
-        $this->cursorMode = 'store';
+
+        /**
+         * Cursor mode 'store' is not supported for prepared statements
+         * by this implementation, because useless.
+         * @see MariaDbQuery
+         */
+        if ($this->cursorMode == MariaDbQuery::CURSOR_STORE) {
+            // Unset prepared statement arguments reference.
+            $this->unsetReferences();
+            throw new \LogicException(
+                $this->client->errorMessagePrefix()
+                . ' - cursor mode \'' . MariaDbQuery::CURSOR_STORE . '\' is illegal for prepared statement.'
+            );
+        }
 
         // Checks for parameters/arguments count mismatch.
         $sql_fragments = $this->sqlFragments($this->sql, $arguments);
@@ -261,6 +303,20 @@ class MariaDbQuery extends DatabaseQueryMulti
         }
         $this->statementClosed = false;
         $this->statement = $mysqli_stmt;
+
+        if ($this->cursorMode == MariaDbQuery::CURSOR_READ_ONLY) {
+            $this->statement->attr_set(MYSQLI_STMT_ATTR_CURSOR_TYPE, MYSQLI_CURSOR_TYPE_READ_ONLY);
+            $errors = $this->nativeErrors();
+            if ($errors) {
+                $this->log(__FUNCTION__);
+                $cls_xcptn = $this->client->errorsToException($errors);
+                throw new $cls_xcptn(
+                    $this->errorMessagePrefix() . ' - query failed to set cursor mode \''
+                    . MariaDbQuery::CURSOR_READ_ONLY . '\', with error: '
+                    . $this->client->nativeErrorsToString($errors) . '.'
+                );
+            }
+        }
 
         if ($n_params) {
             // Support assoc array; \mysqli_stmt::bind_param() doesn't.
@@ -336,6 +392,8 @@ class MariaDbQuery extends DatabaseQueryMulti
      */
     public function execute(): DbResultInterface
     {
+        ++$this->execution;
+
         if ($this->isPreparedStatement) {
             // (MySQLi) Only a prepared statement is a 'statement'.
             if ($this->statementClosed) {
@@ -352,9 +410,28 @@ class MariaDbQuery extends DatabaseQueryMulti
                 $this->close();
                 throw new DbConnectionException(
                     $this->client->errorMessagePrefix()
-                    . ' - query can\'t execute prepared statement when connection lost.'
+                    . ' - query can\'t execute prepared statement when connection lost, with error: '
+                    . $this->client->nativeErrors(Database::ERRORS_STRING) . '.'
                 );
             }
+
+            /**
+             * Reset to state after prepare, if CURSOR_TYPE_READ_ONLY.
+             * @see https://dev.mysql.com/doc/refman/8.0/en/mysql-stmt-attr-set.html
+             */
+            if ($this->execution && $this->cursorMode == MariaDbQuery::CURSOR_READ_ONLY) {
+                $this->statement->reset();
+                $errors = $this->nativeErrors();
+                if ($errors) {
+                    $this->log(__FUNCTION__);
+                    $cls_xcptn = $this->client->errorsToException($errors);
+                    throw new $cls_xcptn(
+                        $this->errorMessagePrefix() . ' - query failed to reset prepared statement, with error: '
+                        . $this->client->nativeErrorsToString($errors) . '.'
+                    );
+                }
+            }
+
             // bool.
             if (!@$this->statement->execute()) {
                 $errors = $this->nativeErrors();
@@ -473,13 +550,21 @@ class MariaDbQuery extends DatabaseQueryMulti
     {
         $list = $this->client->nativeErrors();
         if ($this->statement && ($errors = $this->statement->error_list)) {
-            if (!$list) {
-                $list =& $errors;
+            $append = [];
+            foreach ($errors as $error) {
+                $append[] = [
+                    'code' => $error['errno'] ?? 0,
+                    'sqlstate' => $error['sqlstate'] ?? '00000',
+                    'msg' => $error['error'] ?? '',
+                ];
             }
-            else {
-                $errors = $this->client->formatNativeErrors($errors);
-                foreach ($errors as $code => $error) {
-                    if (!isset($list[$code])) {
+            unset($errors);
+            $append = $this->client->formatNativeErrors($append);
+            if (!$list) {
+                $list =& $append;
+            } else {
+                foreach ($append as $code => $error) {
+                    if (!array_key_exists($code, $list)) {
                         $list[$code] = $error;
                     }
                 }

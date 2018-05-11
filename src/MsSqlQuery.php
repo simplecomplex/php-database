@@ -26,6 +26,8 @@ use SimpleComplex\Database\Exception\DbQueryException;
  *
  * Inherited properties:
  * @property-read string $id
+ * @property-read int $execution
+ * @property-read string $cursorMode
  * @property-read bool $isPreparedStatement
  * @property-read bool $hasLikeClause
  * @property-read string $sql
@@ -35,7 +37,6 @@ use SimpleComplex\Database\Exception\DbQueryException;
  * @property-read bool $transactionStarted  Value of client ditto.
  *
  * Own properties:
- * @property-read string $cursorMode
  * @property-read int $queryTimeout
  * @property-read bool $sendDataChunked
  * @property-read int $sendChunksLimit
@@ -69,7 +70,21 @@ class MsSqlQuery extends DatabaseQuery
     const QUERY_TIMEOUT = 0;
 
     /**
-     * Result set cursor modes.
+     * Cursor modes.
+     *
+     * 'forward', Sqlsrv default:
+     * - unbuffered
+     * - fast
+     * - reflects changes serverside
+     * - allows getting affected rows
+     * - forbids getting number of rows
+     *
+     * 'static':
+     * - unbuffered
+     * - slower
+     * - doesn't reflect changes serverside
+     * - forbids getting affected rows
+     * - allows getting number of rows
      *
      * Scrollable:
      * @see http://php.net/manual/en/function.sqlsrv-query.php
@@ -77,7 +92,7 @@ class MsSqlQuery extends DatabaseQuery
      * Sqlsrv Cursor Types:
      * @see https://docs.microsoft.com/en-us/sql/connect/php/cursor-types-sqlsrv-driver
      *
-     * @var int[]
+     * @var string[]
      */
     const CURSOR_MODES = [
         SQLSRV_CURSOR_FORWARD,
@@ -88,23 +103,11 @@ class MsSqlQuery extends DatabaseQuery
     ];
 
     /**
-     * Default result set cursor mode.
-     *
-     * Sqlsrv default is 'forward':
-     * - fast
-     * - reflects changes serverside
-     * - doesn't allow getting number of rows
-     * - allows getting affected rows
-     *
-     * This class' default is 'static':
-     * - slower
-     * - we don't want serverside changes to reflect the result set
-     * - we like getting number of rows
-     * - doesn't allow getting affected rows
+     * Default cursor mode.
      *
      * @var string
      */
-    const CURSOR_MODE_DEFAULT = SQLSRV_CURSOR_STATIC;
+    const CURSOR_MODE_DEFAULT = SQLSRV_CURSOR_FORWARD;
 
     /**
      * @var int
@@ -186,7 +189,7 @@ class MsSqlQuery extends DatabaseQuery
     protected $sendChunksLimit;
 
     /**
-     * Option (bool) get_insert_id.
+     * Option (bool) insert_id.
      *
      * Required when intending to retrieve last insert ID.
      * @see MsSqlResult::insertId()
@@ -196,15 +199,21 @@ class MsSqlQuery extends DatabaseQuery
     protected $getInsertId;
 
     /**
+     * Options affected_rows and num_rows may override default
+     * cursor mode (not option cursor_mode) and adjust to support result
+     * affectedRows/numRows().
+     *
      * @param DbClientInterface|DatabaseClient|MsSqlClient $client
      *      Reference to parent client.
      * @param string $sql
      * @param array $options {
      *      @var string $cursor_mode
+     *      @var bool $affected_rows  May adjust cursor mode to 'forward'.
+     *      @var bool $insert_id
+     *      @var bool $num_rows  May adjust cursor mode to 'static'|'keyset'.
      *      @var int $query_timeout
      *      @var bool $send_data_chunked
      *      @var int $send_chunks_limit
-     *      @var bool $get_insert_id
      * }
      *
      * @throws \InvalidArgumentException
@@ -223,10 +232,29 @@ class MsSqlQuery extends DatabaseQuery
                 );
             }
             $this->cursorMode = $options['cursor_mode'];
-        } else {
+        }
+        elseif (!empty($options['affected_rows'])) {
+            /**
+             * @see MsSqlResult::affectedRows()
+             */
+            $this->cursorMode = SQLSRV_CURSOR_FORWARD;
+        }
+        elseif (!empty($options['num_rows'])) {
+            /**
+             * @see MsSqlResult::numRows()
+             */
+            switch (static::CURSOR_MODE_DEFAULT) {
+                case SQLSRV_CURSOR_STATIC:
+                case SQLSRV_CURSOR_KEYSET:
+                    $this->cursorMode = static::CURSOR_MODE_DEFAULT;
+                    break;
+                default:
+                    $this->cursorMode = SQLSRV_CURSOR_STATIC;
+            }
+        }
+        else {
             $this->cursorMode = static::CURSOR_MODE_DEFAULT;
         }
-        $this->explorableIndex[] = 'cursorMode';
 
         if (isset($options['query_timeout'])) {
             $this->queryTimeout = $options['query_timeout'];
@@ -245,7 +273,7 @@ class MsSqlQuery extends DatabaseQuery
         $this->explorableIndex[] = 'sendDataChunked';
         $this->explorableIndex[] = 'sendChunksLimit';
 
-        $this->getInsertId = !empty($options['get_insert_id']);
+        $this->getInsertId = !empty($options['insert_id']);
         if ($this->getInsertId && stripos($sql, static::SQL_INSERT_ID) === false) {
             $this->sqlTampered = $this->sql . '; ' . static::SQL_INSERT_ID;
         }
@@ -426,6 +454,8 @@ class MsSqlQuery extends DatabaseQuery
      */
     public function execute(): DbResultInterface
     {
+        ++$this->execution;
+
         // (Sqlsrv) Even a simple statement is a 'statement'.
         if ($this->statementClosed) {
             throw new \LogicException(

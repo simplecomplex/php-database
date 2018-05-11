@@ -1,3 +1,8 @@
+SimpleComplex/Database 1.x, 2018-05-11
+--------------------------------------
+- MariaDb prepared statement must not use cursor mode 'store', because then
+  result binding is the only way to go - and result binding sucks IMHO.
+
 SimpleComplex/Database 1.x, 2018-05-10
 --------------------------------------
 - MariaDb client: there's no means of getting native error until successful

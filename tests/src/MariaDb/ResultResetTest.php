@@ -18,12 +18,12 @@ use SimpleComplex\Database\MariaDbResult;
 /**
  * @code
  * // CLI, in document root:
- * vendor/bin/phpunit vendor/simplecomplex/database/tests/src/MariaDb/ResultTest.php
+ * vendor/bin/phpunit vendor/simplecomplex/database/tests/src/MariaDb/ResetResultTest.php
  * @endcode
  *
  * @package SimpleComplex\Tests\Database
  */
-class ResultTest extends TestCase
+class ResultResetTest extends TestCase
 {
     /**
      * Throw DbQueryException: can't truncate due to foreign key constraint.
