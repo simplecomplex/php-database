@@ -2,6 +2,8 @@ SimpleComplex/Database 1.x, 2018-05-11
 --------------------------------------
 - MariaDb prepared statement must not use cursor mode 'store', because then
   result binding is the only way to go - and result binding sucks IMHO.
+- Turn off re-connection permanently when a query uses unbuffered cursor mode.
+- Client getConnection() must not throw exception.
 
 SimpleComplex/Database 1.x, 2018-05-10
 --------------------------------------

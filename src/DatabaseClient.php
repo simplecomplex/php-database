@@ -33,6 +33,8 @@ use SimpleComplex\Database\Exception\DbResultException;
  * @property-read array $optionsResolved
  * @property-read string $characterSet
  * @property-read bool $transactionStarted
+ * @property-read int $timesConnected
+ * @property-read bool $reConnect
  *
  * @package SimpleComplex\Database
  */
@@ -57,6 +59,11 @@ abstract class DatabaseClient extends Explorable implements DbClientInterface
      * @var string
      */
     const CLASS_ERROR_CODES = DatabaseErrorCodes::class;
+
+    /**
+     * @var int|string
+     */
+    const ERROR_CODE_CONNECT = 1;
 
     /**
      * PSR-4 LogLevel.
@@ -190,6 +197,21 @@ abstract class DatabaseClient extends Explorable implements DbClientInterface
     protected $transactionStarted = false;
 
     /**
+     * @var int
+     */
+    protected $timesConnected = 0;
+
+    /**
+     * @var bool
+     */
+    protected $reConnect = true;
+
+    /**
+     * @var array|null
+     */
+    protected $errorConnect;
+
+    /**
      * Configures database client.
      *
      * Connection to the database server is created later, on demand.
@@ -234,6 +256,17 @@ abstract class DatabaseClient extends Explorable implements DbClientInterface
         $this->options = $databaseInfo['options'] ?? [];
 
         $this->characterSetResolve();
+    }
+
+    /**
+     * Disable re-connection permanently.
+     *
+     * @return $this|DbClientInterface
+     */
+    public function reConnectDisable() : DbClientInterface
+    {
+        $this->reConnect = false;
+        return $this;
     }
 
     /**
@@ -357,7 +390,8 @@ abstract class DatabaseClient extends Explorable implements DbClientInterface
      * Checks if:
      * - any code is a connection error
      * - any code is a query error
-     * - first code is result error
+     * - any code is result error
+     * - first code is ERROR_CODE_CONNECT
      *
      * @see DatabaseClient::nativeErrors()
      *
@@ -381,17 +415,22 @@ abstract class DatabaseClient extends Explorable implements DbClientInterface
                 $list =& $errors;
             }
             $class = static::CLASS_ERROR_CODES;
-            // Any IN.
-            if (array_intersect($list, constant($class . '::CONNECTION'))) {
+            $connection = constant($class . '::CONNECTION');
+            $query = constant($class . '::QUERY');
+            $result = constant($class . '::RESULT');
+            foreach ($list as $code) {
+                if (in_array($code, $connection)) {
+                    return DbConnectionException::class;
+                }
+                if (in_array($code, $query)) {
+                    return DbQueryException::class;
+                }
+                if (in_array($code, $result)) {
+                    return DbResultException::class;
+                }
+            }
+            if (reset($list) == static::ERROR_CODE_CONNECT) {
                 return DbConnectionException::class;
-            }
-            // Any IN.
-            if (array_intersect($list, constant($class . '::QUERY'))) {
-                return DbQueryException::class;
-            }
-            // First IN.
-            if (in_array(reset($list), constant($class . '::RESULT'))) {
-                return DbResultException::class;
             }
         }
         return $default;
@@ -505,6 +544,8 @@ abstract class DatabaseClient extends Explorable implements DbClientInterface
         'optionsResolved',
         'characterSet',
         'transactionStarted',
+        'timesConnected',
+        'reConnect',
     ];
 
     /**

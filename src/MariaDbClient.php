@@ -41,6 +41,8 @@ use SimpleComplex\Database\Exception\DbConnectionException;
  * @property-read array $optionsResolved
  * @property-read string $characterSet
  * @property-read bool $transactionStarted
+ * @property-read int $timesConnected
+ * @property-read bool $reConnect
  *
  * Own properties:
  * @property-read string[] $flags
@@ -202,12 +204,14 @@ class MariaDbClient extends DatabaseClientMulti
             );
         }
         // Allow re-connection.
-        $this->getConnection(true);
-        if (!@$this->mySqlI->begin_transaction()) {
+        if (
+            !$this->getConnection(true)
+            || !@$this->mySqlI->begin_transaction()
+        ) {
             $errors = $this->nativeErrors();
-            $cls_xcptn = $this->errorsToException($errors, DbRuntimeException::class);
+            $cls_xcptn = $this->errorsToException($errors);
             throw new $cls_xcptn(
-                $this->errorMessagePrefix() . ' - failed to start transaction, with error: '
+                $this->errorMessagePrefix() . ' - failed to start transaction, error: '
                 . $this->nativeErrorsToString($errors) . '.'
             );
         }
@@ -229,18 +233,19 @@ class MariaDbClient extends DatabaseClientMulti
     public function transactionCommit()
     {
         if ($this->transactionStarted) {
+            $msg = null;
             // Require unbroken connection.
             if (!$this->isConnected()) {
-                throw new DbConnectionException(
-                    $this->errorMessagePrefix() . ' - can\'t commit, connection lost.'
-                );
+                $msg = ' - can\'t commit transaction, connection lost, error: ';
             }
-            if (!@$this->mySqlI->commit()) {
+            elseif (!@$this->mySqlI->commit()) {
+                $msg = ' - failed to commit transaction, error: ';
+            }
+            if ($msg) {
                 $errors = $this->nativeErrors();
-                $cls_xcptn = $this->errorsToException($errors, DbRuntimeException::class);
+                $cls_xcptn = $this->errorsToException($errors);
                 throw new $cls_xcptn(
-                    $this->errorMessagePrefix() . ' - failed to commit transaction, with error:  '
-                    . $this->nativeErrorsToString($errors) . '.'
+                    $this->errorMessagePrefix() . $msg . $this->nativeErrorsToString($errors) . '.'
                 );
             }
             $this->transactionStarted = false;
@@ -262,18 +267,19 @@ class MariaDbClient extends DatabaseClientMulti
     public function transactionRollback()
     {
         if ($this->transactionStarted) {
+            $msg = null;
             // Require unbroken connection.
             if (!$this->isConnected()) {
-                throw new DbConnectionException(
-                    $this->errorMessagePrefix() . ' - can\'t rollback, connection lost.'
-                );
+                $msg = ' - can\'t rollback transaction, connection lost, error: ';
             }
-            if (!@$this->mySqlI->rollback()) {
+            elseif (!@$this->mySqlI->rollback()) {
+                $msg = ' - failed to rollback transaction, error: ';
+            }
+            if ($msg) {
                 $errors = $this->nativeErrors();
-                $cls_xcptn = $this->errorsToException($errors, DbRuntimeException::class);
+                $cls_xcptn = $this->errorsToException($errors);
                 throw new $cls_xcptn(
-                    $this->errorMessagePrefix() . ' - failed to rollback transaction, with error: '
-                    . $this->nativeErrorsToString($errors) . '.'
+                    $this->errorMessagePrefix() . $msg . $this->nativeErrorsToString($errors) . '.'
                 );
             }
             $this->transactionStarted = false;
@@ -330,6 +336,9 @@ class MariaDbClient extends DatabaseClientMulti
                     'msg' => $error['error'] ?? '',
                 ];
             }
+        }
+        if ($this->errorConnect) {
+            $list[] = $this->errorConnect;
         }
         return $this->formatNativeErrors($list, $toString);
     }
@@ -446,9 +455,13 @@ class MariaDbClient extends DatabaseClientMulti
 
     /**
      * Attempts to re-connect if connection lost and arg $reConnect,
-     * unless unfinished transaction.
+     * unless re-connection is disabled.
      *
      * Always sets connection timeout and connection character set.
+     *
+     * Re-connection gets disabled:
+     * - temporarily when a transaction is started.
+     * - permanently when a query doesn't use client buffered cursor mode
      *
      * @internal Package protected; for MariaDbQuery|DbQueryInterface.
      *
@@ -457,30 +470,41 @@ class MariaDbClient extends DatabaseClientMulti
      * @param bool $reConnect
      *
      * @return \MySQLi|bool
-     *      False: no connection and not arg $reConnect.
      *      \MySQLi: connection (re-)established.
+     *      False: no connection.
      *
      * @throws \LogicException
-     *      Propagated.
+     *      Propagated, from optionsResolve().
      *      Failure to set option.
-     * @throws DbConnectionException
-     *      Connection lost during unfinished transaction.
-     *      Failure to (re)connect.
      */
     public function getConnection(bool $reConnect = false)
     {
         // Unless using the mysqlnd driver PHP ini mysqli.reconnect
         // must be falsy. Otherwise MySQLi::ping() may re-connect.
         if (!$this->mySqlI || !$this->mySqlI->ping()) {
-            if (!$reConnect) {
-                return false;
-            }
-            if ($this->transactionStarted) {
-                throw new DbConnectionException(
-                    $this->errorMessagePrefix() . ' - connection lost during unfinished transaction.'
-                );
+            $this->errorConnect = null;
+            // Unless first time.
+            if ($this->timesConnected) {
+                if (!$reConnect || !$this->reConnect) {
+                    $this->errorConnect = [
+                        'code' => static::ERROR_CODE_CONNECT,
+                        'sqlstate' => '08003',
+                        'msg' => 'No connection, '
+                            . (!$this->reConnect ? 're-connect disabled' : 'arg $reConnect false') . '.'
+                    ];
+                    return false;
+                }
+                if ($this->transactionStarted) {
+                    $this->errorConnect = [
+                        'code' => static::ERROR_CODE_CONNECT,
+                        'sqlstate' => '08003',
+                        'msg' => 'Connection lost during unfinished transaction.',
+                    ];
+                    return false;
+                }
             }
 
+            // Don't check for failing mysql_init().
             $mysqli = mysqli_init();
 
             if (!$this->optionsResolved) {
@@ -490,10 +514,12 @@ class MariaDbClient extends DatabaseClientMulti
             foreach ($this->optionsResolved as $int => $value) {
                 if (!@$mysqli->options($int, $value)) {
                     // There's no means of getting native error (yet).
-                    throw new \LogicException(
-                        $this->errorMessagePrefix()
-                        . ' - failed to set ' . $this->type . ' option[' . $int . '] value[' . $value . '].'
-                    );
+                    $this->errorConnect = [
+                        'code' => static::ERROR_CODE_CONNECT,
+                        'sqlstate' => '08000',
+                        'msg' => 'Failed setting connection option[' . $int . '] value[' . $value . '].',
+                    ];
+                    return false;
                 }
             }
 
@@ -510,23 +536,28 @@ class MariaDbClient extends DatabaseClientMulti
                 || $mysqli->connect_errno
             ) {
                 // Can only access connect_errno, not \MySQLi::errno (yet).
-                throw new DbConnectionException(
-                    $this->errorMessagePrefix()
-                    . ' - connect to host[' . $this->host . '] port[' . $this->port
-                    . '] failed, with error: (' . $mysqli->connect_errno . ') ' . $mysqli->connect_error . '.'
-                );
+                $this->errorConnect = [
+                    'code' => static::ERROR_CODE_CONNECT,
+                    'sqlstate' => '08000',
+                    'msg' => 'Connect to host[' . $this->host . '] port[' . $this->port . '] failed with: ('
+                        . $mysqli->connect_errno . ') ' . $mysqli->connect_error . '.'
+                ];
+                return false;
             }
 
             // Can't access native errors prior to successful connection.
             $this->mySqlI = $mysqli;
 
             if (!@$this->mySqlI->set_charset($this->characterSet)) {
-                throw new \LogicException(
-                    $this->errorMessagePrefix()
-                    . ' - setting connection character set[' . $this->characterSet
-                    . '] failed, with error: ' . $this->nativeErrors(Database::ERRORS_STRING) . '.'
-                );
+                $this->errorConnect = [
+                    'code' => static::ERROR_CODE_CONNECT,
+                    'sqlstate' => '08000',
+                    'msg' => 'Failed setting connection character set[' . $this->characterSet . '].',
+                ];
+                return false;
             }
+
+            ++$this->timesConnected;
         }
 
         return $this->mySqlI;

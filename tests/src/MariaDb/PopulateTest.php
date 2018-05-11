@@ -41,7 +41,7 @@ class PopulateTest extends TestCase
         /** @var MariaDbQuery $query_insert */
         $query_insert = $client->query(
             'INSERT INTO parent (lastName, firstName, birthday) VALUES (?, ?, ?)'
-        );
+        );Log::variable('$query_insert', $query_insert);
 
         /** @noinspection SqlResolve */
         /** @var MariaDbQuery $query_select */
@@ -62,8 +62,6 @@ class PopulateTest extends TestCase
         $insert_id = $result_insert->insertId('i');
         Log::variable('insert ID', $insert_id);
         $this->assertInternalType('integer', $insert_id);
-
-        //$this->assertSame(true, $client->isConnected());
 
         $args_select = [
             'id' => $insert_id,

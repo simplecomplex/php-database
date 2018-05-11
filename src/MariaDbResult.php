@@ -75,7 +75,6 @@ class MariaDbResult extends DatabaseResult
      * @param \MySQLi $mySqlI
      * @param \mysqli_stmt|null $statement
      *      \mysqli_stmt: If prepared statement.
-     *
      */
     public function __construct(DbQueryInterface $query, $mySqlI, $statement)
     {
@@ -119,7 +118,7 @@ class MariaDbResult extends DatabaseResult
         $error = $this->query->nativeErrors(Database::ERRORS_STRING);
         $this->closeAndLog(__FUNCTION__);
         throw new DbResultException(
-            $this->query->errorMessagePrefix() . ' - failed counting affected rows, with error: '. $error . '.'
+            $this->query->errorMessagePrefix() . ' - failed counting affected rows, error: '. $error . '.'
         );
     }
 
@@ -192,7 +191,7 @@ class MariaDbResult extends DatabaseResult
         $error = $this->query->nativeErrors(Database::ERRORS_STRING);
         $this->closeAndLog(__FUNCTION__);
         throw new DbResultException(
-            $this->query->errorMessagePrefix() . ' - failed getting insert ID, with error: ' . $error . '.'
+            $this->query->errorMessagePrefix() . ' - failed getting insert ID, error: ' . $error . '.'
         );
     }
 
@@ -234,7 +233,7 @@ class MariaDbResult extends DatabaseResult
         $error = $this->query->nativeErrors(Database::ERRORS_STRING);
         $this->closeAndLog(__FUNCTION__);
         throw new DbResultException(
-            $this->query->errorMessagePrefix() . ' - failed getting number of rows, with error: ' . $error . '.'
+            $this->query->errorMessagePrefix() . ' - failed getting number of rows, error: ' . $error . '.'
         );
     }
 
@@ -258,7 +257,7 @@ class MariaDbResult extends DatabaseResult
         $error = $this->query->nativeErrors(Database::ERRORS_STRING);
         $this->closeAndLog(__FUNCTION__);
         throw new DbResultException(
-            $this->query->errorMessagePrefix() . ' - failed getting number of columns, with error: ' . $error . '.'
+            $this->query->errorMessagePrefix() . ' - failed getting number of columns, error: ' . $error . '.'
         );
     }
 
@@ -328,7 +327,7 @@ class MariaDbResult extends DatabaseResult
         $this->closeAndLog(__FUNCTION__);
         throw new DbResultException(
             $this->query->errorMessagePrefix() . ' - failed fetching field by '
-            . (!$column ? ('$index[' . $index . ']') : ('$column[' . $column . ']')) . ', with error: ' . $error . '.'
+            . (!$column ? ('$index[' . $index . ']') : ('$column[' . $column . ']')) . ', error: ' . $error . '.'
         );
     }
 
@@ -361,7 +360,7 @@ class MariaDbResult extends DatabaseResult
         $error = $this->query->nativeErrors(Database::ERRORS_STRING);
         $this->closeAndLog(__FUNCTION__);
         throw new DbResultException(
-            $this->query->errorMessagePrefix() . ' - failed fetching row as array, with error: ' . $error . '.'
+            $this->query->errorMessagePrefix() . ' - failed fetching row as array, error: ' . $error . '.'
         );
     }
 
@@ -397,7 +396,7 @@ class MariaDbResult extends DatabaseResult
         $this->closeAndLog(__FUNCTION__);
         throw new DbResultException(
             $this->query->errorMessagePrefix()
-            . ' - failed fetching row as object, with error: ' . $error . '.'
+            . ' - failed fetching row as object, error: ' . $error . '.'
         );
     }
 
@@ -449,7 +448,7 @@ class MariaDbResult extends DatabaseResult
                     $this->closeAndLog(__FUNCTION__);
                     throw new DbResultException(
                         $this->query->errorMessagePrefix()
-                        . ' - failed fetching all rows as numeric array, with error: ' . $error . '.'
+                        . ' - failed fetching all rows as numeric array, error: ' . $error . '.'
                     );
                 }
                 $this->rowIndex += count($list);
@@ -490,7 +489,7 @@ class MariaDbResult extends DatabaseResult
                         $this->closeAndLog(__FUNCTION__);
                         throw new DbResultException(
                             $this->query->errorMessagePrefix()
-                            . ' - failed fetching all rows as assoc array, with error: ' . $error . '.'
+                            . ' - failed fetching all rows as assoc array, error: ' . $error . '.'
                         );
                     }
                     $this->rowIndex += count($list);
@@ -523,7 +522,7 @@ class MariaDbResult extends DatabaseResult
             throw new DbResultException(
                 $this->query->errorMessagePrefix()
                 . ' - failed fetching all rows as ' . ($as == Database::FETCH_OBJECT ? 'object' : 'assoc array')
-                . ', with error: ' . $error . '.'
+                . ', error: ' . $error . '.'
             );
         }
         return $list;
@@ -569,7 +568,7 @@ class MariaDbResult extends DatabaseResult
         $cls_xcptn = $this->query->client->errorsToException($errors, DbResultException::class);
         throw new $cls_xcptn(
             $this->query->errorMessagePrefix()
-            . ' - failed going to set[' . $this->setIndex . '], with error: '
+            . ' - failed going to set[' . $this->setIndex . '], error: '
             . $this->query->client->nativeErrorsToString($errors) . '.'
         );
     }
@@ -608,7 +607,7 @@ class MariaDbResult extends DatabaseResult
         $cls_xcptn = $this->query->client->errorsToException($errors, DbResultException::class);
         throw new $cls_xcptn(
             $this->query->errorMessagePrefix()
-            . ' - failed going to set[' . $this->setIndex . '] row[' . $this->rowIndex . '], with error: '
+            . ' - failed going to set[' . $this->setIndex . '] row[' . $this->rowIndex . '], error: '
             . $this->query->client->nativeErrorsToString($errors) . '.'
         );
     }
@@ -667,7 +666,7 @@ class MariaDbResult extends DatabaseResult
                 }
                 $this->closeAndLog(__FUNCTION__);
                 throw new DbResultException(
-                    $this->query->errorMessagePrefix() . ' - failed getting result, with error: '
+                    $this->query->errorMessagePrefix() . ' - failed getting result, error: '
                     . $this->query->client->nativeErrorsToString($errors) . '.'
                 );
             }

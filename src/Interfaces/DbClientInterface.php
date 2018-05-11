@@ -38,6 +38,13 @@ interface DbClientInterface
     public function __construct(string $name, array $databaseInfo);
 
     /**
+     * Disable re-connection permanently.
+     *
+     * @return $this|DbClientInterface
+     */
+    public function reConnectDisable() : DbClientInterface;
+
+    /**
      * Create a query.
      *
      * @param string $sql
@@ -104,18 +111,19 @@ interface DbClientInterface
      * Used by query instance, on demand.
      *
      * Attempts to re-connect if connection lost and arg $reConnect,
-     * unless unfinished transaction.
+     * unless re-connection is disabled.
+     *
+     * Re-connection gets disabled:
+     * - temporarily when a transaction is started.
+     * - permanently when a query doesn't use client buffered cursor mode
      *
      * @internal Package protected; for DbQueryInterface.
      *
      * @param bool $reConnect
      *
-     *
      * @return mixed|bool
-     *      False: no connection and not arg $reConnect.
      *      Mixed: connection (re-)established.
-     *
-     * throws \SimpleComplex\Database\Exception\DbConnectionException
+     *      False: no connection.
      */
     public function getConnection(bool $reConnect = false);
 }

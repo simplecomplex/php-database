@@ -192,6 +192,11 @@ class MariaDbQuery extends DatabaseQueryMulti
         else {
             $this->cursorMode = static::CURSOR_MODE_DEFAULT;
         }
+
+        // Re-connect requires client buffered cursor mode.
+        if ($this->cursorMode != MariaDbQuery::CURSOR_STORE) {
+            $this->client->reConnectDisable();
+        }
     }
 
     public function __destruct()
@@ -243,7 +248,7 @@ class MariaDbQuery extends DatabaseQueryMulti
             // Unset prepared statement arguments reference.
             $this->unsetReferences();
             throw new \LogicException(
-                $this->client->errorMessagePrefix() . ' - query cannot prepare statement more than once.'
+                $this->client->errorMessagePrefix() . ' - can\'t prepare statement more than once.'
             );
         }
         $this->isPreparedStatement = true;
@@ -274,6 +279,7 @@ class MariaDbQuery extends DatabaseQueryMulti
                 $tps = str_repeat('s', $n_params);
             }
             elseif (strlen($types) != $n_params) {
+                $this->log(__FUNCTION__);
                 throw new \InvalidArgumentException(
                     $this->client->errorMessagePrefix() . ' - arg $types length[' . strlen($types)
                     . '] doesn\'t match sql\'s ?-parameters count[' . $n_params . '].'
@@ -289,15 +295,17 @@ class MariaDbQuery extends DatabaseQueryMulti
 
         // Allow re-connection.
         $mysqli = $this->client->getConnection(true);
-
-        /** @var \mysqli_stmt|bool $mysqli_stmt */
-        $mysqli_stmt = @$mysqli->prepare($this->sql);
+        $mysqli_stmt = null;
+        if ($mysqli) {
+            /** @var \mysqli_stmt|bool $mysqli_stmt */
+            $mysqli_stmt = @$mysqli->prepare($this->sql);
+        }
         if (!$mysqli_stmt) {
             $errors = $this->nativeErrors();
             $this->log(__FUNCTION__);
             $cls_xcptn = $this->client->errorsToException($errors);
             throw new $cls_xcptn(
-                $this->errorMessagePrefix() . ' - query failed to prepare statement, with error: '
+                $this->errorMessagePrefix() . ' - failed to prepare statement, error: '
                 . $this->client->nativeErrorsToString($errors) . '.'
             );
         }
@@ -312,7 +320,7 @@ class MariaDbQuery extends DatabaseQueryMulti
                 $cls_xcptn = $this->client->errorsToException($errors);
                 throw new $cls_xcptn(
                     $this->errorMessagePrefix() . ' - query failed to set cursor mode \''
-                    . MariaDbQuery::CURSOR_READ_ONLY . '\', with error: '
+                    . MariaDbQuery::CURSOR_READ_ONLY . '\', error: '
                     . $this->client->nativeErrorsToString($errors) . '.'
                 );
             }
@@ -335,7 +343,7 @@ class MariaDbQuery extends DatabaseQueryMulti
                 $this->closeAndLog(__FUNCTION__);
                 $cls_xcptn = $this->client->errorsToException($errors);
                 throw new $cls_xcptn(
-                    $this->errorMessagePrefix() . ' - query failed to bind parameters prepare statement, with error: '
+                    $this->errorMessagePrefix() . ' - failed to bind parameters to prepared statement, error: '
                     . $this->client->nativeErrorsToString($errors) . '.'
                 );
             }
@@ -399,19 +407,22 @@ class MariaDbQuery extends DatabaseQueryMulti
             if ($this->statementClosed) {
                 throw new \LogicException(
                     $this->client->errorMessagePrefix()
-                    . ' - query can\'t execute previously closed prepared statement.'
+                    . ' - can\'t execute previously closed prepared statement.'
                 );
             }
             // Require unbroken connection.
             /** @var \MySQLi $mysqli */
             $mysqli = $this->client->getConnection();
             if (!$mysqli) {
+                $errors = $this->nativeErrors();
                 // Unset prepared statement arguments reference.
-                $this->close();
-                throw new DbConnectionException(
+                $this->closeAndLog(__FUNCTION__);
+                $cls_xcptn = $this->client->errorsToException($errors);
+                throw new $cls_xcptn(
                     $this->client->errorMessagePrefix()
-                    . ' - query can\'t execute prepared statement when connection lost, with error: '
-                    . $this->client->nativeErrors(Database::ERRORS_STRING) . '.'
+                    . ' - can\'t execute prepared statement'
+                    . (isset($errors[2014]) ? ', forgot to consume all result sets/rows?' : ' when connection lost')
+                    . ', error: ' . $this->client->nativeErrorsToString($errors) . '.'
                 );
             }
 
@@ -426,7 +437,7 @@ class MariaDbQuery extends DatabaseQueryMulti
                     $this->log(__FUNCTION__);
                     $cls_xcptn = $this->client->errorsToException($errors);
                     throw new $cls_xcptn(
-                        $this->errorMessagePrefix() . ' - query failed to reset prepared statement, with error: '
+                        $this->errorMessagePrefix() . ' - failed to reset prepared statement, error: '
                         . $this->client->nativeErrorsToString($errors) . '.'
                     );
                 }
@@ -439,7 +450,7 @@ class MariaDbQuery extends DatabaseQueryMulti
                 $this->closeAndLog(__FUNCTION__);
                 $cls_xcptn = $this->client->errorsToException($errors);
                 throw new $cls_xcptn(
-                    $this->errorMessagePrefix() . ' - failed executing prepared statement, with error: '
+                    $this->errorMessagePrefix() . ' - failed executing prepared statement, error: '
                     . $this->client->nativeErrorsToString($errors) . '.'
                 );
             }
@@ -448,14 +459,18 @@ class MariaDbQuery extends DatabaseQueryMulti
             // Allow re-connection.
             /** @var \MySQLi $mysqli */
             $mysqli = $this->client->getConnection(true);
-            // bool.
-            if (!@$mysqli->multi_query($this->sqlTampered ?? $this->sql) || @$mysqli->errno) {
+            if (
+                !$mysqli
+                // bool.
+                || !@$mysqli->multi_query($this->sqlTampered ?? $this->sql)
+                || @$mysqli->errno
+            ) {
                 // Use MariaDb::nativeErrors() because not statement.
                 $errors = $this->client->nativeErrors();
                 $this->log(__FUNCTION__);
                 $cls_xcptn = $this->client->errorsToException($errors);
                 throw new $cls_xcptn(
-                    $this->errorMessagePrefix() . ' - failed executing multi-query, with error: '
+                    $this->errorMessagePrefix() . ' - failed executing multi-query, error: '
                     . $this->client->nativeErrorsToString($errors) . '.'
                 );
             }
@@ -464,14 +479,17 @@ class MariaDbQuery extends DatabaseQueryMulti
             // Allow re-connection.
             /** @var \MySQLi $mysqli */
             $mysqli = $this->client->getConnection(true);
-            // bool.
-            if (!@$mysqli->real_query($this->sqlTampered ?? $this->sql)) {
+            if (
+                !$mysqli
+                // bool.
+                || !@$mysqli->real_query($this->sqlTampered ?? $this->sql)
+            ) {
                 // Use MariaDb::nativeErrors() because not statement.
                 $errors = $this->client->nativeErrors();
                 $this->log(__FUNCTION__);
                 $cls_xcptn = $this->client->errorsToException($errors);
                 throw new $cls_xcptn(
-                    $this->errorMessagePrefix() . ' - failed executing simple query, with error: '
+                    $this->errorMessagePrefix() . ' - failed executing simple query, error: '
                     . $this->client->nativeErrorsToString($errors) . '.'
                 );
             }
@@ -519,12 +537,25 @@ class MariaDbQuery extends DatabaseQueryMulti
      * @param string $str
      *
      * @return string
+     *
+     * @throws DbConnectionException
      */
     public function escapeString(string $str) : string
     {
         // Allow re-connection.
-        $s = $this->client->getConnection(true)
-            ->real_escape_string($str);
+        $mysqli = $this->client->getConnection(true);
+        if (!$mysqli) {
+            $errors = $this->nativeErrors();
+            // Unset prepared statement arguments reference.
+            $this->closeAndLog(__FUNCTION__);
+            throw new DbConnectionException(
+                $this->client->errorMessagePrefix()
+                . ' - query can\'t escape string when connection lost, error: '
+                . $this->client->nativeErrorsToString($errors) . '.'
+            );
+        }
+
+        $s = $mysqli->real_escape_string($str);
 
         return $this->hasLikeClause ? $s : addcslashes($s, '%_');
     }

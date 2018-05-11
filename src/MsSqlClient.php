@@ -31,6 +31,8 @@ use SimpleComplex\Database\Exception\DbConnectionException;
  * @property-read array $optionsResolved
  * @property-read string $characterSet
  * @property-read bool $transactionStarted
+ * @property-read int $timesConnected
+ * @property-read bool $reConnect
  *
  * Own properties:
  * @property-read array|string $info  Driver info, string if not connected.
@@ -146,12 +148,14 @@ class MsSqlClient extends DatabaseClient
             );
         }
         // Allow re-connection.
-        $this->getConnection(true);
-        if (!@sqlsrv_begin_transaction($this->connection)) {
+        if (
+            !$this->getConnection(true)
+            || !@sqlsrv_begin_transaction($this->connection)
+        ) {
             $errors = $this->nativeErrors();
-            $cls_xcptn = $this->errorsToException($errors, DbRuntimeException::class);
+            $cls_xcptn = $this->errorsToException($errors);
             throw new $cls_xcptn(
-                $this->errorMessagePrefix() . ' - failed to start transaction, with error: '
+                $this->errorMessagePrefix() . ' - failed to start transaction, error: '
                 . $this->nativeErrorsToString($errors) . '.'
             );
         }
@@ -170,18 +174,19 @@ class MsSqlClient extends DatabaseClient
     public function transactionCommit()
     {
         if ($this->transactionStarted) {
+            $msg = null;
             // Require unbroken connection.
             if (!$this->isConnected()) {
-                throw new DbConnectionException(
-                    $this->errorMessagePrefix() . ' - can\'t commit, connection lost.'
-                );
+                $msg = ' - can\'t commit transaction, connection lost, error: ';
             }
-            if (!@sqlsrv_commit($this->connection)) {
+            elseif (!@sqlsrv_commit($this->connection)) {
+                $msg = ' - failed to commit transaction, error: ';
+            }
+            if ($msg) {
                 $errors = $this->nativeErrors();
-                $cls_xcptn = $this->errorsToException($errors, DbRuntimeException::class);
+                $cls_xcptn = $this->errorsToException($errors);
                 throw new $cls_xcptn(
-                    $this->errorMessagePrefix() . ' - failed to commit transaction, with error:  '
-                    . $this->nativeErrorsToString($errors) . '.'
+                    $this->errorMessagePrefix() . $msg . $this->nativeErrorsToString($errors) . '.'
                 );
             }
             $this->transactionStarted = false;
@@ -201,18 +206,19 @@ class MsSqlClient extends DatabaseClient
     public function transactionRollback()
     {
         if ($this->transactionStarted) {
+            $msg = null;
             // Require unbroken connection.
             if (!$this->isConnected()) {
-                throw new DbConnectionException(
-                    $this->errorMessagePrefix() . ' - can\'t rollback, connection lost.'
-                );
+                $msg = ' - can\'t rollback transaction, connection lost, error: ';
             }
-            if (!@sqlsrv_rollback($this->connection)) {
+            elseif (!@sqlsrv_rollback($this->connection)) {
+                $msg = ' - failed to rollback transaction, error: ';
+            }
+            if ($msg) {
                 $errors = $this->nativeErrors();
-                $cls_xcptn = $this->errorsToException($errors, DbRuntimeException::class);
+                $cls_xcptn = $this->errorsToException($errors);
                 throw new $cls_xcptn(
-                    $this->errorMessagePrefix() . ' - failed to rollback transaction, with error: '
-                    . $this->nativeErrorsToString($errors) . '.'
+                    $this->errorMessagePrefix() . $msg . $this->nativeErrorsToString($errors) . '.'
                 );
             }
             $this->transactionStarted = false;
@@ -366,7 +372,7 @@ class MsSqlClient extends DatabaseClient
 
     /**
      * Attempts to re-connect if connection lost and arg $reConnect,
-     * unless unfinished transaction.
+     * unless re-connection is disabled.
      *
      * Always sets:
      * - connection timeout; (int) LoginTimeout
@@ -377,6 +383,10 @@ class MsSqlClient extends DatabaseClient
      * - SQL Server Authentication/SqlPassword.
      * Windows user authentication not supported.
      *
+     * Re-connection gets disabled:
+     * - temporarily when a transaction is started.
+     * - permanently when a query doesn't use client buffered cursor mode
+     *
      * @internal Package protected; for MsSqlQuery|DbQueryInterface.
      *
      * @see MsSqlClient::optionsResolve()
@@ -384,8 +394,8 @@ class MsSqlClient extends DatabaseClient
      * @param bool $reConnect
      *
      * @return resource|bool
-     *      False: no connection and not arg $reConnect.
      *      Resource: connection (re-)established.
+     *      False: no connection.
      *
      * @throws DbConnectionException
      *      Connection lost during unfinished transaction.
@@ -394,13 +404,26 @@ class MsSqlClient extends DatabaseClient
     public function getConnection(bool $reConnect = false)
     {
         if (!$this->connection) {
-            if (!$reConnect) {
-                return false;
-            }
-            if ($this->transactionStarted) {
-                throw new DbConnectionException(
-                    $this->errorMessagePrefix() . ' - connection lost during unfinished transaction.'
-                );
+            $this->errorConnect = null;
+            // Unless first time.
+            if ($this->timesConnected) {
+                if (!$reConnect || !$this->reConnect) {
+                    $this->errorConnect = [
+                        'code' => static::ERROR_CODE_CONNECT,
+                        'sqlstate' => '08003',
+                        'msg' => 'No connection, '
+                            . (!$this->reConnect ? 're-connect disabled' : 'arg $reConnect false') . '.'
+                    ];
+                    return false;
+                }
+                if ($this->transactionStarted) {
+                    $this->errorConnect = [
+                        'code' => static::ERROR_CODE_CONNECT,
+                        'sqlstate' => '08003',
+                        'msg' => 'Connection lost during unfinished transaction.',
+                    ];
+                    return false;
+                }
             }
 
             if (!$this->optionsResolved) {
@@ -415,12 +438,16 @@ class MsSqlClient extends DatabaseClient
                 ]
             );
             if (!$connection) {
-                throw new DbConnectionException(
-                    $this->errorMessagePrefix() . ' connect to host[' . $this->host . '] port[' . $this->port
-                    . '] failed, with error: ' . $this->nativeErrors(Database::ERRORS_STRING) . '.'
-                );
+                $this->errorConnect = [
+                    'code' => static::ERROR_CODE_CONNECT,
+                    'sqlstate' => '08000',
+                    'msg' => 'Connect to host[' . $this->host . '] port[' . $this->port . '] failed.'
+                ];
+                return false;
             }
             $this->connection = $connection;
+
+            ++$this->timesConnected;
         }
 
         return $this->connection;
@@ -444,11 +471,10 @@ class MsSqlClient extends DatabaseClient
     public function __get(string $name)
     {
         if ($name == 'info') {
-            $connection = $this->getConnection();
-            if (!$connection) {
+            if (!$this->isConnected()) {
                 return 'Not connected to server.';
             }
-            return @sqlsrv_server_info($connection);
+            return @sqlsrv_server_info($this->connection);
         }
         return parent::__get($name);
     }

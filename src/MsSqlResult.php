@@ -53,10 +53,12 @@ class MsSqlResult extends DatabaseResult
     {
         $this->query = $query;
         if (!$statement) {
-            $this->query->unsetReferences();
+            $error = $this->query->client->nativeErrors(Database::ERRORS_STRING);
+            $this->closeAndLog(__FUNCTION__);
             throw new DbRuntimeException(
                 $this->query->client->errorMessagePrefix()
-                . ' - can\'t initialize result because arg $statement is not (no longer?) a resource.'
+                . ' - can\'t initialize result because arg $statement is not (no longer?) a resource, error:
+                ' . $error . '.'
             );
         }
         $this->statement = $statement;
@@ -105,7 +107,7 @@ class MsSqlResult extends DatabaseResult
         $error = $this->query->client->nativeErrors(Database::ERRORS_STRING);
         $this->closeAndLog(__FUNCTION__);
         throw new DbResultException(
-            $this->query->errorMessagePrefix() . ' - failed counting affected rows, with error: ' . $error . '.'
+            $this->query->errorMessagePrefix() . ' - failed counting affected rows, error: ' . $error . '.'
         );
     }
 
@@ -158,7 +160,7 @@ class MsSqlResult extends DatabaseResult
                 $error = $this->query->client->nativeErrors(Database::ERRORS_STRING);
                 $this->closeAndLog(__FUNCTION__);
                 throw new DbResultException(
-                    $this->query->errorMessagePrefix() . ' - failed going to next set to get insert ID, with error: '
+                    $this->query->errorMessagePrefix() . ' - failed going to next set to get insert ID, error: '
                     . $error . '.'
                 );
             }
@@ -168,6 +170,7 @@ class MsSqlResult extends DatabaseResult
             if (!$next) {
                 if ($next === null) {
                     // No row at all because rowIndex was -1.
+                    $this->closeAndLog(__FUNCTION__);
                     throw new DbResultException(
                         $this->query->errorMessagePrefix()
                         . ' - failed going to next set to get insert ID, no result row at all.'
@@ -176,7 +179,7 @@ class MsSqlResult extends DatabaseResult
                 $error = $this->query->client->nativeErrors(Database::ERRORS_STRING);
                 $this->closeAndLog(__FUNCTION__);
                 throw new DbResultException(
-                    $this->query->errorMessagePrefix() . ' - failed going to next row to get insert ID, with error: '
+                    $this->query->errorMessagePrefix() . ' - failed going to next row to get insert ID, error: '
                     . $error . '.'
                 );
             }
@@ -242,7 +245,7 @@ class MsSqlResult extends DatabaseResult
         $error = $this->query->client->nativeErrors(Database::ERRORS_STRING);
         $this->closeAndLog(__FUNCTION__);
         throw new DbResultException(
-            $this->query->errorMessagePrefix() . ' - failed getting insert ID, with error: ' . $error . '.'
+            $this->query->errorMessagePrefix() . ' - failed getting insert ID, error: ' . $error . '.'
         );
     }
 
@@ -282,7 +285,7 @@ class MsSqlResult extends DatabaseResult
         $error = $this->query->client->nativeErrors(Database::ERRORS_STRING);
         $this->closeAndLog(__FUNCTION__);
         throw new DbResultException(
-            $this->query->errorMessagePrefix() . ' - failed getting number of rows, with error: ' . $error . '.'
+            $this->query->errorMessagePrefix() . ' - failed getting number of rows, error: ' . $error . '.'
         );
     }
 
@@ -304,7 +307,7 @@ class MsSqlResult extends DatabaseResult
         $error = $this->query->client->nativeErrors(Database::ERRORS_STRING);
         $this->closeAndLog(__FUNCTION__);
         throw new DbResultException(
-            $this->query->errorMessagePrefix() . ' - failed getting number of columns, with error: ' . $error . '.'
+            $this->query->errorMessagePrefix() . ' - failed getting number of columns, error: ' . $error . '.'
         );
     }
 
@@ -352,7 +355,7 @@ class MsSqlResult extends DatabaseResult
                     $this->closeAndLog(__FUNCTION__);
                     throw new DbResultException(
                         $this->query->errorMessagePrefix() . ' - failed going to next row to get field by '
-                        . (!$column ? ('$index[' . $index . ']') : ('$column[' . $column . ']')) . ', with error: '
+                        . (!$column ? ('$index[' . $index . ']') : ('$column[' . $column . ']')) . ', error: '
                         . $error . '.'
                     );
                 }
@@ -404,7 +407,7 @@ class MsSqlResult extends DatabaseResult
         $this->closeAndLog(__FUNCTION__);
         throw new DbResultException(
             $this->query->errorMessagePrefix() . ' - failed fetching field by '
-            . (!$column ? ('$index[' . $index . ']') : ('$column[' . $column . ']')) . ', with error: ' . $error . '.'
+            . (!$column ? ('$index[' . $index . ']') : ('$column[' . $column . ']')) . ', error: ' . $error . '.'
         );
     }
 
@@ -435,7 +438,7 @@ class MsSqlResult extends DatabaseResult
         $this->closeAndLog(__FUNCTION__);
         throw new DbResultException(
             $this->query->errorMessagePrefix() . ' - failed fetching row as '
-            . ($as == Database::FETCH_ASSOC ? 'assoc' : 'numeric') . ' array, with error: ' . $error . '.'
+            . ($as == Database::FETCH_ASSOC ? 'assoc' : 'numeric') . ' array, error: ' . $error . '.'
         );
     }
 
@@ -465,7 +468,7 @@ class MsSqlResult extends DatabaseResult
         $this->closeAndLog(__FUNCTION__);
         throw new DbResultException(
             $this->query->errorMessagePrefix()
-            . ' - failed fetching row as object, with error: ' . $error . '.'
+            . ' - failed fetching row as object, error: ' . $error . '.'
         );
     }
 
@@ -599,7 +602,7 @@ class MsSqlResult extends DatabaseResult
             $this->closeAndLog(__FUNCTION__);
             throw new DbResultException(
                 $this->query->errorMessagePrefix()
-                . ' - failed fetching all rows as ' . $em . ', with error: ' . $error . '.'
+                . ' - failed fetching all rows as ' . $em . ', error: ' . $error . '.'
             );
         }
         return $list;
@@ -635,7 +638,7 @@ class MsSqlResult extends DatabaseResult
         $error = $this->query->client->nativeErrors(Database::ERRORS_STRING);
         $this->closeAndLog(__FUNCTION__);
         throw new DbResultException(
-            $this->query->errorMessagePrefix() . ' - failed going to next set, with error: ' . $error . '.'
+            $this->query->errorMessagePrefix() . ' - failed going to next set, error: ' . $error . '.'
         );
     }
 
@@ -666,7 +669,7 @@ class MsSqlResult extends DatabaseResult
         $error = $this->query->client->nativeErrors(Database::ERRORS_STRING);
         $this->closeAndLog(__FUNCTION__);
         throw new DbResultException(
-            $this->query->errorMessagePrefix() . ' - failed going to next row, with error: ' . $error . '.'
+            $this->query->errorMessagePrefix() . ' - failed going to next row, error: ' . $error . '.'
         );
     }
 

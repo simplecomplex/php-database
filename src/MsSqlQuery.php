@@ -256,6 +256,11 @@ class MsSqlQuery extends DatabaseQuery
             $this->cursorMode = static::CURSOR_MODE_DEFAULT;
         }
 
+        // Re-connect requires client buffered cursor mode.
+        if ($this->cursorMode != SQLSRV_CURSOR_CLIENT_BUFFERED) {
+            $this->client->reConnectDisable();
+        }
+
         if (isset($options['query_timeout'])) {
             $this->queryTimeout = $options['query_timeout'];
             if ($this->queryTimeout < 0) {
@@ -337,7 +342,7 @@ class MsSqlQuery extends DatabaseQuery
             // Unset prepared statement arguments reference.
             $this->unsetReferences();
             throw new \LogicException(
-                $this->client->errorMessagePrefix() . ' - query cannot prepare statement more than once.'
+                $this->client->errorMessagePrefix() . ' - can\'t prepare statement more than once.'
             );
         }
         $this->isPreparedStatement = true;
@@ -352,9 +357,6 @@ class MsSqlQuery extends DatabaseQuery
             $this->adaptArguments($types, $arguments);
         }
 
-        // Allow re-connection.
-        $connection = $this->client->getConnection(true);
-
         $options = [
             'Scrollable' => $this->cursorMode,
             'SendStreamParamsAtExec' => !$this->sendDataChunked,
@@ -363,10 +365,15 @@ class MsSqlQuery extends DatabaseQuery
             $options['QueryTimeout'] = $this->queryTimeout;
         }
 
-        /** @var resource $statement */
-        $statement = @sqlsrv_prepare(
-            $connection, $this->sqlTampered ?? $this->sql, $this->arguments['prepared'] ?? [], $options
-        );
+        // Allow re-connection.
+        $connection = $this->client->getConnection(true);
+        $statement = null;
+        if ($connection) {
+            /** @var resource $statement */
+            $statement = @sqlsrv_prepare(
+                $connection, $this->sqlTampered ?? $this->sql, $this->arguments['prepared'] ?? [], $options
+            );
+        }
         if (!$statement) {
             $error = $this->client->nativeErrors(Database::ERRORS_STRING);
             // Unset prepared statement arguments reference.
@@ -374,7 +381,7 @@ class MsSqlQuery extends DatabaseQuery
             $this->log(__FUNCTION__);
             throw new DbRuntimeException(
                 $this->errorMessagePrefix()
-                . ' - query failed to prepare statement and bind parameters, with error: ' . $error . '.'
+                . ' - failed to prepare statement and bind parameters, error: ' . $error . '.'
             );
         }
         $this->statementClosed = false;
@@ -460,19 +467,19 @@ class MsSqlQuery extends DatabaseQuery
         if ($this->statementClosed) {
             throw new \LogicException(
                 $this->client->errorMessagePrefix()
-                . ' - query can\'t execute previously closed statement.'
+                . ' - can\'t execute previously closed statement.'
             );
         }
 
         if ($this->isPreparedStatement) {
             // Require unbroken connection.
             if (!$this->client->isConnected()) {
+                $error = $this->client->nativeErrors(Database::ERRORS_STRING);
                 // Unset prepared statement arguments reference.
-                $this->unsetReferences();
-                $this->log(__FUNCTION__);
+                $this->closeAndLog(__FUNCTION__);
                 throw new DbConnectionException(
-                    $this->errorMessagePrefix()
-                    . ' - query can\'t execute prepared statement when connection lost.'
+                    $this->errorMessagePrefix() . ' - can\'t execute prepared statement when connection lost, error: '
+                    . $error . '.'
                 );
             }
             // bool.
@@ -483,7 +490,7 @@ class MsSqlQuery extends DatabaseQuery
                 $this->log(__FUNCTION__);
                 throw new DbQueryException(
                     $this->errorMessagePrefix()
-                    . ' - failed executing prepared statement, with error: ' . $error . '.'
+                    . ' - failed executing prepared statement, error: ' . $error . '.'
                 );
             }
         }
@@ -497,16 +504,19 @@ class MsSqlQuery extends DatabaseQuery
             }
 
             // Allow re-connection.
-            /** @var \MySQLi $mysqli */
+            /** @var resource|bool $connection */
             $connection = $this->client->getConnection(true);
-            /** @var resource|bool $statement */
-            $statement = @sqlsrv_query(
-                $connection, $this->sqlTampered ?? $this->sql, $this->arguments['simple'] ?? [], $options
-            );
+            $statement = null;
+            if ($connection) {
+                /** @var resource|bool $statement */
+                $statement = @sqlsrv_query(
+                    $connection, $this->sqlTampered ?? $this->sql, $this->arguments['simple'] ?? [], $options
+                );
+            }
             if (!$statement) {
                 $this->log(__FUNCTION__);
                 throw new DbQueryException(
-                    $this->errorMessagePrefix() . ' - failed executing simple query, with error: '
+                    $this->errorMessagePrefix() . ' - failed executing simple query, error: '
                     . $this->client->nativeErrors(Database::ERRORS_STRING) . '.'
                 );
             }
@@ -529,7 +539,7 @@ class MsSqlQuery extends DatabaseQuery
                 $this->log(__FUNCTION__);
                 throw new DbRuntimeException(
                     $this->errorMessagePrefix()
-                    . ' - failed to complete sending data chunked, after chunk[' . $chunks . '], with error: '
+                    . ' - failed to complete sending data chunked, after chunk[' . $chunks . '], error: '
                     . $error . '.'
                 );
             }
