@@ -301,12 +301,12 @@ class MariaDbQuery extends DatabaseQueryMulti
             $mysqli_stmt = @$mysqli->prepare($this->sql);
         }
         if (!$mysqli_stmt) {
-            $errors = $this->nativeErrors();
+            $errors = $this->getErrors();
             $this->log(__FUNCTION__);
             $cls_xcptn = $this->client->errorsToException($errors);
             throw new $cls_xcptn(
                 $this->errorMessagePrefix() . ' - failed to prepare statement, error: '
-                . $this->client->nativeErrorsToString($errors) . '.'
+                . $this->client->errorsToString($errors) . '.'
             );
         }
         $this->statementClosed = false;
@@ -314,14 +314,13 @@ class MariaDbQuery extends DatabaseQueryMulti
 
         if ($this->cursorMode == MariaDbQuery::CURSOR_READ_ONLY) {
             $this->statement->attr_set(MYSQLI_STMT_ATTR_CURSOR_TYPE, MYSQLI_CURSOR_TYPE_READ_ONLY);
-            $errors = $this->nativeErrors();
+            $errors = $this->getErrors();
             if ($errors) {
                 $this->log(__FUNCTION__);
                 $cls_xcptn = $this->client->errorsToException($errors);
                 throw new $cls_xcptn(
                     $this->errorMessagePrefix() . ' - query failed to set cursor mode \''
-                    . MariaDbQuery::CURSOR_READ_ONLY . '\', error: '
-                    . $this->client->nativeErrorsToString($errors) . '.'
+                    . MariaDbQuery::CURSOR_READ_ONLY . '\', error: ' . $this->client->errorsToString($errors) . '.'
                 );
             }
         }
@@ -338,13 +337,13 @@ class MariaDbQuery extends DatabaseQueryMulti
             $this->arguments['prepared'] =& $args;
 
             if (!@$mysqli_stmt->bind_param($tps, ...$this->arguments['prepared'])) {
-                $errors = $this->nativeErrors();
+                $errors = $this->getErrors();
                 // Unset prepared statement arguments reference.
                 $this->closeAndLog(__FUNCTION__);
                 $cls_xcptn = $this->client->errorsToException($errors);
                 throw new $cls_xcptn(
                     $this->errorMessagePrefix() . ' - failed to bind parameters to prepared statement, error: '
-                    . $this->client->nativeErrorsToString($errors) . '.'
+                    . $this->client->errorsToString($errors) . '.'
                 );
             }
         }
@@ -414,7 +413,7 @@ class MariaDbQuery extends DatabaseQueryMulti
             /** @var \MySQLi $mysqli */
             $mysqli = $this->client->getConnection();
             if (!$mysqli) {
-                $errors = $this->nativeErrors();
+                $errors = $this->getErrors();
                 // Unset prepared statement arguments reference.
                 $this->closeAndLog(__FUNCTION__);
                 $cls_xcptn = $this->client->errorsToException($errors);
@@ -422,7 +421,7 @@ class MariaDbQuery extends DatabaseQueryMulti
                     $this->client->errorMessagePrefix()
                     . ' - can\'t execute prepared statement'
                     . (isset($errors[2014]) ? ', forgot to consume all result sets/rows?' : ' when connection lost')
-                    . ', error: ' . $this->client->nativeErrorsToString($errors) . '.'
+                    . ', error: ' . $this->client->errorsToString($errors) . '.'
                 );
             }
 
@@ -432,26 +431,26 @@ class MariaDbQuery extends DatabaseQueryMulti
              */
             if ($this->execution && $this->cursorMode == MariaDbQuery::CURSOR_READ_ONLY) {
                 $this->statement->reset();
-                $errors = $this->nativeErrors();
+                $errors = $this->getErrors();
                 if ($errors) {
                     $this->log(__FUNCTION__);
                     $cls_xcptn = $this->client->errorsToException($errors);
                     throw new $cls_xcptn(
                         $this->errorMessagePrefix() . ' - failed to reset prepared statement, error: '
-                        . $this->client->nativeErrorsToString($errors) . '.'
+                        . $this->client->errorsToString($errors) . '.'
                     );
                 }
             }
 
             // bool.
             if (!@$this->statement->execute()) {
-                $errors = $this->nativeErrors();
+                $errors = $this->getErrors();
                 // Unset prepared statement arguments reference.
                 $this->closeAndLog(__FUNCTION__);
                 $cls_xcptn = $this->client->errorsToException($errors);
                 throw new $cls_xcptn(
                     $this->errorMessagePrefix() . ' - failed executing prepared statement, error: '
-                    . $this->client->nativeErrorsToString($errors) . '.'
+                    . $this->client->errorsToString($errors) . '.'
                 );
             }
         }
@@ -465,13 +464,13 @@ class MariaDbQuery extends DatabaseQueryMulti
                 || !@$mysqli->multi_query($this->sqlTampered ?? $this->sql)
                 || @$mysqli->errno
             ) {
-                // Use MariaDb::nativeErrors() because not statement.
-                $errors = $this->client->nativeErrors();
+                // Use MariaDb::getErrors() because not statement.
+                $errors = $this->client->getErrors();
                 $this->log(__FUNCTION__);
                 $cls_xcptn = $this->client->errorsToException($errors);
                 throw new $cls_xcptn(
                     $this->errorMessagePrefix() . ' - failed executing multi-query, error: '
-                    . $this->client->nativeErrorsToString($errors) . '.'
+                    . $this->client->errorsToString($errors) . '.'
                 );
             }
         }
@@ -484,13 +483,13 @@ class MariaDbQuery extends DatabaseQueryMulti
                 // bool.
                 || !@$mysqli->real_query($this->sqlTampered ?? $this->sql)
             ) {
-                // Use MariaDb::nativeErrors() because not statement.
-                $errors = $this->client->nativeErrors();
+                // Use MariaDb::getErrors() because not statement.
+                $errors = $this->client->getErrors();
                 $this->log(__FUNCTION__);
                 $cls_xcptn = $this->client->errorsToException($errors);
                 throw new $cls_xcptn(
                     $this->errorMessagePrefix() . ' - failed executing simple query, error: '
-                    . $this->client->nativeErrorsToString($errors) . '.'
+                    . $this->client->errorsToString($errors) . '.'
                 );
             }
         }
@@ -545,13 +544,12 @@ class MariaDbQuery extends DatabaseQueryMulti
         // Allow re-connection.
         $mysqli = $this->client->getConnection(true);
         if (!$mysqli) {
-            $errors = $this->nativeErrors();
+            $errors = $this->getErrors();
             // Unset prepared statement arguments reference.
             $this->closeAndLog(__FUNCTION__);
             throw new DbConnectionException(
-                $this->client->errorMessagePrefix()
-                . ' - query can\'t escape string when connection lost, error: '
-                . $this->client->nativeErrorsToString($errors) . '.'
+                $this->client->errorMessagePrefix() . ' - query can\'t escape string when connection lost, error: '
+                . $this->client->errorsToString($errors) . '.'
             );
         }
 
@@ -567,7 +565,7 @@ class MariaDbQuery extends DatabaseQueryMulti
      * Query must append to (client) general errors, because \mysqli_stmt
      * has own separate error list.
      *
-     * @see MariaDbClient::nativeErrors()
+     * @see MariaDbClient::getErrors()
      * @see DatabaseClient::formatNativeErrors()
      *
      * @param int $toString
@@ -577,9 +575,9 @@ class MariaDbQuery extends DatabaseQueryMulti
      * @return array|string
      *      Array: key is error code.
      */
-    public function nativeErrors(int $toString = 0)
+    public function getErrors(int $toString = 0)
     {
-        $list = $this->client->nativeErrors();
+        $list = $this->client->getErrors();
         if ($this->statement && ($errors = $this->statement->error_list)) {
             $append = [];
             foreach ($errors as $error) {
@@ -602,6 +600,6 @@ class MariaDbQuery extends DatabaseQueryMulti
             }
         }
         return !$toString ? $list :
-            $this->client->nativeErrorsToString($list, $toString == Database::ERRORS_STRING_EMPTY_NONE);
+            $this->client->errorsToString($list, $toString == Database::ERRORS_STRING_EMPTY_NONE);
     }
 }

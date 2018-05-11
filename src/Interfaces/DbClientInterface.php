@@ -102,7 +102,7 @@ interface DbClientInterface
      * @return array|string
      *      Array: key is error code.
      */
-    public function nativeErrors(int $stringed = 0);
+    public function getErrors(int $stringed = 0);
 
 
     // Package protected.-------------------------------------------------------

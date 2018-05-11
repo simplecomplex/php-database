@@ -115,7 +115,7 @@ class MariaDbResult extends DatabaseResult
                 . ' - rejected counting affected rows (returned -1), the query failed.'
             );
         }
-        $error = $this->query->nativeErrors(Database::ERRORS_STRING);
+        $error = $this->query->getErrors(Database::ERRORS_STRING);
         $this->closeAndLog(__FUNCTION__);
         throw new DbResultException(
             $this->query->errorMessagePrefix() . ' - failed counting affected rows, error: '. $error . '.'
@@ -188,7 +188,7 @@ class MariaDbResult extends DatabaseResult
             // Query didn't trigger setting an ID.
             return null;
         }
-        $error = $this->query->nativeErrors(Database::ERRORS_STRING);
+        $error = $this->query->getErrors(Database::ERRORS_STRING);
         $this->closeAndLog(__FUNCTION__);
         throw new DbResultException(
             $this->query->errorMessagePrefix() . ' - failed getting insert ID, error: ' . $error . '.'
@@ -230,7 +230,7 @@ class MariaDbResult extends DatabaseResult
         if (($count && $count > 0) || $count === 0) {
             return $count;
         }
-        $error = $this->query->nativeErrors(Database::ERRORS_STRING);
+        $error = $this->query->getErrors(Database::ERRORS_STRING);
         $this->closeAndLog(__FUNCTION__);
         throw new DbResultException(
             $this->query->errorMessagePrefix() . ' - failed getting number of rows, error: ' . $error . '.'
@@ -254,7 +254,7 @@ class MariaDbResult extends DatabaseResult
         if (($count && $count > 0) || $count === 0) {
             return $count;
         }
-        $error = $this->query->nativeErrors(Database::ERRORS_STRING);
+        $error = $this->query->getErrors(Database::ERRORS_STRING);
         $this->closeAndLog(__FUNCTION__);
         throw new DbResultException(
             $this->query->errorMessagePrefix() . ' - failed getting number of columns, error: ' . $error . '.'
@@ -323,7 +323,7 @@ class MariaDbResult extends DatabaseResult
         elseif ($row === null) {
             return null;
         }
-        $error = $this->query->nativeErrors(Database::ERRORS_STRING);
+        $error = $this->query->getErrors(Database::ERRORS_STRING);
         $this->closeAndLog(__FUNCTION__);
         throw new DbResultException(
             $this->query->errorMessagePrefix() . ' - failed fetching field by '
@@ -357,7 +357,7 @@ class MariaDbResult extends DatabaseResult
         if ($row || $row === null) {
             return $row;
         }
-        $error = $this->query->nativeErrors(Database::ERRORS_STRING);
+        $error = $this->query->getErrors(Database::ERRORS_STRING);
         $this->closeAndLog(__FUNCTION__);
         throw new DbResultException(
             $this->query->errorMessagePrefix() . ' - failed fetching row as array, error: ' . $error . '.'
@@ -392,7 +392,7 @@ class MariaDbResult extends DatabaseResult
         if ($row || $row === null) {
             return $row;
         }
-        $error = $this->query->nativeErrors(Database::ERRORS_STRING);
+        $error = $this->query->getErrors(Database::ERRORS_STRING);
         $this->closeAndLog(__FUNCTION__);
         throw new DbResultException(
             $this->query->errorMessagePrefix()
@@ -444,7 +444,7 @@ class MariaDbResult extends DatabaseResult
                 }
                 $list = @$this->result->fetch_all(MYSQLI_NUM);
                 if (!is_array($list)) {
-                    $error = $this->query->nativeErrors(Database::ERRORS_STRING);
+                    $error = $this->query->getErrors(Database::ERRORS_STRING);
                     $this->closeAndLog(__FUNCTION__);
                     throw new DbResultException(
                         $this->query->errorMessagePrefix()
@@ -485,7 +485,7 @@ class MariaDbResult extends DatabaseResult
                 if (!$column_keyed) {
                     $list = @$this->result->fetch_all(MYSQLI_ASSOC);
                     if (!is_array($list)) {
-                        $error = $this->query->nativeErrors(Database::ERRORS_STRING);
+                        $error = $this->query->getErrors(Database::ERRORS_STRING);
                         $this->closeAndLog(__FUNCTION__);
                         throw new DbResultException(
                             $this->query->errorMessagePrefix()
@@ -517,7 +517,7 @@ class MariaDbResult extends DatabaseResult
         }
         // Last fetched row must be null; no more rows.
         if ($row !== null) {
-            $error = $this->query->nativeErrors(Database::ERRORS_STRING);
+            $error = $this->query->getErrors(Database::ERRORS_STRING);
             $this->closeAndLog(__FUNCTION__);
             throw new DbResultException(
                 $this->query->errorMessagePrefix()
@@ -563,13 +563,12 @@ class MariaDbResult extends DatabaseResult
         if ($noException) {
             return false;
         }
-        $errors = $this->query->nativeErrors();
+        $errors = $this->query->getErrors();
         $this->closeAndLog(__FUNCTION__);
         $cls_xcptn = $this->query->client->errorsToException($errors, DbResultException::class);
         throw new $cls_xcptn(
-            $this->query->errorMessagePrefix()
-            . ' - failed going to set[' . $this->setIndex . '], error: '
-            . $this->query->client->nativeErrorsToString($errors) . '.'
+            $this->query->errorMessagePrefix() . ' - failed going to set[' . $this->setIndex . '], error: '
+            . $this->query->client->errorsToString($errors) . '.'
         );
     }
 
@@ -602,13 +601,13 @@ class MariaDbResult extends DatabaseResult
         if ($noException) {
             return false;
         }
-        $errors = $this->query->nativeErrors();
+        $errors = $this->query->getErrors();
         $this->closeAndLog(__FUNCTION__);
         $cls_xcptn = $this->query->client->errorsToException($errors, DbResultException::class);
         throw new $cls_xcptn(
             $this->query->errorMessagePrefix()
             . ' - failed going to set[' . $this->setIndex . '] row[' . $this->rowIndex . '], error: '
-            . $this->query->client->nativeErrorsToString($errors) . '.'
+            . $this->query->client->errorsToString($errors) . '.'
         );
     }
 
@@ -659,7 +658,7 @@ class MariaDbResult extends DatabaseResult
                 }
             }
             if (!$result) {
-                $errors = $this->query->nativeErrors();
+                $errors = $this->query->getErrors();
                 if (!$errors) {
                     // $this->result stays null.
                     return false;
@@ -667,7 +666,7 @@ class MariaDbResult extends DatabaseResult
                 $this->closeAndLog(__FUNCTION__);
                 throw new DbResultException(
                     $this->query->errorMessagePrefix() . ' - failed getting result, error: '
-                    . $this->query->client->nativeErrorsToString($errors) . '.'
+                    . $this->query->client->errorsToString($errors) . '.'
                 );
             }
             $this->result = $result;

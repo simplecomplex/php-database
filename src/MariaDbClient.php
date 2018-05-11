@@ -208,11 +208,11 @@ class MariaDbClient extends DatabaseClientMulti
             !$this->getConnection(true)
             || !@$this->mySqlI->begin_transaction()
         ) {
-            $errors = $this->nativeErrors();
+            $errors = $this->getErrors();
             $cls_xcptn = $this->errorsToException($errors);
             throw new $cls_xcptn(
                 $this->errorMessagePrefix() . ' - failed to start transaction, error: '
-                . $this->nativeErrorsToString($errors) . '.'
+                . $this->errorsToString($errors) . '.'
             );
         }
         $this->transactionStarted = true;
@@ -242,10 +242,10 @@ class MariaDbClient extends DatabaseClientMulti
                 $msg = ' - failed to commit transaction, error: ';
             }
             if ($msg) {
-                $errors = $this->nativeErrors();
+                $errors = $this->getErrors();
                 $cls_xcptn = $this->errorsToException($errors);
                 throw new $cls_xcptn(
-                    $this->errorMessagePrefix() . $msg . $this->nativeErrorsToString($errors) . '.'
+                    $this->errorMessagePrefix() . $msg . $this->errorsToString($errors) . '.'
                 );
             }
             $this->transactionStarted = false;
@@ -276,10 +276,10 @@ class MariaDbClient extends DatabaseClientMulti
                 $msg = ' - failed to rollback transaction, error: ';
             }
             if ($msg) {
-                $errors = $this->nativeErrors();
+                $errors = $this->getErrors();
                 $cls_xcptn = $this->errorsToException($errors);
                 throw new $cls_xcptn(
-                    $this->errorMessagePrefix() . $msg . $this->nativeErrorsToString($errors) . '.'
+                    $this->errorMessagePrefix() . $msg . $this->errorsToString($errors) . '.'
                 );
             }
             $this->transactionStarted = false;
@@ -325,7 +325,7 @@ class MariaDbClient extends DatabaseClientMulti
      * @return array|string
      *      Array: key is error code.
      */
-    public function nativeErrors(int $toString = 0)
+    public function getErrors(int $toString = 0)
     {
         $list = [];
         if ($this->mySqlI && ($errors = @$this->mySqlI->error_list)) {

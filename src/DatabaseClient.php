@@ -125,9 +125,9 @@ abstract class DatabaseClient extends Explorable implements DbClientInterface
     /**
      * Native errors string delimiter between instances.
      *
-     * @see MariaDbClient::nativeErrors()
-     * @see MariaDbQuery:nativeErrors()
-     * @see MsSqlClient::nativeErrors()
+     * @see MariaDbClient::getErrors()
+     * @see MariaDbQuery:getErrors()
+     * @see MsSqlClient::getErrors()
      */
     const NATIVE_ERRORS_DELIM = ' | ';
 
@@ -329,59 +329,10 @@ abstract class DatabaseClient extends Explorable implements DbClientInterface
      *
      * @return string
      */
-    public function nativeErrorsToString(array $errors, bool $emptyOnNone = false)
+    public function errorsToString(array $errors, bool $emptyOnNone = false)
     {
         return $errors ? rtrim(join(DatabaseClient::NATIVE_ERRORS_DELIM, $errors), '.') :
             ($emptyOnNone ? '' : '- no native error recorded -');
-    }
-
-    /**
-     * Formats RMDBS native error list to generic format.
-     *
-     * Required structure of $arg nativeErrors:
-     * [
-     *      (associative array) {
-     *          (int|string) code: code|'code',
-     *          (string) sqlstate: '00000',
-     *          (string) msg: 'Bla-bla.',
-     *      }
-     * ]
-     *
-     * Output associative array:
-     * {
-     *      (int|string) code|'code_dupe': '(code)[SQL state] Message.'
-     * }
-     *
-     * Output as string:
-     * @see DatabaseClient::nativeErrorsToString)
-     *
-     * @see DatabaseClient::NATIVE_ERRORS_DELIM
-     *
-     * @see MariaDbClient::nativeErrors()
-     * @see MariaDbQuery:nativeErrors()
-     * @see MsSqlClient::nativeErrors()
-     *
-     * @param array[] $nativeErrors
-     * @param int $toString
-     *      1: on no error return message indicating no errors.
-     *      2: on no error return empty string.
-     *
-     * @return array|string
-     *      Array: key is error code.
-     */
-    public function formatNativeErrors(array $nativeErrors, int $toString = 0)
-    {
-        $list = [];
-        if ($nativeErrors) {
-            $dupes = 0;
-            foreach ($nativeErrors as $error) {
-                $code = $error['code'];
-                // Secure that dupes don't disappear due to bucket overwrite.
-                $list[!isset($list[$code]) ? $code : ($code . str_repeat('_', ++$dupes))] =
-                    '(' . $code . ')[' . $error['sqlstate'] . '] ' . $error['msg'];
-            }
-        }
-        return !$toString ? $list : $this->nativeErrorsToString($list, $toString == Database::ERRORS_STRING_EMPTY_NONE);
     }
 
     /**
@@ -393,10 +344,10 @@ abstract class DatabaseClient extends Explorable implements DbClientInterface
      * - any code is result error
      * - first code is ERROR_CODE_CONNECT
      *
-     * @see DatabaseClient::nativeErrors()
+     * @see DatabaseClient::getErrors()
      *
      * @param array $errors
-     *      List of error codes, or list returned by nativeErrors().
+     *      List of error codes, or list returned by getErrors().
      * @param string $default
      *
      * @return string
@@ -406,8 +357,8 @@ abstract class DatabaseClient extends Explorable implements DbClientInterface
         if ($errors) {
             /**
              * Check whether given simple list of error codes
-             * or list returned by nativeErrors()
-             * @see DatabaseClient::nativeErrors()
+             * or list returned by getErrors()
+             * @see DatabaseClient::getErrors()
              */
             if (strpos('' . reset($errors), '(') === 0) {
                 $list = array_keys($errors);
@@ -468,6 +419,55 @@ abstract class DatabaseClient extends Explorable implements DbClientInterface
     public function errorMessagePrefix() : string
     {
         return 'Database[' . $this->name . '][' . $this->type . '][' . $this->database . ']';
+    }
+
+    /**
+     * Formats RMDBS native error list to generic format.
+     *
+     * Required structure of $arg nativeErrors:
+     * [
+     *      (associative array) {
+     *          (int|string) code: code|'code',
+     *          (string) sqlstate: '00000',
+     *          (string) msg: 'Bla-bla.',
+     *      }
+     * ]
+     *
+     * Output associative array:
+     * {
+     *      (int|string) code|'code_dupe': '(code)[SQL state] Message.'
+     * }
+     *
+     * Output as string:
+     * @see DatabaseClient::errorsToString)
+     *
+     * @see DatabaseClient::NATIVE_ERRORS_DELIM
+     *
+     * @see MariaDbClient::getErrors()
+     * @see MariaDbQuery:getErrors()
+     * @see MsSqlClient::getErrors()
+     *
+     * @param array[] $nativeErrors
+     * @param int $toString
+     *      1: on no error return message indicating no errors.
+     *      2: on no error return empty string.
+     *
+     * @return array|string
+     *      Array: key is error code.
+     */
+    public function formatNativeErrors(array $nativeErrors, int $toString = 0)
+    {
+        $list = [];
+        if ($nativeErrors) {
+            $dupes = 0;
+            foreach ($nativeErrors as $error) {
+                $code = $error['code'];
+                // Secure that dupes don't disappear due to bucket overwrite.
+                $list[!isset($list[$code]) ? $code : ($code . str_repeat('_', ++$dupes))] =
+                    '(' . $code . ')[' . $error['sqlstate'] . '] ' . $error['msg'];
+            }
+        }
+        return !$toString ? $list : $this->errorsToString($list, $toString == Database::ERRORS_STRING_EMPTY_NONE);
     }
 
     /**

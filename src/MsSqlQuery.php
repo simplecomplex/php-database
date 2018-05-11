@@ -375,7 +375,7 @@ class MsSqlQuery extends DatabaseQuery
             );
         }
         if (!$statement) {
-            $error = $this->client->nativeErrors(Database::ERRORS_STRING);
+            $error = $this->client->getErrors(Database::ERRORS_STRING);
             // Unset prepared statement arguments reference.
             $this->unsetReferences();
             $this->log(__FUNCTION__);
@@ -474,7 +474,7 @@ class MsSqlQuery extends DatabaseQuery
         if ($this->isPreparedStatement) {
             // Require unbroken connection.
             if (!$this->client->isConnected()) {
-                $error = $this->client->nativeErrors(Database::ERRORS_STRING);
+                $error = $this->client->getErrors(Database::ERRORS_STRING);
                 // Unset prepared statement arguments reference.
                 $this->closeAndLog(__FUNCTION__);
                 throw new DbConnectionException(
@@ -484,7 +484,7 @@ class MsSqlQuery extends DatabaseQuery
             }
             // bool.
             if (!@sqlsrv_execute($this->statement)) {
-                $error = $this->client->nativeErrors(Database::ERRORS_STRING);
+                $error = $this->client->getErrors(Database::ERRORS_STRING);
                 // Unset prepared statement arguments reference.
                 $this->unsetReferences();
                 $this->log(__FUNCTION__);
@@ -517,7 +517,7 @@ class MsSqlQuery extends DatabaseQuery
                 $this->log(__FUNCTION__);
                 throw new DbQueryException(
                     $this->errorMessagePrefix() . ' - failed executing simple query, error: '
-                    . $this->client->nativeErrors(Database::ERRORS_STRING) . '.'
+                    . $this->client->getErrors(Database::ERRORS_STRING) . '.'
                 );
             }
             $this->statementClosed = false;
@@ -532,7 +532,7 @@ class MsSqlQuery extends DatabaseQuery
             ) {
                 ++$chunks;
             }
-            $error = $this->client->nativeErrors(Database::ERRORS_STRING_EMPTY_NONE);
+            $error = $this->client->getErrors(Database::ERRORS_STRING_EMPTY_NONE);
             if ($error) {
                 // Unset prepared statement arguments reference.
                 $this->unsetReferences();

@@ -34,14 +34,14 @@ abstract class Database
     const FETCH_OBJECT = 5;
 
     /**
-     * @see \SimpleComplex\Database\Interfaces\DbClientInterface::nativeErrors()
+     * @see \SimpleComplex\Database\Interfaces\DbClientInterface::getErrors()
      *
      * @var int
      */
     const ERRORS_STRING = 1;
 
     /**
-     * @see \SimpleComplex\Database\Interfaces\DbClientInterface::nativeErrors()
+     * @see \SimpleComplex\Database\Interfaces\DbClientInterface::getErrors()
      *
      * @var int
      */

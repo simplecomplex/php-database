@@ -53,7 +53,7 @@ class MsSqlResult extends DatabaseResult
     {
         $this->query = $query;
         if (!$statement) {
-            $error = $this->query->client->nativeErrors(Database::ERRORS_STRING);
+            $error = $this->query->client->getErrors(Database::ERRORS_STRING);
             $this->closeAndLog(__FUNCTION__);
             throw new DbRuntimeException(
                 $this->query->client->errorMessagePrefix()
@@ -104,7 +104,7 @@ class MsSqlResult extends DatabaseResult
                 . '] forbids getting affected rows, use SQLSRV_CURSOR_FORWARD (\'forward\') instead.'
             );
         }
-        $error = $this->query->client->nativeErrors(Database::ERRORS_STRING);
+        $error = $this->query->client->getErrors(Database::ERRORS_STRING);
         $this->closeAndLog(__FUNCTION__);
         throw new DbResultException(
             $this->query->errorMessagePrefix() . ' - failed counting affected rows, error: ' . $error . '.'
@@ -157,7 +157,7 @@ class MsSqlResult extends DatabaseResult
                         . ' - failed going to next set to get insert ID, no result at all.'
                     );
                 }
-                $error = $this->query->client->nativeErrors(Database::ERRORS_STRING);
+                $error = $this->query->client->getErrors(Database::ERRORS_STRING);
                 $this->closeAndLog(__FUNCTION__);
                 throw new DbResultException(
                     $this->query->errorMessagePrefix() . ' - failed going to next set to get insert ID, error: '
@@ -176,7 +176,7 @@ class MsSqlResult extends DatabaseResult
                         . ' - failed going to next set to get insert ID, no result row at all.'
                     );
                 }
-                $error = $this->query->client->nativeErrors(Database::ERRORS_STRING);
+                $error = $this->query->client->getErrors(Database::ERRORS_STRING);
                 $this->closeAndLog(__FUNCTION__);
                 throw new DbResultException(
                     $this->query->errorMessagePrefix() . ' - failed going to next row to get insert ID, error: '
@@ -242,7 +242,7 @@ class MsSqlResult extends DatabaseResult
                 . ', sql misses secondary ID select statement, see query option \'insert_id\''
             );
         }
-        $error = $this->query->client->nativeErrors(Database::ERRORS_STRING);
+        $error = $this->query->client->getErrors(Database::ERRORS_STRING);
         $this->closeAndLog(__FUNCTION__);
         throw new DbResultException(
             $this->query->errorMessagePrefix() . ' - failed getting insert ID, error: ' . $error . '.'
@@ -282,7 +282,7 @@ class MsSqlResult extends DatabaseResult
                     . ', use SQLSRV_CURSOR_STATIC (\'static\') or SQLSRV_CURSOR_KEYSET (\'static\') instead.'
                 );
         }
-        $error = $this->query->client->nativeErrors(Database::ERRORS_STRING);
+        $error = $this->query->client->getErrors(Database::ERRORS_STRING);
         $this->closeAndLog(__FUNCTION__);
         throw new DbResultException(
             $this->query->errorMessagePrefix() . ' - failed getting number of rows, error: ' . $error . '.'
@@ -304,7 +304,7 @@ class MsSqlResult extends DatabaseResult
         if (($count && $count > 0) || $count === 0) {
             return $count;
         }
-        $error = $this->query->client->nativeErrors(Database::ERRORS_STRING);
+        $error = $this->query->client->getErrors(Database::ERRORS_STRING);
         $this->closeAndLog(__FUNCTION__);
         throw new DbResultException(
             $this->query->errorMessagePrefix() . ' - failed getting number of columns, error: ' . $error . '.'
@@ -351,7 +351,7 @@ class MsSqlResult extends DatabaseResult
                             . ', no result row at all.'
                         );
                     }
-                    $error = $this->query->client->nativeErrors(Database::ERRORS_STRING);
+                    $error = $this->query->client->getErrors(Database::ERRORS_STRING);
                     $this->closeAndLog(__FUNCTION__);
                     throw new DbResultException(
                         $this->query->errorMessagePrefix() . ' - failed going to next row to get field by '
@@ -372,7 +372,7 @@ class MsSqlResult extends DatabaseResult
             }
             // Try to detect out-of-range;
             // falsy sqlsrv_get_field() and no native error
-            if (!$this->query->client->nativeErrors(Database::ERRORS_STRING_EMPTY_NONE)) {
+            if (!$this->query->client->getErrors(Database::ERRORS_STRING_EMPTY_NONE)) {
                 $this->closeAndLog(__FUNCTION__);
                 throw new \OutOfRangeException(
                     $this->query->errorMessagePrefix() . ' - failed fetching field by $index[' . $index
@@ -403,7 +403,7 @@ class MsSqlResult extends DatabaseResult
                 return null;
             }
         }
-        $error = $this->query->client->nativeErrors(Database::ERRORS_STRING);
+        $error = $this->query->client->getErrors(Database::ERRORS_STRING);
         $this->closeAndLog(__FUNCTION__);
         throw new DbResultException(
             $this->query->errorMessagePrefix() . ' - failed fetching field by '
@@ -434,7 +434,7 @@ class MsSqlResult extends DatabaseResult
         if ($row || $row === null) {
             return $row;
         }
-        $error = $this->query->client->nativeErrors(Database::ERRORS_STRING);
+        $error = $this->query->client->getErrors(Database::ERRORS_STRING);
         $this->closeAndLog(__FUNCTION__);
         throw new DbResultException(
             $this->query->errorMessagePrefix() . ' - failed fetching row as '
@@ -464,7 +464,7 @@ class MsSqlResult extends DatabaseResult
         if ($row || $row === null) {
             return $row;
         }
-        $error = $this->query->client->nativeErrors(Database::ERRORS_STRING);
+        $error = $this->query->client->getErrors(Database::ERRORS_STRING);
         $this->closeAndLog(__FUNCTION__);
         throw new DbResultException(
             $this->query->errorMessagePrefix()
@@ -598,7 +598,7 @@ class MsSqlResult extends DatabaseResult
                 default:
                     $em = 'assoc array';
             }
-            $error = $this->query->client->nativeErrors(Database::ERRORS_STRING);
+            $error = $this->query->client->getErrors(Database::ERRORS_STRING);
             $this->closeAndLog(__FUNCTION__);
             throw new DbResultException(
                 $this->query->errorMessagePrefix()
@@ -635,7 +635,7 @@ class MsSqlResult extends DatabaseResult
         if ($noException) {
             return false;
         }
-        $error = $this->query->client->nativeErrors(Database::ERRORS_STRING);
+        $error = $this->query->client->getErrors(Database::ERRORS_STRING);
         $this->closeAndLog(__FUNCTION__);
         throw new DbResultException(
             $this->query->errorMessagePrefix() . ' - failed going to next set, error: ' . $error . '.'
@@ -666,7 +666,7 @@ class MsSqlResult extends DatabaseResult
         if ($noException) {
             return false;
         }
-        $error = $this->query->client->nativeErrors(Database::ERRORS_STRING);
+        $error = $this->query->client->getErrors(Database::ERRORS_STRING);
         $this->closeAndLog(__FUNCTION__);
         throw new DbResultException(
             $this->query->errorMessagePrefix() . ' - failed going to next row, error: ' . $error . '.'

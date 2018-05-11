@@ -152,11 +152,11 @@ class MsSqlClient extends DatabaseClient
             !$this->getConnection(true)
             || !@sqlsrv_begin_transaction($this->connection)
         ) {
-            $errors = $this->nativeErrors();
+            $errors = $this->getErrors();
             $cls_xcptn = $this->errorsToException($errors);
             throw new $cls_xcptn(
                 $this->errorMessagePrefix() . ' - failed to start transaction, error: '
-                . $this->nativeErrorsToString($errors) . '.'
+                . $this->errorsToString($errors) . '.'
             );
         }
     }
@@ -183,10 +183,10 @@ class MsSqlClient extends DatabaseClient
                 $msg = ' - failed to commit transaction, error: ';
             }
             if ($msg) {
-                $errors = $this->nativeErrors();
+                $errors = $this->getErrors();
                 $cls_xcptn = $this->errorsToException($errors);
                 throw new $cls_xcptn(
-                    $this->errorMessagePrefix() . $msg . $this->nativeErrorsToString($errors) . '.'
+                    $this->errorMessagePrefix() . $msg . $this->errorsToString($errors) . '.'
                 );
             }
             $this->transactionStarted = false;
@@ -215,10 +215,10 @@ class MsSqlClient extends DatabaseClient
                 $msg = ' - failed to rollback transaction, error: ';
             }
             if ($msg) {
-                $errors = $this->nativeErrors();
+                $errors = $this->getErrors();
                 $cls_xcptn = $this->errorsToException($errors);
                 throw new $cls_xcptn(
-                    $this->errorMessagePrefix() . $msg . $this->nativeErrorsToString($errors) . '.'
+                    $this->errorMessagePrefix() . $msg . $this->errorsToString($errors) . '.'
                 );
             }
             $this->transactionStarted = false;
@@ -265,7 +265,7 @@ class MsSqlClient extends DatabaseClient
      * @return array|string
      *      Array: key is error code.
      */
-    public function nativeErrors(int $toString = 0)
+    public function getErrors(int $toString = 0)
     {
         $list = [];
         if (($errors = sqlsrv_errors())) {
