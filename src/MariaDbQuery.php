@@ -19,15 +19,22 @@ use SimpleComplex\Database\Exception\DbConnectionException;
 /**
  * MariaDB query.
  *
- * Multi-query is supported by MariaDB.
- * For multi-query explanation, see:
- * @see DbClientMultiInterface
- * MariaDb even requires use of special multi-query methods to process
- * an SQL string containing more non-SELECTing queries.
- *
+ * Prepared statement are 'use' and num-rows unavailable
+ * -----------------------------------------------------------
  * Cursor mode 'store' is not supported for prepared statements (by this
  * implementation) because result binding is the only way to work with 'store'd
  * prepared statement results - and result binding sucks IMHO.
+ * Getting number of rows isn't possible in cursor mode 'use', so you can't
+ * num rows for prepared statement.
+ *
+ * Multi-query
+ * -----------
+ * Multi-query is supported by MariaDB; about multi-query, see:
+ * @see DbQueryInterface
+ * Multi-query is even required when:
+ * - calling a stored procedure
+ * - using an SQL string containing more queries, SELECT'ing or not
+ *
  *
  * Prepared statement requires the mysqlnd driver.
  * Because a result set will eventually be handled as \mysqli_result
@@ -46,14 +53,13 @@ use SimpleComplex\Database\Exception\DbConnectionException;
  * @property-read bool|null $statementClosed
  * @property-read bool $transactionStarted  Value of client ditto.
  *
- * Properties inherited from DatabaseQueryMulti:
+ * Own properties:
  * @property-read bool $isMultiQuery
- * @property-read bool $isRepeatStatement
  * @property-read bool $sqlAppended
  *
  * @package SimpleComplex\Database
  */
-class MariaDbQuery extends DbQueryMulti
+class MariaDbQuery extends DbQuery
 {
     /**
      * Class name of \SimpleComplex\Database\MariaDbResult or extending class.
@@ -150,6 +156,16 @@ class MariaDbQuery extends DbQueryMulti
     protected $cursorMode;
 
     /**
+     * @var bool
+     */
+    protected $isMultiQuery = false;
+
+    /**
+     * @var bool
+     */
+    protected $sqlAppended = false;
+
+    /**
      * Create query.
      *
      * Option num_rows may override default cursor mode (not option cursor_mode)
@@ -162,7 +178,7 @@ class MariaDbQuery extends DbQueryMulti
      * @param array $options {
      *      @var string $cursor_mode
      *      @var bool $num_rows  May adjust cursor mode to 'store'.
-     *      @var bool $is_multi_query
+     *      @var bool $multi_query
      *          True: arg $sql contains multiple queries.
      * }
      *
@@ -173,11 +189,6 @@ class MariaDbQuery extends DbQueryMulti
     public function __construct(DbClientInterface $client, string $sql, array $options = [])
     {
         parent::__construct($client, $sql, $options);
-
-        /**
-         * Option is_multi_query is handled by parent
-         * @see DbQueryMulti::__constructor()
-         */
 
         if (!empty($options['cursor_mode'])) {
             if (!in_array($options['cursor_mode'], static::CURSOR_MODES, true)) {
@@ -199,6 +210,11 @@ class MariaDbQuery extends DbQueryMulti
         if ($this->cursorMode != MariaDbQuery::CURSOR_STORE) {
             $this->client->reConnectDisable();
         }
+
+        $this->isMultiQuery = !empty($options['multi_query']);
+
+        $this->explorableIndex[] = 'isMultiQuery';
+        $this->explorableIndex[] = 'sqlAppended';
     }
 
     public function __destruct()
@@ -359,28 +375,92 @@ class MariaDbQuery extends DbQueryMulti
     }
 
     /**
-     * Non-prepared statement: set query arguments, for direct parameter marker
-     * substitution in the sql string.
+     * Non-prepared statement: set query arguments, for native automated
+     * parameter marker substitution or direct substition in the sql string.
      *
-     * @see DbQueryMulti::parameters()
      * @see DbQuery::parameters()
-     */
-    // public function parameters(string $types, array $arguments) : DbQueryInterface
-
-    /**
-     * Non-prepared statement: repeat base sql, and substitute it's parameter
-     * markers by arguments.
      *
-     * @see DbQueryMulti::repeat()
+     * @param string $types
+     *      Empty: uses string for all.
+     * @param array $arguments
+     *      Values to substitute sql parameter markers with.
+     *      Arguments are consumed once, not referred.
+     *
+     * @return $this|DbQueryInterface
+     *
+     * @throws \LogicException
+     *      Another sql string has been appended to base sql.
+     *      Propagated.
+     * @throws \InvalidArgumentException
+     *      Propagated.
      */
-    // public function repeat(string $types, array $arguments) : DbQueryMultiInterface
+    public function parameters(string $types, array $arguments) : DbQueryInterface
+    {
+        if ($this->sqlAppended) {
+            throw new \LogicException(
+                $this->client->errorMessagePrefix()
+                . ' - passing parameters to base sql is illegal after another sql string has been appended.'
+            );
+        }
+
+        return parent::parameters($types, $arguments);
+    }
 
     /**
      * Non-prepared statement: append sql to previously defined sql.
      *
-     * @see DbQueryMulti::append()
+     * Turns the full query into multi-query.
+     *
+     * Chainable.
+     *
+     * @param string $sql
+     * @param string $types
+     *      Empty: uses string for all.
+     * @param array $arguments
+     *      Values to substitute sql parameter markers with.
+     *      Arguments are consumed once, not referred.
+     *
+     * @return $this|DbQueryInterface
+     *
+     * @throws \LogicException
+     *      Query is prepared statement.
+     * @throws \InvalidArgumentException
+     *      Arg $sql empty.
+     *      Propagated; parameters/arguments count mismatch.
      */
-    // public function append(string $sql, string $types, array $arguments) : DbQueryMultiInterface
+    public function append(string $sql, string $types, array $arguments) : DbQueryInterface
+    {
+        $sql_appendix = trim($sql, static::SQL_TRIM);
+        if ($sql_appendix) {
+            throw new \InvalidArgumentException(
+                $this->client->errorMessagePrefix() . ' - arg $sql length[' . strlen($sql) . '] is effectively empty.'
+            );
+        }
+
+        if ($this->isPreparedStatement) {
+            $this->unsetReferences();
+            throw new \LogicException(
+                $this->client->errorMessagePrefix() . ' - appending to prepared statement is illegal.'
+            );
+        }
+
+        $this->isMultiQuery = $this->sqlAppended = true;
+
+        if (!$this->sqlTampered) {
+            // First time appending.
+            $this->sqlTampered = $this->sql;
+        }
+
+        // Checks for parameters/arguments count mismatch.
+        $sql_fragments = $this->sqlFragments($sql_appendix, $arguments);
+
+        $this->sqlTampered .= '; ' . (
+            !$sql_fragments ? $sql_appendix :
+                $this->substituteParametersByArgs($sql_fragments, $types, $arguments)
+            );
+
+        return $this;
+    }
 
     /**
      * Any query must be executed, even non-prepared statement.

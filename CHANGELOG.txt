@@ -8,6 +8,8 @@ SimpleComplex/Database 1.x, 2018-05-12
 - Result methods must be documented as throwing non-specific db runtime
   exception, to allow for exception type mapping; errorsToException().
 - Abstract classes renamed; from 'Database...' to 'Db...'.
+- MariaDB/MySQL multi-query is more of a deficiency than a feature, and separate
+  multi-query interfaces/abstract classes is obsolete.
 
 SimpleComplex/Database 1.x, 2018-05-11
 --------------------------------------

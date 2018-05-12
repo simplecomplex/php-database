@@ -23,6 +23,11 @@ use SimpleComplex\Database\Exception\DbResultException;
 /**
  * Database client.
  *
+ *
+ * Calls to PHP native methods/properties must be supressed with @ across
+ * client, query, result implementations to prevent dupe messages in logs.
+ *
+ *
  * @property-read string $type
  * @property-read string $name
  * @property-read string $host

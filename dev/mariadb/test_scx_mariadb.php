@@ -6,8 +6,6 @@ use \SimpleComplex\Utils\Dependency;
 
 use \SimpleComplex\Database\Database;
 
-use \SimpleComplex\Tests\Database as DatabaseTests;
-
 
 // Bootstrap.-------------------------------------------------------------------
 

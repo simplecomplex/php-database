@@ -20,9 +20,9 @@ use SimpleComplex\Database\Exception\DbQueryException;
 /**
  * MS SQL query.
  *
- * Multi-query is NOT supported by MS SQL.
- * For multi-query explanation, see:
- * @see DbClientMultiInterface
+ * Multi-query producing more results sets is not supported by MS SQL,
+ * except when calling stored procedure(?). About multi-query, see:
+ * @see DbQueryInterface
  *
  * Inherited properties:
  * @property-read string $id

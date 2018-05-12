@@ -9,15 +9,14 @@ declare(strict_types=1);
 
 namespace SimpleComplex\Database;
 
+use SimpleComplex\Database\Interfaces\DbQueryInterface;
+
 use SimpleComplex\Database\Exception\DbRuntimeException;
 use SimpleComplex\Database\Exception\DbConnectionException;
 
 /**
  * MariaDB client.
  *
- * Suppresses PHP errors with @ to prevent dupe messages in logs.
- *
- * Unless using the mysqlnd driver PHP ini mysqli.reconnect must be falsy.
  *
  * Native options (examples):
  * - MYSQLI_OPT_CONNECT_TIMEOUT
@@ -29,6 +28,8 @@ use SimpleComplex\Database\Exception\DbConnectionException;
  * - MYSQLI_CLIENT_FOUND_ROWS
  * - MYSQLI_CLIENT_SSL
  * @see http://php.net/manual/en/mysqli.real-connect.php
+ *
+ * Unless using the mysqlnd driver PHP ini mysqli.reconnect must be falsy.
  *
  * Inherited read-onlys:
  * @property-read string $type
@@ -50,7 +51,7 @@ use SimpleComplex\Database\Exception\DbConnectionException;
  *
  * @package SimpleComplex\Database
  */
-class MariaDbClient extends DbClientMulti
+class MariaDbClient extends DbClient
 {
     /**
      * Class name of \SimpleComplex\Database\MariaDbQuery or extending class.
@@ -177,12 +178,38 @@ class MariaDbClient extends DbClientMulti
     /**
      * Create a multi-query.
      *
-     * For options, see:
-     * @see MariaDbQuery::__construct()
+     * Multi-query is even required when:
+     * - calling a stored procedure
+     * - using an SQL string containing more queries, SELECT'ing or not
      *
-     * @see DbClientMulti::multiQuery()
+     * Sadly MariaDb requires use of special multi-query methods even for
+     * an SQL string containing more non-SELECTing queries - and when calling
+     * a stored procedure.
+     *
+     * Convenience method, passing option multi_query to query() has the same
+     * effect.
+     * @see MariaDbQuery::__construct()
+     * @see DbClient::query()
+     *
+     * @param string $sql
+     * @param array $options
+     *
+     * @return $this|DbQueryInterface
      */
-    // public function multiQuery(string $sql, array $options = []) : DbQueryMultiInterface
+    public function multiQuery(string $sql, array $options = []) : DbQueryInterface
+    {
+        // Pass multi_query option.
+        $opts =& $options;
+        $opts['multi_query'] = true;
+
+        $class_query = static::CLASS_QUERY;
+        /** @var DbQueryInterface|MariaDbQuery */
+        return new $class_query(
+            $this,
+            $sql,
+            $options
+        );
+    }
 
     /**
      * Errs if previously started transaction isn't committed/rolled-back.
