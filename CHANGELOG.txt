@@ -10,7 +10,8 @@ SimpleComplex/Database 1.x, 2018-05-12
 - Abstract classes renamed; from 'Database...' to 'Db...'.
 - MariaDB/MySQL multi-query is more of a deficiency than a feature, and separate
   multi-query interfaces/abstract classes is obsolete.
-- All result methods must use exception type mapping.
+- All query and result methods must use exception type mapping.
+- MsSql tests (like MariaDb) implemented and passed.
 
 SimpleComplex/Database 1.x, 2018-05-11
 --------------------------------------
