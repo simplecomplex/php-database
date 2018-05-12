@@ -69,12 +69,12 @@ class MariaDbClient extends DatabaseClientMulti
     /**
      * Class name of DatabaseErrorCodes class.
      *
-     * @see MariaDbErrorCodes
+     * @see MariaDbError
      * @see DatabaseClient::errorsToException()
      *
      * @var string
      */
-    const CLASS_ERROR_CODES = MariaDbErrorCodes::class;
+    const CLASS_ERROR_CODES = MariaDbError::class;
 
     /**
      * Default database server port.

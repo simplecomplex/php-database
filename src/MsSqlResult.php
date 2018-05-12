@@ -72,11 +72,9 @@ class MsSqlResult extends DatabaseResult
      *
      * @return int
      *
-     * @throws DbRuntimeException
-     *      No count, (probably) not a CRUD query.
      * @throws \LogicException
      *      Bad query class cursor mode.
-     * @throws DbResultException
+     * @throws DbRuntimeException
      */
     public function affectedRows() : int
     {
@@ -114,8 +112,8 @@ class MsSqlResult extends DatabaseResult
     /**
      * Auto ID set by last insert or update statement.
      *
-     * NB: Requires that the sql contains a secondary ID selecting statement
-     * ; SELECT SCOPE_IDENTITY() AS IDENTITY_COLUMN_NAME
+     * NB: Goes to next result set, expecting first/current to be a CRUD
+     * statement and next to be SELECT SCOPE_IDENTITY() AS IDENTITY_COLUMN_NAME.
      * Use query class option 'insert_id'.
      * @see MsSqlQuery::__constructor()
      * @see https://blogs.msdn.microsoft.com/nickhodge/2008/09/22/sql-server-driver-for-php-last-inserted-row-id/
@@ -138,6 +136,7 @@ class MsSqlResult extends DatabaseResult
      * @throws DbResultException
      *      Next result.
      *      Next row.
+     * @throws DbRuntimeException
      *      Other failure.
      */
     public function insertId($getAsType = null)
@@ -147,42 +146,24 @@ class MsSqlResult extends DatabaseResult
          * when looking for insert ID.
          */
         if ($this->setIndex < 0) {
-            $next = $this->nextSet(true);
-            if (!$next) {
+            if (!$this->nextSet()) {
                 $this->checkFailingInsertId();
-                if ($next === null) {
-                    // No result at all.
-                    $this->closeAndLog(__FUNCTION__);
-                    throw new DbResultException(
-                        $this->query->errorMessagePrefix()
-                        . ' - failed going to next set to get insert ID, no result at all.'
-                    );
-                }
-                $error = $this->query->client->getErrors(Database::ERRORS_STRING);
+                // No result at all.
                 $this->closeAndLog(__FUNCTION__);
                 throw new DbResultException(
-                    $this->query->errorMessagePrefix() . ' - failed going to next set to get insert ID, error: '
-                    . $error . '.'
+                    $this->query->errorMessagePrefix()
+                    . ' - failed going to next set to get insert ID, no result at all.'
                 );
             }
         }
         if ($this->rowIndex < 0) {
-            $next = $this->nextRow(true);
-            if (!$next) {
+            if (!$this->nextRow()) {
                 $this->checkFailingInsertId();
-                if ($next === null) {
-                    // No row at all because rowIndex was -1.
-                    $this->closeAndLog(__FUNCTION__);
-                    throw new DbResultException(
-                        $this->query->errorMessagePrefix()
-                        . ' - failed going to next set to get insert ID, no result row at all.'
-                    );
-                }
-                $error = $this->query->client->getErrors(Database::ERRORS_STRING);
+                // No row at all.
                 $this->closeAndLog(__FUNCTION__);
                 throw new DbResultException(
-                    $this->query->errorMessagePrefix() . ' - failed going to next row to get insert ID, error: '
-                    . $error . '.'
+                    $this->query->errorMessagePrefix()
+                    . ' - failed going to next set to get insert ID, no result row at all.'
                 );
             }
         }
@@ -250,7 +231,7 @@ class MsSqlResult extends DatabaseResult
      *
      * @throws \LogicException
      *      Statement cursor mode not 'static' or 'keyset'.
-     * @throws DbResultException
+     * @throws DbRuntimeException
      */
     public function numRows() : int
     {
@@ -284,7 +265,7 @@ class MsSqlResult extends DatabaseResult
      *
      * @return int
      *
-     * @throws DbResultException
+     * @throws DbRuntimeException
      */
     public function numColumns() : int
     {
@@ -317,7 +298,7 @@ class MsSqlResult extends DatabaseResult
      *      Arg $index negative.
      * @throws \OutOfRangeException
      *      Result row has no such $column.
-     * @throws DbResultException
+     * @throws DbRuntimeException
      */
     public function fetchField(int $index = 0, string $column = '')
     {
@@ -329,26 +310,14 @@ class MsSqlResult extends DatabaseResult
                     . $index . '] cannot be negative.'
                 );
             }
-            // @todo: do we have to load first row before sqlsrv_get_field() - this is not insertId().
-            if ($this->rowIndex < 0) {
-                $next = $this->nextRow(true);
-                if (!$next) {
-                    if ($next === null) {
-                        // No row at all because rowIndex was -1.
-                        throw new DbResultException(
-                            $this->query->errorMessagePrefix() . ' - failed getting field by '
-                            . (!$column ? ('$index[' . $index . ']') : ('$column[' . $column . ']'))
-                            . ', no result row at all.'
-                        );
-                    }
-                    $error = $this->query->client->getErrors(Database::ERRORS_STRING);
-                    $this->closeAndLog(__FUNCTION__);
-                    throw new DbResultException(
-                        $this->query->errorMessagePrefix() . ' - failed going to next row to get field by '
-                        . (!$column ? ('$index[' . $index . ']') : ('$column[' . $column . ']')) . ', error: '
-                        . $error . '.'
-                    );
-                }
+            if ($this->rowIndex < 0 && !$this->nextRow()) {
+                // No row at all.
+                $this->closeAndLog(__FUNCTION__);
+                throw new DbResultException(
+                    $this->query->errorMessagePrefix() . ' - failed getting field by '
+                    . (!$column ? ('$index[' . $index . ']') : ('$column[' . $column . ']'))
+                    . ', no result row at all.'
+                );
             }
             $value = @sqlsrv_get_field($this->statement, $index);
             /**
@@ -409,6 +378,8 @@ class MsSqlResult extends DatabaseResult
      *
      * @return array|null
      *      Null: No more rows.
+     *
+     * @throws DbRuntimeException
      */
     public function fetchArray(int $as = Database::FETCH_ASSOC)
     {
@@ -442,6 +413,8 @@ class MsSqlResult extends DatabaseResult
      *
      * @return object|null
      *      Null: No more rows.
+     *
+     * @throws DbRuntimeException
      */
     public function fetchObject(string $class = '', array $args = [])
     {
@@ -482,7 +455,7 @@ class MsSqlResult extends DatabaseResult
      *      Providing 'list_by_column' option when fetching as numeric array.
      * @throws \InvalidArgumentException
      *      Providing 'list_by_column' option and no such column in result row.
-     * @throws DbResultException
+     * @throws DbRuntimeException
      */
     public function fetchAll(int $as = Database::FETCH_ASSOC, array $options = []) : array
     {
@@ -601,15 +574,13 @@ class MsSqlResult extends DatabaseResult
     /**
      * Move cursor to next result set.
      *
-     * @param bool $noException
-     *      True: return false on failure, don't throw exception.
+     * @return bool
+     *      False: No next result set.
+     *      Throws exception on failure.
      *
-     * @return bool|null
-     *      Null: No next result set.
-     *
-     * @throws DbResultException
+     * @throws DbRuntimeException
      */
-    public function nextSet(bool $noException = false)
+    public function nextSet() : bool
     {
         $this->free();
         $next = @sqlsrv_next_result($this->statement);
@@ -619,9 +590,6 @@ class MsSqlResult extends DatabaseResult
             return true;
         }
         if ($next === null) {
-            return null;
-        }
-        if ($noException) {
             return false;
         }
         $error = $this->query->client->getErrors(Database::ERRORS_STRING);
@@ -634,25 +602,20 @@ class MsSqlResult extends DatabaseResult
     /**
      * Go to next row in the result set.
      *
-     * @param bool $noException
-     *      True: return false on failure, don't throw exception.
+     * @return bool
+     *      False: No next row.
+     *      Throws exception on failure.
      *
-     * @return bool|null
-     *      Null: No next row.
-     *
-     * @throws DbResultException
+     * @throws DbRuntimeException
      */
-    public function nextRow(bool $noException = false)
+    public function nextRow() : bool
     {
         $next = @sqlsrv_fetch($this->statement);
         ++$this->rowIndex;
         if ($next) {
-            return $next;
+            return true;
         }
         if ($next === null) {
-            null;
-        }
-        if ($noException) {
             return false;
         }
         $error = $this->query->client->getErrors(Database::ERRORS_STRING);

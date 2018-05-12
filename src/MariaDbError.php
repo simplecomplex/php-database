@@ -16,7 +16,7 @@ namespace SimpleComplex\Database;
  *
  * @package SimpleComplex\Database
  */
-class MariaDbErrorCodes extends DatabaseErrorCodes
+class MariaDbError extends DatabaseError
 {
     /**
      * Connection related RMDBS native error codes.

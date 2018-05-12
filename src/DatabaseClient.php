@@ -53,12 +53,12 @@ abstract class DatabaseClient extends Explorable implements DbClientInterface
      * Class name of DatabaseErrorCodes class.
      *
      * @see DatabaseClient::errorsToException()
-     * @see MsSqlErrorCodes
-     * @see MsSqlErrorCodes
+     * @see MsSqlError
+     * @see MsSqlError
      *
      * @var string
      */
-    const CLASS_ERROR_CODES = DatabaseErrorCodes::class;
+    const CLASS_ERROR_CODES = DatabaseError::class;
 
     /**
      * @var int|string

@@ -4,6 +4,9 @@ SimpleComplex/Database 1.x, 2018-05-12
 - Bugfix parameter substitution; wrong checks for parameter count,
   and tampered sql var forgotten.
 - MariaDb result false/null checks when using result loader.
+- Result nextSet() and nextRow() return boolean; only, not null for none.
+- Result methods must be documented as throwing non-specific db runtime
+  exception, to allow for exception type mapping; errorsToException().
 
 SimpleComplex/Database 1.x, 2018-05-11
 --------------------------------------

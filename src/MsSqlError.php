@@ -10,35 +10,32 @@ declare(strict_types=1);
 namespace SimpleComplex\Database;
 
 /**
- * Lists of relevant RMDBS native connection|query|result error codes.
- *
- * @see MariaDbErrorCodes
- * @see MsSqlErrorCodes
+ * Lists of relevant MsSQL native connection|query|result error codes.
  *
  * @see DatabaseClient::errorsToException()
  *
  * @package SimpleComplex\Database
  */
-abstract class DatabaseErrorCodes
+class MsSqlError extends DatabaseError
 {
     /**
      * Connection related RMDBS native error codes.
      *
-     * @var array
+     * @var int
      */
     const CONNECTION = [];
 
     /**
      * Query related RMDBS native error codes.
      *
-     * @var array
+     * @var int
      */
     const QUERY = [];
 
     /**
      * Result related RMDBS native error codes.
      *
-     * @var array
+     * @var int
      */
     const RESULT = [];
 }

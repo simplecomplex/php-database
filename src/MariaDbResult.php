@@ -86,9 +86,7 @@ class MariaDbResult extends DatabaseResult
      *
      * @return int
      *
-     * @throws DbQueryException
-     *      The query failed.
-     * @throws DbResultException
+     * @throws DbRuntimeException
      */
     public function affectedRows() : int
     {
@@ -128,7 +126,7 @@ class MariaDbResult extends DatabaseResult
      *      Invalid arg $getAsType value.
      * @throws \TypeError
      *      Arg $getAsType not string|null.
-     * @throws DbResultException
+     * @throws DbRuntimeException
      */
     public function insertId($getAsType = null)
     {
@@ -200,9 +198,7 @@ class MariaDbResult extends DatabaseResult
      *
      * @throws \LogicException
      *      Statement cursor mode not 'store'.
-     * @throws DbResultException
-     *      Propagated; failure to get/store/use result set.
-     * @throws DbResultException
+     * @throws DbRuntimeException
      */
     public function numRows() : int
     {
@@ -238,7 +234,7 @@ class MariaDbResult extends DatabaseResult
      *
      * @return int
      *
-     * @throws DbResultException
+     * @throws DbRuntimeException
      */
     public function numColumns() : int
     {
@@ -273,7 +269,7 @@ class MariaDbResult extends DatabaseResult
      *      Arg $index negative.
      * @throws \OutOfRangeException
      *      Result row has no such $index or $column.
-     * @throws DbResultException
+     * @throws DbRuntimeException
      */
     public function fetchField(int $index = 0, string $column = '')
     {
@@ -338,9 +334,7 @@ class MariaDbResult extends DatabaseResult
      * @return array|null
      *      Null: No more rows.
      *
-     * @throws DbResultException
-     *      Propagated; failure to get/store/use result set.
-     * @throws DbResultException
+     * @throws DbRuntimeException
      */
     public function fetchArray(int $as = Database::FETCH_ASSOC)
     {
@@ -374,9 +368,7 @@ class MariaDbResult extends DatabaseResult
      * @return object|null
      *      Null: No more rows.
      *
-     * @throws DbResultException
-     *      Propagated; failure to get/store/use result set.
-     * @throws DbResultException
+     * @throws DbRuntimeException
      */
     public function fetchObject(string $class = '', array $args = [])
     {
@@ -416,13 +408,11 @@ class MariaDbResult extends DatabaseResult
      *
      * @return array
      *
-     * @throws DbResultException
-     *      Propagated; failure to get/store/use result set.
      * @throws \LogicException
      *      Providing 'list_by_column' option when fetching as numeric array.
      * @throws \InvalidArgumentException
      *      Providing 'list_by_column' option and no such column in result row.
-     * @throws DbResultException
+     * @throws DbRuntimeException
      */
     public function fetchAll(int $as = Database::FETCH_ASSOC, array $options = []) : array
     {
@@ -532,36 +522,30 @@ class MariaDbResult extends DatabaseResult
     /**
      * Move cursor to next result set.
      *
-     * @param bool $noException
-     *      True: return false on failure, don't throw exception;
-     *          caller should throw exception instead.
-     *
-     * @return bool|null
-     *      Null: No next result set.
+     * @return bool
+     *      False: No next result set.
+     *      Throws exception on failure.
      *
      * @throws DbRuntimeException
      */
-    public function nextSet(bool $noException = false)
+    public function nextSet() : bool
     {
         $this->free();
         ++$this->setIndex;
         $this->rowIndex = -1;
         if ($this->isPreparedStatement) {
             if (!@$this->statement->more_results()) {
-                return null;
+                return false;
             }
             $cursor_moved = @$this->statement->next_result();
         } else {
             if (!@$this->mySqlI->more_results()) {
-                return null;
+                return false;
             }
             $cursor_moved = @$this->mySqlI->next_result();
         }
         if ($cursor_moved) {
             return true;
-        }
-        if ($noException) {
-            return false;
         }
         $errors = $this->query->getErrors();
         $this->closeAndLog(__FUNCTION__);
@@ -578,19 +562,19 @@ class MariaDbResult extends DatabaseResult
      * NB: effectively skips a row;
      * MySQLi has no real means of going to next row.
      *
-     * @param bool $noException
-     *      True: return false on failure, don't throw exception;
-     *          caller should throw exception instead.
+     * @return bool
+     *      False: No next row.
+     *      Throws exception on failure.
      *
-     * @return bool|null
-     *      Null: No next result set.
+     * @throws DbRuntimeException
      */
-    public function nextRow(bool $noException = false)
+    public function nextRow() : bool
     {
-        if (!$this->result && !$this->loadResult()) {
+        if (!$this->result && !($load = $this->loadResult())) {
+            $msg = $load === null ? '': (', error: ' . $this->query->getErrors(Database::ERRORS_STRING));
             $this->closeAndLog(__FUNCTION__);
             throw new DbResultException(
-                $this->query->errorMessagePrefix() . ' - failed going to next row, no result set.'
+                $this->query->errorMessagePrefix() . ' - failed going to next row, no result set' . $msg . '.'
             );
         }
         // There's no MySQLi direct equivalent; use lightest alternative.
@@ -599,9 +583,6 @@ class MariaDbResult extends DatabaseResult
             return true;
         }
         if ($row === null) {
-            null;
-        }
-        if ($noException) {
             return false;
         }
         $errors = $this->query->getErrors();
@@ -628,8 +609,11 @@ class MariaDbResult extends DatabaseResult
     // Helpers.-----------------------------------------------------------------
 
     /**
+     * NB: Caller must throw exception on return false.
+     *
      * @return bool|null
      *      Null: No result set.
+     *      False: Failed.
      */
     protected function loadResult()
     {

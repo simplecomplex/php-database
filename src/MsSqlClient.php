@@ -58,12 +58,12 @@ class MsSqlClient extends DatabaseClient
     /**
      * Class name of DatabaseErrorCodes class.
      *
-     * @see MsSqlErrorCodes
+     * @see MsSqlError
      * @see DatabaseClient::errorsToException()
      *
      * @var string
      */
-    const CLASS_ERROR_CODES = MsSqlErrorCodes::class;
+    const CLASS_ERROR_CODES = MsSqlError::class;
 
     /**
      * Default database server port.
