@@ -32,8 +32,9 @@ Compact cross-engine relational database abstraction which handles common engine
 - moving to next set/row
 
 ### MariaDB/MySQL features ###
-- multi-queries, repeat query, append query
-- cursor mode _store_ vs. _use_
+- multi-queries, append query
+- cursor mode _use_; _store_ only for non-prepared statement
+- number of rows not supported for prepared statement (because _use_)
 
 ### MS SQL features ###
 - automated (array) arguments handling (SQLSRV_PARAM_IN etc.)
@@ -64,7 +65,7 @@ use **``` MsSqlClient::query() ```** option ``` (string) cursor_mode ```.
 
 MS SQL/Sqlsrv has no direct means for getting insert ID, but supports likewise via a 'magic' query
 appended to an INSERT statement.  
-**``` MsSqlQuery ```**+**``` MsSqlResult ```** handles the issue transparently when **``` MsSqlClient::query() ```** receives the option ``` (bool) get_insert_id ```.
+**``` MsSqlQuery ```**+**``` MsSqlResult ```** handles the issue transparently when **``` MsSqlClient::query() ```** receives the option ``` (bool) insert_id ```.
 
 The Sqlsrv extension is a well-made tight no-nonsense API consisting of 20-odd functions.
 
@@ -162,7 +163,7 @@ $query = $client->query('INSERT INTO person (lastName, firstName, birthday) VALU
         // SQLSRV_CURSOR_FORWARD to get affected rows.
         'cursor_mode' => 'forward',
         // For MsSqlResult::insertId().
-        'get_insert_id' => true,
+        'insert_id' => true,
     ])
     ->prepare('sss', $arguments)
     // Insert first row.
