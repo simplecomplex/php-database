@@ -650,7 +650,7 @@ class MsSqlResult extends DbResult
     {
         if (
             !$this->query->getInsertId
-            && strpos(
+            && stripos(
                 $this->query->sqlTampered ?? $this->query->sql,
                 'SELECT SCOPE_IDENTITY() AS IDENTITY_COLUMN_NAME'
             ) === false
