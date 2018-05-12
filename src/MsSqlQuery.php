@@ -375,13 +375,14 @@ class MsSqlQuery extends DbQuery
             );
         }
         if (!$statement) {
-            $error = $this->client->getErrors(Database::ERRORS_STRING);
+            $errors = $this->client->getErrors();
             // Unset prepared statement arguments reference.
             $this->unsetReferences();
             $this->log(__FUNCTION__);
-            throw new DbRuntimeException(
-                $this->errorMessagePrefix()
-                . ' - failed to prepare statement and bind parameters, error: ' . $error . '.'
+            $cls_xcptn = $this->client->errorsToException($errors);
+            throw new $cls_xcptn(
+                $this->errorMessagePrefix() . ' - failed to prepare statement, error: '
+                . $this->client->errorsToString($errors) . '.'
             );
         }
         $this->statementClosed = false;
@@ -473,23 +474,26 @@ class MsSqlQuery extends DbQuery
         if ($this->isPreparedStatement) {
             // Require unbroken connection.
             if (!$this->client->isConnected()) {
-                $error = $this->client->getErrors(Database::ERRORS_STRING);
+                $errors = $this->client->getErrors();
                 // Unset prepared statement arguments reference.
-                $this->closeAndLog(__FUNCTION__);
-                throw new DbConnectionException(
+                $this->unsetReferences();
+                $this->log(__FUNCTION__);
+                $cls_xcptn = $this->client->errorsToException($errors);
+                throw new $cls_xcptn(
                     $this->errorMessagePrefix() . ' - can\'t execute prepared statement when connection lost, error: '
-                    . $error . '.'
+                    . $this->client->errorsToString($errors) . '.'
                 );
             }
             // bool.
             if (!@sqlsrv_execute($this->statement)) {
-                $error = $this->client->getErrors(Database::ERRORS_STRING);
+                $errors = $this->client->getErrors();
                 // Unset prepared statement arguments reference.
                 $this->unsetReferences();
                 $this->log(__FUNCTION__);
-                throw new DbQueryException(
-                    $this->errorMessagePrefix()
-                    . ' - failed executing prepared statement, error: ' . $error . '.'
+                $cls_xcptn = $this->client->errorsToException($errors);
+                throw new $cls_xcptn(
+                    $this->errorMessagePrefix() . ' - failed executing prepared statement, error: '
+                    . $this->client->errorsToString($errors) . '.'
                 );
             }
         }
@@ -513,10 +517,12 @@ class MsSqlQuery extends DbQuery
                 );
             }
             if (!$statement) {
+                $errors = $this->client->getErrors();
                 $this->log(__FUNCTION__);
-                throw new DbQueryException(
+                $cls_xcptn = $this->client->errorsToException($errors);
+                throw new $cls_xcptn(
                     $this->errorMessagePrefix() . ' - failed executing simple query, error: '
-                    . $this->client->getErrors(Database::ERRORS_STRING) . '.'
+                    . $this->client->errorsToString($errors) . '.'
                 );
             }
             $this->statementClosed = false;
@@ -533,13 +539,14 @@ class MsSqlQuery extends DbQuery
             }
             $error = $this->client->getErrors(Database::ERRORS_STRING_EMPTY_NONE);
             if ($error) {
+                $errors = $this->client->getErrors();
                 // Unset prepared statement arguments reference.
                 $this->unsetReferences();
                 $this->log(__FUNCTION__);
-                throw new DbRuntimeException(
-                    $this->errorMessagePrefix()
-                    . ' - failed to complete sending data chunked, after chunk[' . $chunks . '], error: '
-                    . $error . '.'
+                $cls_xcptn = $this->client->errorsToException($errors);
+                throw new $cls_xcptn(
+                    $this->errorMessagePrefix() . ' - failed to complete sending data chunked, after chunk['
+                    . $chunks . '], error: ' . $this->client->errorsToString($errors) . '.'
                 );
             }
         }

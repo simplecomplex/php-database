@@ -43,8 +43,8 @@ class ConfigurationTest extends TestCase
             // Zero: use default port.
             //'port' => 0,
             'database' => 'test_scx_mssql',
-            'user' => 'test_scx_mssql',
-            'pass' => '1234',
+            'user' => 'SA',
+            'pass' => '1234*Sql',
             'options' => [
                 'tls_trust_self_signed' => true,
             ],

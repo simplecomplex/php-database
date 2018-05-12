@@ -23,7 +23,12 @@ class MsSqlError extends DbError
      *
      * @var int
      */
-    const CONNECTION = [];
+    const CONNECTION = [
+        // Cannot open database ”%s” requested by the login. The login failed.
+        4060,
+        // Login failed for user ’%s’.
+        18456,
+    ];
 
     /**
      * Query related RMDBS native error codes.

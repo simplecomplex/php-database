@@ -19,7 +19,7 @@ CREATE TABLE relationship (
     spouseA int(11) NOT NULL,
     spouseB int(11) NOT NULL,
     active tinyint(1) UNSIGNED NOT NULL DEFAULT 1,
-    since timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    since datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (spouseA, spouseB),
     INDEX fk_resres_parent_id_a(spouseA),
     INDEX fk_resres_parent_id_b(spouseB),

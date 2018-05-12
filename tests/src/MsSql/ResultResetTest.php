@@ -7,18 +7,18 @@
  */
 declare(strict_types=1);
 
-namespace SimpleComplex\Tests\Database\MariaDb;
+namespace SimpleComplex\Tests\Database\MsSql;
 
 use PHPUnit\Framework\TestCase;
 
-use SimpleComplex\Database\MariaDbClient;
-use SimpleComplex\Database\MariaDbQuery;
-use SimpleComplex\Database\MariaDbResult;
+use SimpleComplex\Database\MsSqlClient;
+use SimpleComplex\Database\MsSqlQuery;
+use SimpleComplex\Database\MsSqlResult;
 
 /**
  * @code
  * // CLI, in document root:
- * vendor/bin/phpunit vendor/simplecomplex/database/tests/src/MariaDb/ResetResultTest.php
+ * vendor/bin/phpunit vendor/simplecomplex/database/tests/src/MsSql/ResetResultTest.php
  * @endcode
  *
  * @package SimpleComplex\Tests\Database
@@ -34,17 +34,17 @@ class ResultResetTest extends TestCase
      */
     public function testMalTruncateForeignKeys()
     {
-        /** @var MariaDbClient $client */
+        /** @var MsSqlClient $client */
         $client = (new ClientTest())->testInstantiation();
 
-        /** @var MariaDbQuery $query */
-        $query = $client->multiQuery(
+        /** @var MsSqlQuery $query */
+        $query = $client->query(
             'TRUNCATE TABLE child; TRUNCATE TABLE relationship; TRUNCATE TABLE parent'
         );
 
-        /** @var MariaDbResult $result */
+        /** @var MsSqlResult $result */
         $result = $query->execute();
-        $this->assertInstanceOf(MariaDbResult::class, $result);
+        $this->assertInstanceOf(MsSqlResult::class, $result);
 
         /**
          * @throws \SimpleComplex\Database\Exception\DbQueryException
@@ -60,17 +60,51 @@ class ResultResetTest extends TestCase
      */
     public function testResetMultiQueryTruncate()
     {
-        /** @var MariaDbClient $client */
+        /** @var MsSqlClient $client */
         $client = (new ClientTest())->testInstantiation();
 
-        /** @var MariaDbQuery $query */
-        $query = $client->multiQuery(
-            'SET FOREIGN_KEY_CHECKS=0; TRUNCATE TABLE child; TRUNCATE TABLE relationship; TRUNCATE TABLE parent'
+        /** @var MsSqlQuery $query */
+        $query = $client->query('
+; ALTER TABLE child DROP CONSTRAINT fk_child_parent_id_a
+; ALTER TABLE child DROP CONSTRAINT fk_child_parent_id_b
+; ALTER TABLE relationship DROP CONSTRAINT fk_relationship_spouse_a
+; ALTER TABLE relationship DROP CONSTRAINT fk_relationship_spouse_b
+
+; TRUNCATE TABLE child; TRUNCATE TABLE relationship; TRUNCATE TABLE parent;
+
+; ALTER TABLE child ADD
+CONSTRAINT fk_child_parent_id_a
+FOREIGN KEY(parentA)
+REFERENCES parent(id)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION
+
+; ALTER TABLE child ADD
+CONSTRAINT fk_child_parent_id_b
+FOREIGN KEY(parentB)
+REFERENCES parent(id)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION
+
+; ALTER TABLE relationship ADD
+CONSTRAINT fk_relationship_spouse_a
+FOREIGN KEY(spouseA)
+REFERENCES parent(id)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION
+
+; ALTER TABLE relationship ADD
+CONSTRAINT fk_relationship_spouse_b
+FOREIGN KEY(spouseB)
+REFERENCES parent(id)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION
+'
         );
 
-        /** @var MariaDbResult $result */
+        /** @var MsSqlResult $result */
         $result = $query->execute();
-        $this->assertInstanceOf(MariaDbResult::class, $result);
+        $this->assertInstanceOf(MsSqlResult::class, $result);
 
         $i = -1;
         while (($success = $result->nextSet())) {
