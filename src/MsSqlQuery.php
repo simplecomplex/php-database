@@ -437,7 +437,6 @@ class MsSqlQuery extends DatabaseQuery
         // Checks for parameters/arguments count mismatch.
         $sql_fragments = $this->sqlFragments($this->sqlTampered ?? $this->sql, $arguments);
         if ($sql_fragments) {
-            unset($sql_fragments);
 
             // Set instance var $arguments['prepared'] or $arguments['simple'].
             $this->adaptArguments($types, $arguments);
@@ -701,12 +700,8 @@ class MsSqlQuery extends DatabaseQuery
      */
     protected function adaptArguments(string $types, array &$arguments) /*: void*/
     {
-        // Checks for parameters/arguments count mismatch.
-        $sql_fragments = $this->sqlFragments($this->sql, $arguments);
-        $n_params = count($sql_fragments) - 1;
-
+        $n_params = count($arguments);
         if (!$n_params) {
-
             return;
         }
 

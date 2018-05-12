@@ -94,6 +94,7 @@ class PopulateTest extends TestCase
             ]
         );
         /** @var MariaDbResult $result_select */
+        $args = [];
         $result_select = $query_select->execute();
         $num_rows = $result_select->numRows();
         Log::variable('num_rows', $num_rows);

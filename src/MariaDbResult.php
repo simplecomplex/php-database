@@ -212,11 +212,11 @@ class MariaDbResult extends DatabaseResult
                 . '] forbids getting number of rows, because unreliable.'
             );
         }
-        if (!$this->result && !$this->loadResult(true)) {
-            $error = $this->query->getErrors(Database::ERRORS_STRING);
+        if (!$this->result && !($load = $this->loadResult())) {
+            $msg = $load === null ? '': (', error: ' . $this->query->getErrors(Database::ERRORS_STRING));
             $this->closeAndLog(__FUNCTION__);
             throw new DbResultException(
-                $this->query->errorMessagePrefix() . ' - failed getting number of rows, no result set.'
+                $this->query->errorMessagePrefix() . ' - failed getting number of rows, no result set' . $msg . '.'
             );
         }
         // Prepared statement is unlikely because stored mode isn't supported
@@ -278,11 +278,13 @@ class MariaDbResult extends DatabaseResult
     public function fetchField(int $index = 0, string $column = '')
     {
         ++$this->rowIndex;
-        if (!$this->result && !$this->loadResult()) {
+        if (!$this->result && !($load = $this->loadResult())) {
+            $msg = $load === null ? '': (', error: ' . $this->query->getErrors(Database::ERRORS_STRING));
             $this->closeAndLog(__FUNCTION__);
             throw new DbResultException(
                 $this->query->errorMessagePrefix() . ' - failed fetching field by '
-                . (!$column ? ('$index[' . $index . ']') : ('$column[' . $column . ']')) . ', no result set.'
+                . (!$column ? ('$index[' . $index . ']') : ('$column[' . $column . ']'))
+                . ', no result set' . $msg . '.'
             );
         }
         if (!$column) {
@@ -343,10 +345,11 @@ class MariaDbResult extends DatabaseResult
     public function fetchArray(int $as = Database::FETCH_ASSOC)
     {
         ++$this->rowIndex;
-        if (!$this->result && !$this->loadResult()) {
+        if (!$this->result && !($load = $this->loadResult())) {
+            $msg = $load === null ? '': (', error: ' . $this->query->getErrors(Database::ERRORS_STRING));
             $this->closeAndLog(__FUNCTION__);
             throw new DbResultException(
-                $this->query->errorMessagePrefix() . ' - failed fetching row as array, no result set.'
+                $this->query->errorMessagePrefix() . ' - failed fetching row as array, no result set' . $msg . '.'
             );
         }
         $row = $as == Database::FETCH_ASSOC ? @$this->result->fetch_assoc() : @$this->result->fetch_array(MYSQLI_NUM);
@@ -378,10 +381,11 @@ class MariaDbResult extends DatabaseResult
     public function fetchObject(string $class = '', array $args = [])
     {
         ++$this->rowIndex;
-        if (!$this->result && !$this->loadResult()) {
+        if (!$this->result && !($load = $this->loadResult())) {
+            $msg = $load === null ? '': (', error: ' . $this->query->getErrors(Database::ERRORS_STRING));
             $this->closeAndLog(__FUNCTION__);
             throw new DbResultException(
-                $this->query->errorMessagePrefix() . ' - failed fetching row as object, no result set.'
+                $this->query->errorMessagePrefix() . ' - failed fetching row as object, no result set' . $msg . '.'
             );
         }
         $row = @$this->result->fetch_object($class, $args);
@@ -422,10 +426,11 @@ class MariaDbResult extends DatabaseResult
      */
     public function fetchAll(int $as = Database::FETCH_ASSOC, array $options = []) : array
     {
-        if (!$this->result && !$this->loadResult()) {
+        if (!$this->result && !($load = $this->loadResult())) {
+            $msg = $load === null ? '': (', error: ' . $this->query->getErrors(Database::ERRORS_STRING));
             $this->closeAndLog(__FUNCTION__);
             throw new DbResultException(
-                $this->query->errorMessagePrefix() . ' - failed fetching all rows, no result set.'
+                $this->query->errorMessagePrefix() . ' - failed fetching all rows, no result set' . $msg . '.'
             );
         }
         $column_keyed = !empty($options['list_by_column']);
@@ -623,16 +628,10 @@ class MariaDbResult extends DatabaseResult
     // Helpers.-----------------------------------------------------------------
 
     /**
-     * @param bool $noException
-     *      True: return false on failure, don't throw exception;
-     *          caller should throw exception instead.
-     *
      * @return bool|null
      *      Null: No result set.
-     *
-     * @throws DbResultException
      */
-    protected function loadResult(bool $noException = false)
+    protected function loadResult()
     {
         if ($this->setIndex == -1) {
             ++$this->setIndex;
@@ -659,20 +658,11 @@ class MariaDbResult extends DatabaseResult
             }
         }
         if (!$set) {
-            $errors = $this->query->getErrors();
-            if (!$errors) {
+            if (!$this->query->getErrors()) {
                 // $this->result remains null.
                 return null;
             }
-            if ($noException) {
-                // $this->result remains null.
-                return false;
-            }
-            $this->closeAndLog(__FUNCTION__);
-            throw new DbResultException(
-                $this->query->errorMessagePrefix() . ' - failed getting result, error: '
-                . $this->query->client->errorsToString($errors) . '.'
-            );
+            return false;
         }
 
         $this->result = $set;

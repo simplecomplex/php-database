@@ -268,12 +268,17 @@ class MariaDbQuery extends DatabaseQueryMulti
         }
 
         // Checks for parameters/arguments count mismatch.
-        $sql_fragments = $this->sqlFragments($this->sql, $arguments);
-        $n_params = count($sql_fragments) - 1;
-        unset($sql_fragments);
+        $sql_fragments = $this->sqlFragments($this->sqlTampered ?? $this->sql, $arguments);
+        if (!$sql_fragments) {
+            unset($sql_fragments);
+            $n_params = 0;
+            $tps = '';
+        }
+        else {
+            $n_params = count($sql_fragments) - 1;
+            unset($sql_fragments);
 
-        $tps = $types;
-        if ($n_params) {
+            $tps = $types;
             if ($tps === '') {
                 // Be friendly, all strings.
                 $tps = str_repeat('s', $n_params);

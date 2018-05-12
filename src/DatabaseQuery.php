@@ -246,7 +246,7 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
         $this->sqlTampered = null;
 
         // Checks for parameters/arguments count mismatch.
-        $sql_fragments = $this->sqlFragments($this->sql, $arguments);
+        $sql_fragments = $this->sqlFragments($this->sqlTampered ?? $this->sql, $arguments);
 
         if ($sql_fragments) {
             $this->sqlTampered = $this->substituteParametersByArgs($sql_fragments, $types, $arguments);
@@ -399,10 +399,17 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
      *
      * @throws \InvalidArgumentException
      *      Arg $types length (unless empty) doesn't match number of parameters.
+     * @throws \LogicException
+     *      Method called when no parameters to substitute.
      */
     protected function substituteParametersByArgs(array $sqlFragments, string $types, array $arguments) : string
     {
         $n_params = count($sqlFragments) - 1;
+        if ($n_params < 1) {
+            throw new \LogicException(
+                $this->client->errorMessagePrefix() . ' - calling this method when no parameters is illegal.'
+            );
+        }
 
         $tps = $types;
         if ($tps === '') {
