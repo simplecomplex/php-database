@@ -32,11 +32,12 @@ Compact cross-engine relational database abstraction which handles common engine
 - moving to next set/row
 
 ### MariaDB/MySQL features ###
-- multi-queries, append query
+- SELECT'ing multi-queries, append query
 - cursor mode _use_; _store_ only for non-prepared statement
 - number of rows not supported for prepared statement (because _use_)
 
 ### MS SQL features ###
+- non-SELECT'ing multi-queries
 - automated (array) arguments handling (SQLSRV_PARAM_IN etc.)
 - automated insert ID retrieval
 - cursor mode (SQLSRV_CURSOR_FORWARD etc.) defense against wrong use
