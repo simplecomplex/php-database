@@ -83,7 +83,6 @@ class MsSqlResult extends DbResult
         );
         // @todo: does sqlsrv_rows_affected() move to first result set, since requiring cursor mode 'forward'?
         // @todo: ++$this->setIndex;
-
         if (($count && $count > 0) || $count === 0) {
             return $count;
         }
@@ -102,10 +101,12 @@ class MsSqlResult extends DbResult
                 . '] forbids getting affected rows, use SQLSRV_CURSOR_FORWARD (\'forward\') instead.'
             );
         }
-        $error = $this->query->client->getErrors(Database::ERRORS_STRING);
+        $errors = $this->query->client->getErrors();
         $this->closeAndLog(__FUNCTION__);
-        throw new DbResultException(
-            $this->query->errorMessagePrefix() . ' - failed counting affected rows, error: ' . $error . '.'
+        $cls_xcptn = $this->query->client->errorsToException($errors, DbResultException::class);
+        throw new $cls_xcptn(
+            $this->query->errorMessagePrefix() . ' - failed counting affected rows, error: '
+            . $this->query->client->errorsToString($errors) . '.'
         );
     }
 
@@ -213,10 +214,12 @@ class MsSqlResult extends DbResult
             return $id;
         }
         $this->checkFailingInsertId();
-        $error = $this->query->client->getErrors(Database::ERRORS_STRING);
+        $errors = $this->query->client->getErrors();
         $this->closeAndLog(__FUNCTION__);
-        throw new DbResultException(
-            $this->query->errorMessagePrefix() . ' - failed getting insert ID, error: ' . $error . '.'
+        $cls_xcptn = $this->query->client->errorsToException($errors, DbResultException::class);
+        throw new $cls_xcptn(
+            $this->query->errorMessagePrefix() . ' - failed getting insert ID, error: '
+            . $this->query->client->errorsToString($errors) . '.'
         );
     }
 
@@ -253,10 +256,12 @@ class MsSqlResult extends DbResult
                     . ', use SQLSRV_CURSOR_STATIC (\'static\') or SQLSRV_CURSOR_KEYSET (\'static\') instead.'
                 );
         }
-        $error = $this->query->client->getErrors(Database::ERRORS_STRING);
+        $errors = $this->query->client->getErrors();
         $this->closeAndLog(__FUNCTION__);
-        throw new DbResultException(
-            $this->query->errorMessagePrefix() . ' - failed getting number of rows, error: ' . $error . '.'
+        $cls_xcptn = $this->query->client->errorsToException($errors, DbResultException::class);
+        throw new $cls_xcptn(
+            $this->query->errorMessagePrefix() . ' - failed getting number of rows, error: '
+            . $this->query->client->errorsToString($errors) . '.'
         );
     }
 
@@ -275,10 +280,12 @@ class MsSqlResult extends DbResult
         if (($count && $count > 0) || $count === 0) {
             return $count;
         }
-        $error = $this->query->client->getErrors(Database::ERRORS_STRING);
+        $errors = $this->query->client->getErrors();
         $this->closeAndLog(__FUNCTION__);
-        throw new DbResultException(
-            $this->query->errorMessagePrefix() . ' - failed getting number of columns, error: ' . $error . '.'
+        $cls_xcptn = $this->query->client->errorsToException($errors, DbResultException::class);
+        throw new $cls_xcptn(
+            $this->query->errorMessagePrefix() . ' - failed getting number of columns, error: '
+            . $this->query->client->errorsToString($errors) . '.'
         );
     }
 
@@ -362,11 +369,13 @@ class MsSqlResult extends DbResult
                 return null;
             }
         }
-        $error = $this->query->client->getErrors(Database::ERRORS_STRING);
+        $errors = $this->query->client->getErrors();
         $this->closeAndLog(__FUNCTION__);
-        throw new DbResultException(
+        $cls_xcptn = $this->query->client->errorsToException($errors, DbResultException::class);
+        throw new $cls_xcptn(
             $this->query->errorMessagePrefix() . ' - failed fetching field by '
-            . (!$column ? ('$index[' . $index . ']') : ('$column[' . $column . ']')) . ', error: ' . $error . '.'
+            . (!$column ? ('$index[' . $index . ']') : ('$column[' . $column . ']')) . ', error: '
+            . $this->query->client->errorsToString($errors) . '.'
         );
     }
 
@@ -395,11 +404,13 @@ class MsSqlResult extends DbResult
         if ($row || $row === null) {
             return $row;
         }
-        $error = $this->query->client->getErrors(Database::ERRORS_STRING);
+        $errors = $this->query->client->getErrors();
         $this->closeAndLog(__FUNCTION__);
-        throw new DbResultException(
+        $cls_xcptn = $this->query->client->errorsToException($errors, DbResultException::class);
+        throw new $cls_xcptn(
             $this->query->errorMessagePrefix() . ' - failed fetching row as '
-            . ($as == Database::FETCH_ASSOC ? 'assoc' : 'numeric') . ' array, error: ' . $error . '.'
+            . ($as == Database::FETCH_ASSOC ? 'assoc' : 'numeric') . ' array, error: '
+            . $this->query->client->errorsToString($errors) . '.'
         );
     }
 
@@ -427,11 +438,12 @@ class MsSqlResult extends DbResult
         if ($row || $row === null) {
             return $row;
         }
-        $error = $this->query->client->getErrors(Database::ERRORS_STRING);
+        $errors = $this->query->client->getErrors();
         $this->closeAndLog(__FUNCTION__);
-        throw new DbResultException(
-            $this->query->errorMessagePrefix()
-            . ' - failed fetching row as object, error: ' . $error . '.'
+        $cls_xcptn = $this->query->client->errorsToException($errors, DbResultException::class);
+        throw new $cls_xcptn(
+            $this->query->errorMessagePrefix() . ' - failed fetching row as object, error: '
+            . $this->query->client->errorsToString($errors) . '.'
         );
     }
 
@@ -561,11 +573,12 @@ class MsSqlResult extends DbResult
                 default:
                     $em = 'assoc array';
             }
-            $error = $this->query->client->getErrors(Database::ERRORS_STRING);
+            $errors = $this->query->client->getErrors();
             $this->closeAndLog(__FUNCTION__);
-            throw new DbResultException(
-                $this->query->errorMessagePrefix()
-                . ' - failed fetching all rows as ' . $em . ', error: ' . $error . '.'
+            $cls_xcptn = $this->query->client->errorsToException($errors, DbResultException::class);
+            throw new $cls_xcptn(
+                $this->query->errorMessagePrefix() . ' - failed fetching all rows as ' . $em . ', error: '
+                . $this->query->client->errorsToString($errors) . '.'
             );
         }
         return $list;
@@ -592,10 +605,12 @@ class MsSqlResult extends DbResult
         if ($next === null) {
             return false;
         }
-        $error = $this->query->client->getErrors(Database::ERRORS_STRING);
+        $errors = $this->query->client->getErrors();
         $this->closeAndLog(__FUNCTION__);
-        throw new DbResultException(
-            $this->query->errorMessagePrefix() . ' - failed going to next set, error: ' . $error . '.'
+        $cls_xcptn = $this->query->client->errorsToException($errors, DbResultException::class);
+        throw new $cls_xcptn(
+            $this->query->errorMessagePrefix() . ' - failed going to set[' . $this->setIndex . '], error: '
+            . $this->query->client->errorsToString($errors) . '.'
         );
     }
 
@@ -618,10 +633,12 @@ class MsSqlResult extends DbResult
         if ($next === null) {
             return false;
         }
-        $error = $this->query->client->getErrors(Database::ERRORS_STRING);
+        $errors = $this->query->client->getErrors();
         $this->closeAndLog(__FUNCTION__);
-        throw new DbResultException(
-            $this->query->errorMessagePrefix() . ' - failed going to next row, error: ' . $error . '.'
+        $cls_xcptn = $this->query->client->errorsToException($errors, DbResultException::class);
+        throw new $cls_xcptn(
+            $this->query->errorMessagePrefix() . ' - failed going to next row, error: '
+            . $this->query->client->errorsToString($errors) . '.'
         );
     }
 
