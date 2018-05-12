@@ -51,7 +51,7 @@ use SimpleComplex\Database\Exception\DbConnectionException;
  *
  * @package SimpleComplex\Database
  */
-class MariaDbQuery extends DatabaseQueryMulti
+class MariaDbQuery extends DbQueryMulti
 {
     /**
      * Class name of \SimpleComplex\Database\MariaDbResult or extending class.
@@ -154,7 +154,7 @@ class MariaDbQuery extends DatabaseQueryMulti
      * and adjust to support result numRows().
      * Option affected_rows is ignored, irrelevant.
      *
-     * @param DbClientInterface|DatabaseClient|MariaDbClient $client
+     * @param DbClientInterface|DbClient|MariaDbClient $client
      *      Reference to parent client.
      * @param string $sql
      * @param array $options {
@@ -174,7 +174,7 @@ class MariaDbQuery extends DatabaseQueryMulti
 
         /**
          * Option is_multi_query is handled by parent
-         * @see DatabaseQueryMulti::__constructor()
+         * @see DbQueryMulti::__constructor()
          */
 
         if (!empty($options['cursor_mode'])) {
@@ -360,8 +360,8 @@ class MariaDbQuery extends DatabaseQueryMulti
      * Non-prepared statement: set query arguments, for direct parameter marker
      * substitution in the sql string.
      *
-     * @see DatabaseQueryMulti::parameters()
-     * @see DatabaseQuery::parameters()
+     * @see DbQueryMulti::parameters()
+     * @see DbQuery::parameters()
      */
     // public function parameters(string $types, array $arguments) : DbQueryInterface
 
@@ -369,14 +369,14 @@ class MariaDbQuery extends DatabaseQueryMulti
      * Non-prepared statement: repeat base sql, and substitute it's parameter
      * markers by arguments.
      *
-     * @see DatabaseQueryMulti::repeat()
+     * @see DbQueryMulti::repeat()
      */
     // public function repeat(string $types, array $arguments) : DbQueryMultiInterface
 
     /**
      * Non-prepared statement: append sql to previously defined sql.
      *
-     * @see DatabaseQueryMulti::append()
+     * @see DbQueryMulti::append()
      */
     // public function append(string $sql, string $types, array $arguments) : DbQueryMultiInterface
 
@@ -506,14 +506,14 @@ class MariaDbQuery extends DatabaseQueryMulti
     /**
      * Flag that the sql contains LIKE clause(s).
      *
-     * @see DatabaseQuery::hasLikeClause()
+     * @see DbQuery::hasLikeClause()
      */
     // public function hasLikeClause() : DbQueryInterface
 
     /**
-     * @see DatabaseQuery::$statementClosed
+     * @see DbQuery::$statementClosed
      *
-     * @see DatabaseQuery::unsetReferences()
+     * @see DbQuery::unsetReferences()
      *
      * @return void
      */
@@ -570,7 +570,7 @@ class MariaDbQuery extends DatabaseQueryMulti
      * has own separate error list.
      *
      * @see MariaDbClient::getErrors()
-     * @see DatabaseClient::formatNativeErrors()
+     * @see DbClient::formatNativeErrors()
      *
      * @param int $toString
      *      1: on no error returns message indication just that.

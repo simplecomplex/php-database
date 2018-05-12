@@ -36,7 +36,7 @@ use SimpleComplex\Database\Interfaces\DbQueryMultiInterface;
  *
  * @package SimpleComplex\Database
  */
-abstract class DatabaseQueryMulti extends DatabaseQuery implements DbQueryMultiInterface
+abstract class DbQueryMulti extends DbQuery implements DbQueryMultiInterface
 {
     /**
      * @var bool
@@ -54,7 +54,7 @@ abstract class DatabaseQueryMulti extends DatabaseQuery implements DbQueryMultiI
     protected $sqlAppended = false;
 
     /**
-     * @param DbClientInterface|DatabaseClientMulti $client
+     * @param DbClientInterface|DbClientMulti $client
      *      Reference to parent (DbQueryMultiInterface) client.
      * @param string $sql
      * @param array $options {
@@ -80,7 +80,7 @@ abstract class DatabaseQueryMulti extends DatabaseQuery implements DbQueryMultiI
      * Non-prepared statement: set query arguments, for native automated
      * parameter marker substitution or direct substition in the sql string.
      *
-     * @see DatabaseQuery::parameters()
+     * @see DbQuery::parameters()
      *
      * @param string $types
      *      Empty: uses string for all.

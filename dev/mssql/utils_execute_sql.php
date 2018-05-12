@@ -29,7 +29,7 @@ $config_store = $container->get('config');
 /** @var \SimpleComplex\Database\DatabaseBroker $db_broker */
 $db_broker = $container->get('database-broker');
 
-/** @var \SimpleComplex\Database\DatabaseClient $database */
+/** @var \SimpleComplex\Database\DbClient $database */
 /** @var \SimpleComplex\Database\MsSqlClient $database */
 $database = $db_broker->getClient(
     'test',

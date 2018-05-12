@@ -12,11 +12,11 @@ namespace SimpleComplex\Database;
 /**
  * Lists of relevant MariaDb/MySQL native connection|query|result error codes.
  *
- * @see DatabaseClient::errorsToException()
+ * @see DbClient::errorsToException()
  *
  * @package SimpleComplex\Database
  */
-class MariaDbError extends DatabaseError
+class MariaDbError extends DbError
 {
     /**
      * Connection related RMDBS native error codes.

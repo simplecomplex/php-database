@@ -31,12 +31,12 @@ use SimpleComplex\Database\Interfaces\DbQueryMultiInterface;
  *
  * @package SimpleComplex\Database
  */
-abstract class DatabaseClientMulti extends DatabaseClient implements DbClientMultiInterface
+abstract class DbClientMulti extends DbClient implements DbClientMultiInterface
 {
     /**
      * Create a multi-query.
      *
-     * @see DatabaseClient::query()
+     * @see DbClient::query()
      * @see MariaDbQuery::__construct()
      *
      * @param string $sql

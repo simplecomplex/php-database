@@ -24,7 +24,7 @@ use SimpleComplex\Database\Interfaces\DbResultInterface;
  *
  * @package SimpleComplex\Database
  */
-abstract class DatabaseResult extends Explorable implements DbResultInterface
+abstract class DbResult extends Explorable implements DbResultInterface
 {
     /**
      * @var MsSqlQuery
@@ -34,7 +34,7 @@ abstract class DatabaseResult extends Explorable implements DbResultInterface
     /**
      * Reference to query statement, if any.
      *
-     * @see DatabaseQuery::$statement
+     * @see DbQuery::$statement
      *
      * @var mixed|null
      */
@@ -84,7 +84,7 @@ abstract class DatabaseResult extends Explorable implements DbResultInterface
      *
      * Private/protected members are also be readable via 'magic' __get().
      *
-     * @see DatabaseResult::__get()
+     * @see DbResult::__get()
      *
      * @internal
      *

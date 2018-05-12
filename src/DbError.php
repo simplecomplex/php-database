@@ -15,11 +15,11 @@ namespace SimpleComplex\Database;
  * @see MariaDbError
  * @see MsSqlError
  *
- * @see DatabaseClient::errorsToException()
+ * @see DbClient::errorsToException()
  *
  * @package SimpleComplex\Database
  */
-abstract class DatabaseError
+abstract class DbError
 {
     /**
      * Connection related RMDBS native error codes.

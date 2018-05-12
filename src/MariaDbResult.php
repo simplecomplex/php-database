@@ -33,7 +33,7 @@ use SimpleComplex\Database\Exception\DbResultException;
  *
  * @package SimpleComplex\Database
  */
-class MariaDbResult extends DatabaseResult
+class MariaDbResult extends DbResult
 {
     /**
      * @var MariaDbQuery

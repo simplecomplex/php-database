@@ -12,11 +12,11 @@ namespace SimpleComplex\Database;
 /**
  * Lists of relevant MsSQL native connection|query|result error codes.
  *
- * @see DatabaseClient::errorsToException()
+ * @see DbClient::errorsToException()
  *
  * @package SimpleComplex\Database
  */
-class MsSqlError extends DatabaseError
+class MsSqlError extends DbError
 {
     /**
      * Connection related RMDBS native error codes.

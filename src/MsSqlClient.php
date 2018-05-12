@@ -39,7 +39,7 @@ use SimpleComplex\Database\Exception\DbConnectionException;
  *
  * @package SimpleComplex\Database
  */
-class MsSqlClient extends DatabaseClient
+class MsSqlClient extends DbClient
 {
     /**
      * Class name of \SimpleComplex\Database\MsSqlQuery or extending class.
@@ -59,7 +59,7 @@ class MsSqlClient extends DatabaseClient
      * Class name of DatabaseErrorCodes class.
      *
      * @see MsSqlError
-     * @see DatabaseClient::errorsToException()
+     * @see DbClient::errorsToException()
      *
      * @var string
      */
@@ -111,7 +111,7 @@ class MsSqlClient extends DatabaseClient
     /**
      * @inheritdoc
      *
-     * @see DatabaseClient::__construct()
+     * @see DbClient::__construct()
      */
     public function __construct(string $name, array $databaseInfo)
     {
@@ -126,7 +126,7 @@ class MsSqlClient extends DatabaseClient
      * For options, see:
      * @see MsSqlQuery::__construct()
      *
-     * @see DatabaseClient::query()
+     * @see DbClient::query()
      */
     // public function query(string $sql, array $options = []) : DbQueryInterface
 
@@ -234,7 +234,7 @@ class MsSqlClient extends DatabaseClient
     }
 
     /**
-     * @see DatabaseClient::__destruct()
+     * @see DbClient::__destruct()
      *
      * @return void
      */
@@ -256,7 +256,7 @@ class MsSqlClient extends DatabaseClient
      * NB: An error may not belong to current connection;
      * Sqlsrv's error getter takes no connection argument.
      *
-     * @see DatabaseClient::formatNativeErrors()
+     * @see DbClient::formatNativeErrors()
      *
      * @param int $toString
      *      1: on no error returns message indication just that.
@@ -291,10 +291,10 @@ class MsSqlClient extends DatabaseClient
      * @see MsSqlClient::OPTION_SHORTHANDS
      * @see MsSqlClient::$optionsResolved
      *
-     * @return DatabaseClient|MsSqlClient
+     * @return DbClient|MsSqlClient
      *      Throws exception on error.
      */
-    public function optionsResolve() : DatabaseClient
+    public function optionsResolve() : DbClient
     {
         if (!$this->optionsResolved) {
             // Copy.
@@ -459,7 +459,7 @@ class MsSqlClient extends DatabaseClient
     /**
      * Get a read-only property.
      *
-     * @see DatabaseClient::__get()
+     * @see DbClient::__get()
      *
      * @param string $name
      *

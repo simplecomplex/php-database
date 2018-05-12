@@ -26,7 +26,7 @@ use SimpleComplex\Database\Exception\DbResultException;
  *
  * @package SimpleComplex\Database
  */
-class MsSqlResult extends DatabaseResult
+class MsSqlResult extends DbResult
 {
     /**
      * @var MsSqlQuery

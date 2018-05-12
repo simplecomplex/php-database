@@ -38,7 +38,7 @@ use SimpleComplex\Database\Exception\DbResultException;
  *
  * @package SimpleComplex\Database
  */
-abstract class DatabaseClient extends Explorable implements DbClientInterface
+abstract class DbClient extends Explorable implements DbClientInterface
 {
     /**
      * Class name of DbQueryInterface class.
@@ -52,13 +52,13 @@ abstract class DatabaseClient extends Explorable implements DbClientInterface
     /**
      * Class name of DatabaseErrorCodes class.
      *
-     * @see DatabaseClient::errorsToException()
+     * @see DbClient::errorsToException()
      * @see MsSqlError
      * @see MsSqlError
      *
      * @var string
      */
-    const CLASS_ERROR_CODES = DatabaseError::class;
+    const CLASS_ERROR_CODES = DbError::class;
 
     /**
      * @var int|string
@@ -185,7 +185,7 @@ abstract class DatabaseClient extends Explorable implements DbClientInterface
     /**
      * Final character set, in driver native format (UTF-8/utf8).
      *
-     * @see DatabaseClient::characterSetResolve()
+     * @see DbClient::characterSetResolve()
      *
      * @var string
      */
@@ -216,9 +216,9 @@ abstract class DatabaseClient extends Explorable implements DbClientInterface
      *
      * Connection to the database server is created later, on demand.
      *
-     * @see DatabaseClient::OPTION_SHORTHANDS
+     * @see DbClient::OPTION_SHORTHANDS
      *
-     * @see DatabaseClient::characterSetResolve()
+     * @see DbClient::characterSetResolve()
      *
      * @param string $name
      * @param array $databaseInfo {
@@ -310,13 +310,13 @@ abstract class DatabaseClient extends Explorable implements DbClientInterface
      * Public to facilitate option debugging prior to attempt to connect.
      *
      * @see DbClientInterface::getConnection()
-     * @see DatabaseClient::OPTION_SHORTHANDS
-     * @see DatabaseClient::$optionsResolved
+     * @see DbClient::OPTION_SHORTHANDS
+     * @see DbClient::$optionsResolved
      *
-     * @return $this|DatabaseClient
+     * @return $this|DbClient
      *      Throws exception on error.
      */
-    abstract public function optionsResolve() : DatabaseClient;
+    abstract public function optionsResolve() : DbClient;
 
     /**
      * Output when error(s):
@@ -331,7 +331,7 @@ abstract class DatabaseClient extends Explorable implements DbClientInterface
      */
     public function errorsToString(array $errors, bool $emptyOnNone = false)
     {
-        return $errors ? rtrim(join(DatabaseClient::NATIVE_ERRORS_DELIM, $errors), '.') :
+        return $errors ? rtrim(join(DbClient::NATIVE_ERRORS_DELIM, $errors), '.') :
             ($emptyOnNone ? '' : '- no native error recorded -');
     }
 
@@ -344,7 +344,7 @@ abstract class DatabaseClient extends Explorable implements DbClientInterface
      * - any code is result error
      * - first code is ERROR_CODE_CONNECT
      *
-     * @see DatabaseClient::getErrors()
+     * @see DbClient::getErrors()
      *
      * @param array $errors
      *      List of error codes, or list returned by getErrors().
@@ -358,7 +358,7 @@ abstract class DatabaseClient extends Explorable implements DbClientInterface
             /**
              * Check whether given simple list of error codes
              * or list returned by getErrors()
-             * @see DatabaseClient::getErrors()
+             * @see DbClient::getErrors()
              */
             if (strpos('' . reset($errors), '(') === 0) {
                 $list = array_keys($errors);
@@ -399,7 +399,7 @@ abstract class DatabaseClient extends Explorable implements DbClientInterface
     abstract protected function characterSetResolve() /*: void*/;
 
     /**
-     * @see DatabaseClient::disConnect()
+     * @see DbClient::disConnect()
      */
     public function __destruct()
     {
@@ -439,9 +439,9 @@ abstract class DatabaseClient extends Explorable implements DbClientInterface
      * }
      *
      * Output as string:
-     * @see DatabaseClient::errorsToString)
+     * @see DbClient::errorsToString)
      *
-     * @see DatabaseClient::NATIVE_ERRORS_DELIM
+     * @see DbClient::NATIVE_ERRORS_DELIM
      *
      * @see MariaDbClient::getErrors()
      * @see MariaDbQuery:getErrors()
@@ -526,7 +526,7 @@ abstract class DatabaseClient extends Explorable implements DbClientInterface
      *
      * Private/protected members are also be readable via 'magic' __get().
      *
-     * @see DatabaseClient::__get()
+     * @see DbClient::__get()
      *
      * @internal
      *

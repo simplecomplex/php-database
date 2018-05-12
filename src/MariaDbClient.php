@@ -50,7 +50,7 @@ use SimpleComplex\Database\Exception\DbConnectionException;
  *
  * @package SimpleComplex\Database
  */
-class MariaDbClient extends DatabaseClientMulti
+class MariaDbClient extends DbClientMulti
 {
     /**
      * Class name of \SimpleComplex\Database\MariaDbQuery or extending class.
@@ -70,7 +70,7 @@ class MariaDbClient extends DatabaseClientMulti
      * Class name of DatabaseErrorCodes class.
      *
      * @see MariaDbError
-     * @see DatabaseClient::errorsToException()
+     * @see DbClient::errorsToException()
      *
      * @var string
      */
@@ -170,7 +170,7 @@ class MariaDbClient extends DatabaseClientMulti
      * For options, see:
      * @see MariaDbQuery::__construct()
      *
-     * @see DatabaseClient::query()
+     * @see DbClient::query()
      */
     // public function query(string $sql, array $options = []) : DbQueryInterface
 
@@ -180,7 +180,7 @@ class MariaDbClient extends DatabaseClientMulti
      * For options, see:
      * @see MariaDbQuery::__construct()
      *
-     * @see DatabaseClientMulti::multiQuery()
+     * @see DbClientMulti::multiQuery()
      */
     // public function multiQuery(string $sql, array $options = []) : DbQueryMultiInterface
 
@@ -297,7 +297,7 @@ class MariaDbClient extends DatabaseClientMulti
     }
 
     /**
-     * @see DatabaseClient::__destruct()
+     * @see DbClient::__destruct()
      *
      * @return void
      */
@@ -316,7 +316,7 @@ class MariaDbClient extends DatabaseClientMulti
      * Get RMDBS/driver native error(s) recorded as array,
      * concatenated string or empty string.
      *
-     * @see DatabaseClient::formatNativeErrors()
+     * @see DbClient::formatNativeErrors()
      *
      * @param int $toString
      *      1: on no error returns message indication just that.
@@ -355,13 +355,13 @@ class MariaDbClient extends DatabaseClientMulti
      * @see MariaDbClient::$optionsResolved
      * @see MariaDbClient::$flagsResolved
      *
-     * @return $this|DatabaseClient|MariaDbClient
+     * @return $this|DbClient|MariaDbClient
      *      Throws exception on error.
      *
      * @throws \LogicException
      *      Invalid option.
      */
-    public function optionsResolve() : DatabaseClient
+    public function optionsResolve() : DbClient
     {
         if (!$this->optionsResolved) {
             $this->optionsResolved = [];

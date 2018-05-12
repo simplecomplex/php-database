@@ -44,7 +44,7 @@ use SimpleComplex\Database\Exception\DbQueryException;
  *
  * @package SimpleComplex\Database
  */
-class MsSqlQuery extends DatabaseQuery
+class MsSqlQuery extends DbQuery
 {
     /**
      * Class name of \SimpleComplex\Database\MsSqlResult or extending class.
@@ -203,7 +203,7 @@ class MsSqlQuery extends DatabaseQuery
      * cursor mode (not option cursor_mode) and adjust to support result
      * affectedRows/numRows().
      *
-     * @param DbClientInterface|DatabaseClient|MsSqlClient $client
+     * @param DbClientInterface|DbClient|MsSqlClient $client
      *      Reference to parent client.
      * @param string $sql
      * @param array $options {
@@ -552,14 +552,14 @@ class MsSqlQuery extends DatabaseQuery
     /**
      * Flag that the sql contains LIKE clause(s).
      *
-     * @see DatabaseQuery::hasLikeClause()
+     * @see DbQuery::hasLikeClause()
      */
     // public function hasLikeClause() : DbQueryInterface
 
     /**
-     * @see DatabaseQuery::$statementClosed
+     * @see DbQuery::$statementClosed
      *
-     * @see DatabaseQuery::unsetReferences()
+     * @see DbQuery::unsetReferences()
      *
      * @return void
      */

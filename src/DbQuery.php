@@ -28,7 +28,7 @@ use SimpleComplex\Database\Interfaces\DbQueryInterface;
  * Normally simple statements don't support automated (and safe) ?-parameter
  * substitution (argument value parsed into sql string). However this library
  * does support that.
- * @see DatabaseQuery::parameters()
+ * @see DbQuery::parameters()
  *
  * CRUD vs non-CRUD statements
  * ---------------
@@ -48,7 +48,7 @@ use SimpleComplex\Database\Interfaces\DbQueryInterface;
  *
  * @package SimpleComplex\Database
  */
-abstract class DatabaseQuery extends Explorable implements DbQueryInterface
+abstract class DbQuery extends Explorable implements DbQueryInterface
 {
     /**
      * Char or string flagging an sql parameter,
@@ -64,7 +64,7 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
      * Remove trailing (and leading) semicolon,
      * to prevent appearance as more queries.
      *
-     * @see DatabaseQuery::__construct()
+     * @see DbQuery::__construct()
      *
      * @var string
      */
@@ -81,7 +81,7 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
      * Ought to be protected, but too costly since result instance
      * may use it repetetively; via the query instance.
      *
-     * @var DatabaseClient
+     * @var DbClient
      */
     public $client;
 
@@ -166,7 +166,7 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
      * @see MariaDbQuery::__construct()
      * @see MsSqlQuery::__construct()
      *
-     * @param DbClientInterface|DatabaseClient $client
+     * @param DbClientInterface|DbClient $client
      *      Reference to parent client.
      * @param string $sql
      * @param array $options {
@@ -208,7 +208,7 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
      * - b: blob.
      *
      * Sql parameter marker is typically question mark:
-     * @see DatabaseQuery::SQL_PARAMETER
+     * @see DbQuery::SQL_PARAMETER
      *
      * @param string $types
      *      Empty: uses string for all.
@@ -259,7 +259,7 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
      * Flag that the sql contains LIKE clause(s).
      *
      * Affects parameter escaping: chars %_ won't be escaped.
-     * @see DatabaseQuery::escapeString()
+     * @see DbQuery::escapeString()
      *
      * Chainable.
      *
@@ -309,7 +309,7 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
      * Splits an sql string by parameter flags and checks that
      * number of arguments matches number of parameters.
      *
-     * @see DatabaseQuery::SQL_PARAMETER
+     * @see DbQuery::SQL_PARAMETER
      *
      * @param string $sql
      * @param array $arguments
@@ -388,7 +388,7 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
      * - s: string.
      * - b: blob.
      *
-     * @see DatabaseQuery::SQL_PARAMETER
+     * @see DbQuery::SQL_PARAMETER
      *
      * @param array $sqlFragments
      *      An sql string split by parameter marker.
@@ -541,7 +541,7 @@ abstract class DatabaseQuery extends Explorable implements DbQueryInterface
      *
      * Private/protected members are also be readable via 'magic' __get().
      *
-     * @see DatabaseQuery::__get()
+     * @see DbQuery::__get()
      *
      * @internal
      *

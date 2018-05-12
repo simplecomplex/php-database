@@ -12,7 +12,7 @@ namespace SimpleComplex\Tests\Database;
 use PHPUnit\Framework\TestCase;
 
 use Psr\Container\ContainerInterface;
-use SimpleComplex\Database\DatabaseClient;
+use SimpleComplex\Database\DbClient;
 
 /**
  * @code
@@ -99,7 +99,7 @@ class ConfigurationTest extends TestCase
         $this->assertInternalType('array', $database_info);
         $this->assertNotEmpty($database_info);
         if (is_array($database_info) && $database_info) {
-            $requireds = DatabaseClient::DATABASE_INFO_REQUIRED;
+            $requireds = DbClient::DATABASE_INFO_REQUIRED;
             foreach ($requireds as $key) {
                 $this->assertArrayHasKey($key, $database_info);
                 $this->assertNotEmpty($database_info[$key]);
@@ -126,7 +126,7 @@ class ConfigurationTest extends TestCase
         $this->assertInternalType('array', $database_info);
         $this->assertNotEmpty($database_info);
         if (is_array($database_info) && $database_info) {
-            $requireds = DatabaseClient::DATABASE_INFO_REQUIRED;
+            $requireds = DbClient::DATABASE_INFO_REQUIRED;
             foreach ($requireds as $key) {
                 $this->assertArrayHasKey($key, $database_info);
                 $this->assertNotEmpty($database_info[$key]);
