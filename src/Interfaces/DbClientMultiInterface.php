@@ -18,8 +18,6 @@ namespace SimpleComplex\Database\Interfaces;
  * A multi-query is an SQL string containing more queries
  * delimited by semicolon. Every query may be a SELECT (or likewise)
  * producing a result set.
- * NB: MySQL multi-queries aren't executed until getting result sets,
- * not when execute()/MySQLi::multi_query().
  *
  * Other database engines (like MS SQL) may in some cases support multiple
  * queries, but never more than SELECT (or likewise) query.

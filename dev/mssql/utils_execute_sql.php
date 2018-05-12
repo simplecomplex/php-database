@@ -95,7 +95,7 @@ $arguments = [
 $query = $database->query('INSERT INTO Persons (LastName, FirstName, Age) VALUES (?, ?, ?)', [
 //$query = $database->query('UPDATE Persons SET LastName = ? WHERE ID = ?', [
     'cursor_mode' => 'forward',
-    'get_insert_id' => true,
+    'insert_id' => true,
 ]);
 //$query->prepare('ssi', $arguments);
 $query->parameters('ssi', $arguments);
@@ -129,6 +129,7 @@ $result = $query->execute();
 
 $logger->debug('affectedRows' . "\n" . $inspect->variable($result->affectedRows()));
 //$logger->debug('numRows' . "\n" . $inspect->variable($result->numRows()));
+$logger->debug('fetchField' . "\n" . $inspect->variable($result->fetchField()));
 $logger->debug('insertId' . "\n" . $inspect->variable($result->insertId('i')));
 
 return;

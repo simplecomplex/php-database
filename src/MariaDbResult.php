@@ -28,8 +28,8 @@ use SimpleComplex\Database\Exception\DbResultException;
  * @see MariaDbQuery::$cursorMode
  *
  * Properties inherited from DatabaseResult:
- * @property-read bool $setIndex
- * @property-read bool $rowIndex
+ * @property-read int $setIndex
+ * @property-read int $rowIndex
  *
  * @package SimpleComplex\Database
  */
@@ -55,15 +55,9 @@ class MariaDbResult extends DatabaseResult
     protected $statement;
 
     /**
-     * @var \mysqli_result|bool|null
-     *      True if successful CRUD statement.
+     * @var \mysqli_result|null
      */
     protected $result;
-
-    /**
-     * @var bool
-     */
-    protected $isMultiQuery;
 
     /**
      * @var bool
@@ -84,8 +78,6 @@ class MariaDbResult extends DatabaseResult
             $this->statement = $statement;
         }
 
-        // Don't
-        $this->isMultiQuery = $this->query->isMultiQuery;
         $this->isPreparedStatement = $this->query->isPreparedStatement;
     }
 
@@ -220,13 +212,17 @@ class MariaDbResult extends DatabaseResult
                 . '] forbids getting number of rows, because unreliable.'
             );
         }
-        if (!$this->result && !$this->loadResult()) {
+        if (!$this->result && !$this->loadResult(true)) {
+            $error = $this->query->getErrors(Database::ERRORS_STRING);
             $this->closeAndLog(__FUNCTION__);
             throw new DbResultException(
                 $this->query->errorMessagePrefix() . ' - failed getting number of rows, no result set.'
             );
         }
-        $count = @$this->result->num_rows;
+        // Prepared statement is unlikely because stored mode isn't supported
+        // in this implementation; but anyway.
+        $count = !$this->isPreparedStatement ? @$this->result->num_rows :
+            @$this->statement->num_rows;
         if (($count && $count > 0) || $count === 0) {
             return $count;
         }
@@ -532,7 +528,8 @@ class MariaDbResult extends DatabaseResult
      * Move cursor to next result set.
      *
      * @param bool $noException
-     *      True: return false on failure, don't throw exception.
+     *      True: return false on failure, don't throw exception;
+     *          caller should throw exception instead.
      *
      * @return bool|null
      *      Null: No next result set.
@@ -541,23 +538,21 @@ class MariaDbResult extends DatabaseResult
      */
     public function nextSet(bool $noException = false)
     {
-        if ($this->result) {
-            $this->free();
-        }
+        $this->free();
         ++$this->setIndex;
         $this->rowIndex = -1;
         if ($this->isPreparedStatement) {
             if (!@$this->statement->more_results()) {
                 return null;
             }
-            $next = @$this->statement->next_result();
+            $cursor_moved = @$this->statement->next_result();
         } else {
             if (!@$this->mySqlI->more_results()) {
                 return null;
             }
-            $next = @$this->mySqlI->next_result();
+            $cursor_moved = @$this->mySqlI->next_result();
         }
-        if ($next) {
+        if ($cursor_moved) {
             return true;
         }
         if ($noException) {
@@ -579,18 +574,21 @@ class MariaDbResult extends DatabaseResult
      * MySQLi has no real means of going to next row.
      *
      * @param bool $noException
-     *      True: return false on failure, don't throw exception.
+     *      True: return false on failure, don't throw exception;
+     *          caller should throw exception instead.
      *
      * @return bool|null
      *      Null: No next result set.
      */
     public function nextRow(bool $noException = false)
     {
-        if (!$this->result) {
-            $this->loadResult();
+        if (!$this->result && !$this->loadResult()) {
+            $this->closeAndLog(__FUNCTION__);
+            throw new DbResultException(
+                $this->query->errorMessagePrefix() . ' - failed going to next row, no result set.'
+            );
         }
         // There's no MySQLi direct equivalent; use lightest alternative.
-        $this->rowIndex = -1;
         $row = $this->result->fetch_array(MYSQLI_NUM);
         if ($row || is_array($row)) {
             return true;
@@ -625,52 +623,60 @@ class MariaDbResult extends DatabaseResult
     // Helpers.-----------------------------------------------------------------
 
     /**
-     * @return bool
-     *      False: no result set and no native error recorded.
+     * @param bool $noException
+     *      True: return false on failure, don't throw exception;
+     *          caller should throw exception instead.
+     *
+     * @return bool|null
+     *      Null: No result set.
      *
      * @throws DbResultException
      */
-    protected function loadResult() : bool
+    protected function loadResult(bool $noException = false)
     {
-        if (!$this->result) {
-            /**
-             * nextSet() updates setIndex.
-             * @see MariaDbResult::nextSet()
-             */
-            if ($this->setIndex == -1) {
-                ++$this->setIndex;
-            }
-            $this->rowIndex = -1;
-            if ($this->isPreparedStatement) {
-                /**
-                 * Cursor mode 'store' is not supported for prepared statements
-                 * by this implementation, because useless.
-                 * @see MariaDbQuery
-                 * @see \mysqli_stmt::store_result()
-                 */
-                $result = @$this->statement->get_result();
-            }
-            else {
-                if ($this->query->cursorMode == MariaDbQuery::CURSOR_STORE) {
-                    $result = @$this->mySqlI->store_result();
-                } else {
-                    $result = @$this->mySqlI->use_result();
-                }
-            }
-            if (!$result) {
-                $errors = $this->query->getErrors();
-                if (!$errors) {
-                    // $this->result stays null.
-                    return false;
-                }
-                $this->closeAndLog(__FUNCTION__);
-                throw new DbResultException(
-                    $this->query->errorMessagePrefix() . ' - failed getting result, error: '
-                    . $this->query->client->errorsToString($errors) . '.'
-                );
-            }
-            $this->result = $result;
+        if ($this->setIndex == -1) {
+            ++$this->setIndex;
         }
+        $this->rowIndex = -1;
+        if ($this->isPreparedStatement) {
+            /**
+             * Cursor mode 'store' is not supported for prepared statements
+             * by this implementation, because useless.
+             * @see MariaDbQuery
+             * @see \mysqli_stmt::store_result()
+             */
+            $set = @$this->statement->get_result();
+            // mysqli_stmt::get_result() returns false on successful CRUD;
+            // see error check further down.
+        }
+        else {
+            if ($this->query->cursorMode == MariaDbQuery::CURSOR_STORE) {
+                // MySQLi::store_result() returns false on successful CRUD;
+                // see error check further down.
+                $set = @$this->mySqlI->store_result();
+            } else {
+                $set = @$this->mySqlI->use_result();
+            }
+        }
+        if (!$set) {
+            $errors = $this->query->getErrors();
+            if (!$errors) {
+                // $this->result remains null.
+                return null;
+            }
+            if ($noException) {
+                // $this->result remains null.
+                return false;
+            }
+            $this->closeAndLog(__FUNCTION__);
+            throw new DbResultException(
+                $this->query->errorMessagePrefix() . ' - failed getting result, error: '
+                . $this->query->client->errorsToString($errors) . '.'
+            );
+        }
+
+        $this->result = $set;
+
         return true;
     }
 }

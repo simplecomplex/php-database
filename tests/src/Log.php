@@ -16,7 +16,7 @@ use SimpleComplex\Utils\Dependency;
  */
 class Log
 {
-    const LOG_LEVEL = 'warning';
+    const LOG_LEVEL = 'debug';
 
     /**
      * @param string|mixed $message

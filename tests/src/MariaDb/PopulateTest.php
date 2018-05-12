@@ -41,7 +41,7 @@ class PopulateTest extends TestCase
         /** @var MariaDbQuery $query_insert */
         $query_insert = $client->query(
             'INSERT INTO parent (lastName, firstName, birthday) VALUES (?, ?, ?)'
-        );Log::variable('$query_insert', $query_insert);
+        );
 
         /** @noinspection SqlResolve */
         /** @var MariaDbQuery $query_select */
@@ -58,6 +58,7 @@ class PopulateTest extends TestCase
         /** @var MariaDbResult $result_insert */
         $result_insert = $query_insert->execute();
         $this->assertInstanceOf(MariaDbResult::class, $result_insert);
+        Log::variable('set type', $result_insert);
         $this->assertSame(1, $result_insert->affectedRows());
         $insert_id = $result_insert->insertId('i');
         Log::variable('insert ID', $insert_id);
@@ -82,6 +83,22 @@ class PopulateTest extends TestCase
         $this->assertSame(1, $result_insert->affectedRows());
         $insert_id = $result_insert->insertId('i');
         $this->assertInternalType('integer', $insert_id);
+
+        $query_select->close();
+        /** @noinspection SqlResolve */
+        /** @var MariaDbQuery $query_select */
+        $query_select = $client->query(
+            'SELECT * FROM parent',
+            [
+                'cursor_mode' => MariaDbQuery::CURSOR_STORE,
+            ]
+        );
+        /** @var MariaDbResult $result_select */
+        $result_select = $query_select->execute();
+        $num_rows = $result_select->numRows();
+        Log::variable('num_rows', $num_rows);
+        $all_rows = $result_select->fetchAll();
+        Log::variable('count rows', count($all_rows));
     }
 
 }

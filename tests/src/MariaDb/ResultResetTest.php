@@ -76,7 +76,7 @@ class ResultResetTest extends TestCase
         $this->assertInstanceOf(MariaDbResult::class, $result);
 
         $i = -1;
-        while(($success = $result->nextSet()) !== null) {
+        while (($success = $result->nextSet()) !== null) {
             $this->assertSame(
                 true,
                 $success,

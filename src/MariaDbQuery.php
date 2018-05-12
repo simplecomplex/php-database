@@ -378,8 +378,6 @@ class MariaDbQuery extends DatabaseQueryMulti
     /**
      * Any query must be executed, even non-prepared statement.
      *
-     * NB: MySQL multi-queries aren't executed until getting result sets.
-     *
      * Actual execution
      * ----------------
      * Prepared statement:
@@ -420,7 +418,8 @@ class MariaDbQuery extends DatabaseQueryMulti
                 throw new $cls_xcptn(
                     $this->client->errorMessagePrefix()
                     . ' - can\'t execute prepared statement'
-                    . (isset($errors[2014]) ? ', forgot to consume all result sets/rows?' : ' when connection lost')
+                    . (isset($errors[2014]) ? ', forgot to exhaust/free result set(s) of another query?' :
+                        ' when connection lost')
                     . ', error: ' . $this->client->errorsToString($errors) . '.'
                 );
             }

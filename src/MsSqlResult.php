@@ -21,8 +21,8 @@ use SimpleComplex\Database\Exception\DbResultException;
  * set/row is called for and there aren't any more sets/rows.
  *
  * Properties inherited from DatabaseResult:
- * @property-read bool $setIndex
- * @property-read bool $rowIndex
+ * @property-read int $setIndex
+ * @property-read int $rowIndex
  *
  * @package SimpleComplex\Database
  */
@@ -149,6 +149,7 @@ class MsSqlResult extends DatabaseResult
         if ($this->setIndex < 0) {
             $next = $this->nextSet(true);
             if (!$next) {
+                $this->checkFailingInsertId();
                 if ($next === null) {
                     // No result at all.
                     $this->closeAndLog(__FUNCTION__);
@@ -168,6 +169,7 @@ class MsSqlResult extends DatabaseResult
         if ($this->rowIndex < 0) {
             $next = $this->nextRow(true);
             if (!$next) {
+                $this->checkFailingInsertId();
                 if ($next === null) {
                     // No row at all because rowIndex was -1.
                     $this->closeAndLog(__FUNCTION__);
@@ -229,19 +231,7 @@ class MsSqlResult extends DatabaseResult
              */
             return $id;
         }
-        if (
-            !$this->query->getInsertId
-            && strpos(
-                $this->query->sqlTampered ?? $this->query->sql,
-                'SELECT SCOPE_IDENTITY() AS IDENTITY_COLUMN_NAME'
-            ) === false
-        ) {
-            $this->closeAndLog(__FUNCTION__);
-            throw new \LogicException(
-                $this->query->errorMessagePrefix() . ' - failed getting insert ID'
-                . ', sql misses secondary ID select statement, see query option \'insert_id\''
-            );
-        }
+        $this->checkFailingInsertId();
         $error = $this->query->client->getErrors(Database::ERRORS_STRING);
         $this->closeAndLog(__FUNCTION__);
         throw new DbResultException(
@@ -621,13 +611,12 @@ class MsSqlResult extends DatabaseResult
      */
     public function nextSet(bool $noException = false)
     {
+        $this->free();
         $next = @sqlsrv_next_result($this->statement);
         ++$this->setIndex;
         $this->rowIndex = -1;
         if ($next) {
-            // Calling free() is obsolete; no action.
-            // $this->free();
-            return $next;
+            return true;
         }
         if ($next === null) {
             return null;
@@ -674,7 +663,9 @@ class MsSqlResult extends DatabaseResult
     }
 
     /**
-     * Does nothing, because freeing result would also close the statement
+     * Please call despite currently doing nothing; may do something later.
+     *
+     * Does nothing because freeing result would also close the statement,
      * since they share the same resource.
      * @see MsSqlQuery::close()
      *
@@ -682,5 +673,30 @@ class MsSqlResult extends DatabaseResult
      */
     public function free() /*: void*/
     {
+    }
+
+
+    // Helpers.-----------------------------------------------------------------
+
+    /**
+     * @see MsSqlResult::insertId()
+     *
+     * @throws \LogicException
+     */
+    protected function checkFailingInsertId()
+    {
+        if (
+            !$this->query->getInsertId
+            && strpos(
+                $this->query->sqlTampered ?? $this->query->sql,
+                'SELECT SCOPE_IDENTITY() AS IDENTITY_COLUMN_NAME'
+            ) === false
+        ) {
+            $this->closeAndLog(__FUNCTION__);
+            throw new \LogicException(
+                $this->query->errorMessagePrefix() . ' - failed getting insert ID'
+                . ', sql misses secondary ID select statement, use query option \'insert_id\''
+            );
+        }
     }
 }

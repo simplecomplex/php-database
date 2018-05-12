@@ -1,3 +1,7 @@
+SimpleComplex/Database 1.x, 2018-05-12
+--------------------------------------
+- MySQLi multi-query _is_ executed immediately; not until getting result set.
+
 SimpleComplex/Database 1.x, 2018-05-11
 --------------------------------------
 - MariaDb prepared statement must not use cursor mode 'store', because then
