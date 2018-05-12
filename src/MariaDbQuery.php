@@ -22,6 +22,8 @@ use SimpleComplex\Database\Exception\DbConnectionException;
  * Multi-query is supported by MariaDB.
  * For multi-query explanation, see:
  * @see DbClientMultiInterface
+ * MariaDb even requires use of special multi-query methods to process
+ * an SQL string containing more non-SELECTing queries.
  *
  * Cursor mode 'store' is not supported for prepared statements (by this
  * implementation) because result binding is the only way to work with 'store'd

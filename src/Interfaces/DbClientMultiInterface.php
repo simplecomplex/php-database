@@ -19,8 +19,8 @@ namespace SimpleComplex\Database\Interfaces;
  * delimited by semicolon. Every query may be a SELECT (or likewise)
  * producing a result set.
  *
- * Other database engines (like MS SQL) may in some cases support multiple
- * queries, but never more than SELECT (or likewise) query.
+ * Other database engines (like MS SQL) may support multiple queries,
+ * but only a single SELECT (or likewise) query.
  * MS SQL example - it's 'get insert insert ID'-routine:
  * @code
  * INSERT INTO some_table (Whatever) VALUES (?); SELECT SCOPE_IDENTITY() AS IDENTITY_COLUMN_NAME
