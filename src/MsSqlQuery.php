@@ -74,7 +74,7 @@ class MsSqlQuery extends DbQuery
      *
      * Summary:
      * - all scrollable except 'forward'
-     * - all unbuffered except the 'buffered' cursor type
+     * - all unbuffered except 'buffered'
      * - affected rows is 'forward' only (an sqlsrv bug?)
      * - number of rows is 'static/keyset/buffered' only
      *

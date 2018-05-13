@@ -1,6 +1,7 @@
 SimpleComplex/Database 1.x, 2018-05-12
 --------------------------------------
 - result mode renamed; from cursor mode.
+- Query generic options allowed vs. specific options supported.
 
 SimpleComplex/Database 1.x, 2018-05-12
 --------------------------------------

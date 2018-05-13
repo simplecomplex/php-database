@@ -230,6 +230,8 @@ class MsSqlResult extends DbResult
      * or SQLSRV_CURSOR_KEYSET ('keyset').
      * @see MsSqlQuery::__constructor()
      *
+     * @deprecated  Go for design patterns that don't require numRows().
+     *
      * @return int
      *
      * @throws \LogicException
@@ -383,7 +385,8 @@ class MsSqlResult extends DbResult
      * Associative (column-keyed) or numerically indexed array.
      *
      * @param int $as
-     *      Default: column-keyed.
+     *      Default: ~associative.
+     *      Database::FETCH_ASSOC|Database::FETCH_NUMERIC
      *
      * @return array|null
      *      Null: No more rows.
@@ -418,7 +421,7 @@ class MsSqlResult extends DbResult
      * Column-keyed object.
      *
      * @param string $class
-     *      Optional class name.
+     *      Optional class name; effective default stdClass.
      * @param array $args
      *      Optional constructor args.
      *
@@ -454,7 +457,8 @@ class MsSqlResult extends DbResult
      * indexed arrays.
      *
      * @param int $as
-     *      Default: column-keyed.
+     *      Default: ~associative.
+     *      Database::FETCH_ASSOC|Database::FETCH_NUMERIC|Database::FETCH_OBJECT
      * @param array $options {
      *      @var string $list_by_column  Key list by that column's values.
      *      @var string $class  Object class name.
@@ -615,7 +619,7 @@ class MsSqlResult extends DbResult
     }
 
     /**
-     * Go to next row in the result set.
+     * Go to (first or) next row in the result set.
      *
      * @return bool
      *      False: No next row.

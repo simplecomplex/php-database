@@ -128,8 +128,6 @@ class MariaDbClient extends DbClient
      */
     protected $mySqlI;
 
-    protected $queryDetectMulti = true;
-
     /**
      * Configures database client.
      *
@@ -168,19 +166,35 @@ class MariaDbClient extends DbClient
     }
 
     /**
-     * Create a query for calling a stored procedure.
+     * Create a query.
+     *
+     * For options, see:
+     * @see MariaDbQuery::__construct()
+     *
+     * @see DbClient::query()
+     */
+    // public function query(string $sql, array $options = []) : DbQueryInterface
+
+    /**
+     * Create a single query which for sure won't be seen as multi-query.
+     *
+     * Has no effect if later calling append() on the query object.
+     *
+     * Convenience method, passing false option detect_multi to query()
+     * has the same effect.
+     * @see MariaDbQuery::__construct()
+     * @see DbClient::query()
      *
      * @param string $sql
      * @param array $options
      *
-     * @return DbQueryInterface
+     * @return $this|DbQueryInterface
      */
-    public function call(string $sql, array $options = []) : DbQueryInterface
+    public function singleQuery(string $sql, array $options = []) : DbQueryInterface
     {
-        // Set multi_query option; MySQLi can only call a stored procedure
-        // using multi-query API.
+        // Set multi_query option.
         $opts =& $options;
-        $opts['multi_query'] = true;
+        $opts['detect_multi'] = false;
 
         $class_query = static::CLASS_QUERY;
         /** @var DbQueryInterface|MariaDbQuery */
@@ -192,25 +206,16 @@ class MariaDbClient extends DbClient
     }
 
     /**
-     * Create a query.
-     *
-     * For options, see:
-     * @see MariaDbQuery::__construct()
-     *
-     * @see DbClient::query()
-     */
-    // public function query(string $sql, array $options = []) : DbQueryInterface
-
-    /**
      * Create a multi-query.
      *
-     * Multi-query is even required:
-     * - for batch query; multiple non-selecting queries
-     * - when calling a stored procedure
+     * Multi-query is even required for batch query; multiple non-selecting
+     * queries.
+     * Calling a single stored procedure does not require multi-query, as long as
+     * single result set.
      *
-     * Sadly MariaDb requires use of special multi-query methods even for
-     * an SQL string containing more non-SELECTing queries - and when calling
-     * a stored procedure.
+     * NB: An error in a multi-query might not be detected until all result sets
+     * have been next'ed; seen when attempting to truncate disregarding foreign key.
+     * @see MariaDbResult::nextSet()
      *
      * Convenience method, passing option multi_query to query() has the same
      * effect.

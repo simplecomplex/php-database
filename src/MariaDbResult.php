@@ -21,11 +21,9 @@ use SimpleComplex\Database\Exception\DbResultException;
  * Both setIndex and rowIndex deliberately go out-of-bounds when first/next
  * set/row is called for and there aren't any more sets/rows.
  *
- * MySQLi's default stored procedure result handling is not used,
- * because binding result vars is useless; instead the result gets stored.
+ * MySQLi's default prepared statement result handling is not used,
+ * because binding result vars sucks IMHO.
  * @see \mysqli_stmt::get_result()
- * When stored procedure, query class resultMode is ignored.
- * @see MariaDbQuery::$resultMode
  *
  * Properties inherited from DatabaseResult:
  * @property-read int $setIndex
@@ -198,6 +196,24 @@ class MariaDbResult extends DbResult
      * Effectively not available for prepared statement, because
      * prepared statement cannot be 'store' in this implementation.
      *
+     * @deprecated  Go for design patterns that don't require numRows().
+     * ```php
+     * // Alternatives - only needing row count:
+     * $num_rows = count($result->fetchAll(Database::FETCH_NUMERIC));
+     * // Alternatives - do-if:
+     * $num_rows = 0;
+     * while (($row = $result->fetchArray())) {
+     *     if (!$num_rows) {
+     *         // Fetch expensive resources required to process rows.
+     *     }
+     *     ++$num_rows;
+     *     // Process row.
+     * }
+     * if (!$num_rows) {
+     *     // Workaround.
+     * }
+     * ```
+     *
      * @return int
      *
      * @throws \LogicException
@@ -353,7 +369,8 @@ class MariaDbResult extends DbResult
      * Associative (column-keyed) or numerically indexed array.
      *
      * @param int $as
-     *      Default: column-keyed.
+     *      Default: ~associative.
+     *      Database::FETCH_ASSOC|Database::FETCH_NUMERIC
      *
      * @return array|null
      *      Null: No more rows.
@@ -394,7 +411,7 @@ class MariaDbResult extends DbResult
      * Column-keyed object.
      *
      * @param string $class
-     *      Optional class name.
+     *      Optional class name; effective default stdClass.
      * @param array $args
      *      Optional constructor args.
      *
@@ -440,7 +457,8 @@ class MariaDbResult extends DbResult
      * indexed arrays.
      *
      * @param int $as
-     *      Default: column-keyed.
+     *      Default: ~associalive.
+     *      Database::FETCH_ASSOC|Database::FETCH_NUMERIC|Database::FETCH_OBJECT
      * @param array $options {
      *      @var string $list_by_column  Key list by that column's values.
      *      @var string $class  Object class name.
@@ -608,9 +626,9 @@ class MariaDbResult extends DbResult
     }
 
     /**
-     * Go to next row in the result set.
+     * Go to (first or) next row in the result set.
      *
-     * NB: effectively skips a row;
+     * NB: effectively skips a row; consumes it.
      * MySQLi has no real means of going to next row.
      *
      * @return bool
@@ -675,7 +693,7 @@ class MariaDbResult extends DbResult
         if ($this->isPreparedStatement) {
             /**
              * Result mode 'store' is not supported for prepared statements
-             * by this implementation, because useless.
+             * by this implementation, because useless IMHO.
              * @see MariaDbQuery
              * @see \mysqli_stmt::store_result()
              */
@@ -693,6 +711,7 @@ class MariaDbResult extends DbResult
             }
         }
         if (!$set) {
+            // MySQLi::store_result() returns false on successful CRUD.
             if (!$this->query->getErrors()) {
                 // $this->result remains null.
                 return null;

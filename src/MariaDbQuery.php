@@ -22,18 +22,19 @@ use SimpleComplex\Database\Exception\DbConnectionException;
  * Prepared statement are 'use' and num-rows unavailable
  * -----------------------------------------------------------
  * Result mode 'store' is not supported for prepared statements (by this
- * implementation) because result binding is the only way to work with 'store'd
- * prepared statement results - and result binding sucks IMHO.
+ * implementation) because result binding is MySQLi's only way to work with
+ * 'store'd prepared statement results - and result binding sucks IMHO.
+ * @see \mysqli_stmt::get_result()
  * Getting number of rows isn't possible in result mode 'use', so you can't
- * num rows for prepared statement.
+ * get num rows for prepared statement.
  *
  * Multi-query
  * -----------
  * Multi-query is supported by MariaDB; for multi vs. batch query, see:
  * @see DbQueryInterface
- * Multi-query is even required:
- * - for batch query; multiple non-selecting queries
- * - when calling a stored procedure
+ * Multi-query is even required for batch query; multiple non-selecting queries.
+ * Calling a single stored procedure does not require multi-query, as long as
+ * single result set.
  *
  * NB: An error in a multi-query might not be detected until all result sets
  * have been next'ed; seen when attempting to truncate disregarding foreign key.
@@ -101,7 +102,7 @@ class MariaDbQuery extends DbQuery
      *
      * 'store':
      * - buffered client side; light server side, heavy client side
-     * - illegal for prepared statement in this implemention because useless
+     * - illegal for prepared statement in this implementation
      *
      * @see http://php.net/manual/en/mysqli.use-result.php
      *
@@ -126,6 +127,14 @@ class MariaDbQuery extends DbQuery
     /**
      * Auto-detect multi-query; check for semicolon in sql.
      *
+     * BEWARE of using literal parameter values in arg $sql; a value containing
+     * semicolon _will_ trigger multi-query auto-detection.
+     * Do stick to passing all parameter values to prepare() or parameters().
+     *
+     * Query option detect_multi overrides this constant.
+     * @see MariaDbClient::OPTIONS_SPECIFIC
+     * @see MariaDbClient::__construct()
+     *
      * @var bool
      */
     const DETECT_MULTI = true;
@@ -136,6 +145,10 @@ class MariaDbQuery extends DbQuery
      * Specific options:
      * - multi_query: sql contains more queries, or calls a stored procedure
      * - detect_query: auto-detect multi-query, check for semicolon in sql
+     *
+     * BEWARE of using literal parameter values in arg $sql; a value containing
+     * semicolon _will_ trigger multi-query auto-detection.
+     * Do stick to passing all parameter values to prepare() or parameters().
      *
      * @see DbQuery::OPTIONS_GENERIC
      *
@@ -180,7 +193,7 @@ class MariaDbQuery extends DbQuery
     protected $resultMode;
 
     /**
-     * If multi-query (or batch query); true if >=4.
+     * Whether multi-query (or batch query); true if >=4.
      *
      * Values, bit mask logic:
      * - zero: no, and no auto-detection
@@ -259,7 +272,7 @@ class MariaDbQuery extends DbQuery
          * Is multi-query (or batch query)?
          *
          * Values, bit mask logic:
-         * - zero: no, and turned on and no auto-detection
+         * - zero: no, and no auto-detection
          * - 1: auto-detection on by class constant default
          * - 2: auto-detection on by query option
          * - 4: turned on by option multi_query
@@ -444,8 +457,8 @@ class MariaDbQuery extends DbQuery
     }
 
     /**
-     * Non-prepared statement: set query arguments, for native automated
-     * parameter marker substitution or direct substition in the sql string.
+     * Non-prepared statement: set query arguments, for direct substition
+     * in the sql string.
      *
      * @see DbQuery::parameters()
      *
@@ -513,6 +526,9 @@ class MariaDbQuery extends DbQuery
             );
         }
 
+        /**
+         * @see MariaDbQuery::$multiQuery
+         */
         $this->multiQuery = 8;
         $this->sqlAppended = true;
 
@@ -610,7 +626,7 @@ class MariaDbQuery extends DbQuery
                 );
             }
         }
-        elseif ($this->multiQuery > 4) {
+        elseif ($this->multiQuery >= 4) {
             // Allow re-connection.
             /** @var \MySQLi $mysqli */
             $mysqli = $this->client->getConnection(true);

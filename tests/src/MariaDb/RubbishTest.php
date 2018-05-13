@@ -15,6 +15,8 @@ use SimpleComplex\Database\MariaDbClient;
 use SimpleComplex\Database\MariaDbQuery;
 use SimpleComplex\Database\MariaDbResult;
 
+use SimpleComplex\Database\Database;
+
 /**
  * @code
  * // CLI, in document root:
@@ -39,6 +41,28 @@ class RubbishTest extends TestCase
         $result = $query->execute();
         $this->assertInstanceOf(MariaDbResult::class, $result);
 
+        $num_rows = count($result->fetchAll(Database::FETCH_NUMERIC));
+
+        $num_rows = 0;
+        while (($result->nextRow())) {
+            ++$num_rows;
+        }
+
+
+        while (($row = $result->fetchArray())) {
+            if (!$num_rows) {
+                // Fetch expensive resources required to process rows.
+            }
+            ++$num_rows;
+            // Process row.
+        }
+        if (!$num_rows) {
+            // Workaround.
+        }
+
+
+
+
         $i = -1;
         /*while(($success = $result->nextSet()) !== null) {
             $this->assertSame(
@@ -47,5 +71,16 @@ class RubbishTest extends TestCase
                 'Result set[' . (++$i) . '] was type[' . gettype($success) . '] ~bool[' . !!$success . '].'
             );
         }*/
+    }
+
+
+
+    /**
+     * @param MariaDbResult $dbResult
+     * @return bool
+     */
+    protected function processRows(MariaDbResult $dbResult)
+    {
+        return true;
     }
 }

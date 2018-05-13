@@ -17,9 +17,8 @@ namespace SimpleComplex\Database\Interfaces;
  * ------------------------------
  * A batch query contains more non-selecting queries.
  * A multi-query contains more selecting queries; producing result set.
- * Batch query is supported by all RMDSs.
- * Multi-query is supported by MariaDB/MySQL and Postgresql; for simple query,
- * not prepared statement.
+ * Batch query is supported by all common RMDSs.
+ * Multi-query is supported by MariaDB/MySQL and Postgresql.
  *
  *
  * @property-read string $id
