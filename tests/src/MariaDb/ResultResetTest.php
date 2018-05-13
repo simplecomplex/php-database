@@ -11,10 +11,11 @@ namespace SimpleComplex\Tests\Database\MariaDb;
 
 use PHPUnit\Framework\TestCase;
 
+use SimpleComplex\Tests\Database\TestHelper;
+
 use SimpleComplex\Database\MariaDbClient;
 use SimpleComplex\Database\MariaDbQuery;
 use SimpleComplex\Database\MariaDbResult;
-use SimpleComplex\Tests\Database\TestHelper;
 
 /**
  * @code
@@ -99,41 +100,9 @@ class ResultResetTest extends TestCase
         $client = (new ClientTest())->testInstantiation();
 
         // Get .sql file containing inserts.
-        $document_root = \SimpleComplex\Utils\CliEnvironment::getInstance()->documentRoot;
-        $this->assertInternalType('string', $document_root);
-        $this->assertNotEmpty($document_root);
-        $file_path = '/vendor/simplecomplex/database/tests/src/MariaDb/sql/test_scx_mariadb.data.sql';
-        $file_exists = file_exists($document_root . $file_path);
-        if ($file_exists) {
-            $file_path = $document_root . $file_path;
-        } else {
-            $file_exists = file_exists($document_root . '/backend' . $file_path);
-            if ($file_exists) {
-                $file_path = $document_root . '/backend' . $file_path;
-            }
-        }
-
-        $document_root = TestHelper::documentRoot();
-        $file_path = TestHelper::PATH_TESTS_SRC . '/MariaDb/sql/test_scx_mariadb.data.sql';
-        $file_exists = TestHelper::fileExists($file_path);
-        if ($file_exists) {
-            $file_path = $document_root . $file_path;
-        } else {
-            $file_exists = file_exists($document_root . '/backend' . $file_path);
-            if ($file_exists) {
-                $file_path = $document_root . '/backend' . $file_path;
-            }
-        }
-
-
-
-        if (!$file_exists) {
-            TestHelper::logVariable('Failed finding file test_scx_mariadb.data.sql, tried:', [
-                $document_root . $file_path,
-                $document_root . '/backend' . $file_path
-            ]);
-        }
-        $this->assertTrue($file_exists);
+        $file_path = TestHelper::fileFind('/MariaDb/sql/test_scx_mariadb.data.sql', 'tests');
+        $this->assertInternalType('string', $file_path);
+        $this->assertNotEmpty($file_path);
 
         $sql = file_get_contents($file_path);
         $this->assertInternalType('string', $sql);

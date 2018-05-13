@@ -1,7 +1,5 @@
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
+SET ANSI_NULLS ON;
+SET QUOTED_IDENTIFIER ON;
 
 IF NOT EXISTS
     (  SELECT [name]
@@ -9,30 +7,24 @@ IF NOT EXISTS
        WHERE [name] = 'test_scx_mssql'
     )
     -- SQLserver uses UTF-8 collation by default.
-    CREATE DATABASE test_scx_mssql
-GO
+    CREATE DATABASE test_scx_mssql;
 
+-- @todo: Is USE allowed when already using that?
 USE test_scx_mssql;
-GO
 
 
 IF EXISTS ( SELECT [name] FROM sys.tables WHERE [name] = 'child' )
-    ALTER TABLE child NOCHECK CONSTRAINT ALL
-GO
+    ALTER TABLE child NOCHECK CONSTRAINT ALL;
 IF EXISTS ( SELECT [name] FROM sys.tables WHERE [name] = 'child' )
     DROP TABLE child;
-GO
 
 IF EXISTS ( SELECT [name] FROM sys.tables WHERE [name] = 'relationship' )
-    ALTER TABLE relationship NOCHECK CONSTRAINT ALL
-GO
+    ALTER TABLE relationship NOCHECK CONSTRAINT ALL;
 IF EXISTS ( SELECT [name] FROM sys.tables WHERE [name] = 'relationship' )
     DROP TABLE relationship;
-GO
 
 IF EXISTS ( SELECT [name] FROM sys.tables WHERE [name] = 'parent' )
     DROP TABLE parent;
-GO
 
 
 CREATE TABLE parent (
@@ -41,7 +33,7 @@ CREATE TABLE parent (
     firstName VARCHAR(128) NOT NULL,
     birthday DATE NOT NULL,
     PRIMARY KEY (id)
-)
+);
 
 CREATE TABLE relationship (
     spouseA INT NOT NULL,
@@ -62,7 +54,7 @@ CREATE TABLE relationship (
     REFERENCES parent(id)
         ON DELETE NO ACTION
         ON UPDATE NO ACTION
-)
+);
 
 CREATE TABLE child (
     id INT IDENTITY(1,1),
@@ -85,4 +77,4 @@ CREATE TABLE child (
     REFERENCES parent(id)
         ON DELETE NO ACTION
         ON UPDATE NO ACTION
-)
+);

@@ -128,6 +128,8 @@ class MariaDbClient extends DbClient
      */
     protected $mySqlI;
 
+    protected $queryDetectMulti = true;
+
     /**
      * Configures database client.
      *
@@ -419,7 +421,10 @@ class MariaDbClient extends DbClient
             // Copy.
             $options = $this->options;
 
-            // Secure connection timeout.
+            /**
+             * Secure connection timeout.
+             * @see MariaDbClient::OPTION_SHORTHANDS
+             */
             if (!empty($options['connect_timeout'])) {
                 $options['MYSQLI_OPT_CONNECT_TIMEOUT'] = (int) $options['connect_timeout'];
             }
@@ -429,9 +434,9 @@ class MariaDbClient extends DbClient
             unset($options['connect_timeout']);
 
             /**
-             * Character set shan't be an option (any longer);
-             * handled elsewhere.
+             * Remove character set option; handled prior to this, elsewhere.
              * @see MariaDbClient::characterSetResolve()
+             * @see MariaDbClient::OPTION_SHORTHANDS
              */
             unset($options['character_set']);
 

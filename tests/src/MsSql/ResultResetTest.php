@@ -11,6 +11,8 @@ namespace SimpleComplex\Tests\Database\MsSql;
 
 use PHPUnit\Framework\TestCase;
 
+use SimpleComplex\Tests\Database\TestHelper;
+
 use SimpleComplex\Database\MsSqlClient;
 use SimpleComplex\Database\MsSqlQuery;
 use SimpleComplex\Database\MsSqlResult;
@@ -100,6 +102,44 @@ REFERENCES parent(id)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION
 '
+        );
+
+        /** @var MsSqlResult $result */
+        $result = $query->execute();
+        $this->assertInstanceOf(MsSqlResult::class, $result);
+
+        while (($success = $result->nextSet())) {
+            $this->assertSame(
+                true,
+                $success
+            );
+        }
+    }
+
+    /**
+     * Inserts getting sql from file.
+     *
+     * @see ClientTest::testInstantiation
+     */
+    public function testResetPopulate()
+    {
+        /** @var MsSqlClient $client */
+        $client = (new ClientTest())->testInstantiation();
+
+        // Get .sql file containing inserts.
+        $file_path = TestHelper::fileFind('/MsSql/sql/test_scx_mssql.data.sql', 'tests');
+        $this->assertInternalType('string', $file_path);
+        $this->assertNotEmpty($file_path);
+
+        $sql = file_get_contents($file_path);
+        $this->assertInternalType('string', $sql);
+        $this->assertNotEmpty($sql);
+
+        /** @var MsSqlQuery $query */
+        $query = $client->query(
+            $sql,
+            [
+            ]
         );
 
         /** @var MsSqlResult $result */

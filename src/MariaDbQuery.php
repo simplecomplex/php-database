@@ -35,6 +35,10 @@ use SimpleComplex\Database\Exception\DbConnectionException;
  * - for batch query; multiple non-selecting queries
  * - when calling a stored procedure
  *
+ * NB: An error in a multi-query might not be detected until all result sets
+ * have been next'ed; seen when attempting to truncate disregarding foreign key.
+ * @see MariaDbResult::nextSet()
+ *
  *
  * Prepared statement requires the mysqlnd driver.
  * Because a result set will eventually be handled as \mysqli_result
@@ -120,6 +124,13 @@ class MariaDbQuery extends DbQuery
     const RESULT_MODE_DEFAULT = MariaDbQuery::CURSOR_USE;
 
     /**
+     * Auto-detect multi-query; check for semicolon in sql.
+     *
+     * @var bool
+     */
+    const DETECT_MULTI = true;
+
+    /**
      * RMDBS specific query options supported, adding to generic options.
      *
      * Specific options:
@@ -196,6 +207,8 @@ class MariaDbQuery extends DbQuery
      * @param array $options {
      *      @var string $cursor_mode
      *      @var bool $num_rows  May adjust cursor mode to 'store'.
+     *      @var bool $detect_multi
+     *          Turn multi-query auto-detection on/off.
      *      @var bool $multi_query
      *          True: arg $sql contains multiple queries.
      * }

@@ -35,7 +35,12 @@ class MsSqlError extends DbError
      *
      * @var int
      */
-    const QUERY = [];
+    const QUERY = [
+        // Incorrect syntax near '%s'.
+        102,
+        // Cannot truncate table '%s' because it is being referenced by a FOREIGN KEY constraint.
+        4712,
+    ];
 
     /**
      * Result related RMDBS native error codes.

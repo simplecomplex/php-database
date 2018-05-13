@@ -322,7 +322,10 @@ class MsSqlClient extends DbClient
             // Copy.
             $options = $this->options;
 
-            // Secure connection timeout.
+            /**
+             * Secure connection timeout.
+             * @see MariaDbClient::OPTION_SHORTHANDS
+             */
             if (!empty($options['connect_timeout'])) {
                 $options['LoginTimeout'] = (int) $options['connect_timeout'];
             }
@@ -332,13 +335,16 @@ class MsSqlClient extends DbClient
             unset($options['connect_timeout']);
 
             /**
-             * Character set shan't be an option (any longer);
-             * handled elsewhere.
+             * Remove character set option; handled prior to this, elsewhere.
              * @see MsSqlClient::characterSetResolve()
+             * @see MariaDbClient::OPTION_SHORTHANDS
              */
             unset($options['character_set']);
 
-            // Secure TLS trust self-signed.
+            /**
+             * Secure TLS trust self-signed.
+             * @see MariaDbClient::OPTION_SHORTHANDS
+             */
             if (isset($options['tls_trust_self_signed'])) {
                 $options['TrustServerCertificate'] = (int) $options['tls_trust_self_signed'];
                 unset($options['tls_trust_self_signed']);

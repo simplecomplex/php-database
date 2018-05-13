@@ -13,10 +13,32 @@ use SimpleComplex\Utils\Dependency;
 use SimpleComplex\Utils\Utils;
 
 /**
+ * @todo: move to Utils tests; non-Utils tests must override constant PATH_TESTS.
+ *
  * @package SimpleComplex\Tests\Database
  */
 class TestHelper
 {
+    /**
+     * Expected path to tests' src dir, relative to the vendor dir.
+     *
+     * @var string
+     */
+    const PATH_TESTS = '/simplecomplex/database/tests/src';
+
+    /**
+     * Expected (PHP composer or like-wise) vendor dir.
+     *
+     * @var string[]
+     */
+    const PATH_VENDOR = [
+        '/vendor',
+        '/backend/vendor',
+    ];
+
+    /**
+     * @var string
+     */
     const LOG_LEVEL = 'debug';
 
     /**
@@ -103,23 +125,6 @@ class TestHelper
     }
 
     /**
-     * Expected PHP composer vendor dir.
-     *
-     * @var string
-     */
-    const DIR_VENDOR = [
-        '/vendor',
-        '/backend/vendor',
-    ];
-
-    /**
-     * Expected path to tests' src dir.
-     *
-     * @var string
-     */
-    const PATH_TESTS_SRC = TestHelper::DIR_VENDOR . '/simplecomplex/database/tests/src';
-
-    /**
      * @return string
      *
      * @throws \SimpleComplex\Utils\Exception\ConfigurationException
@@ -131,19 +136,46 @@ class TestHelper
     }
 
     /**
-     * @param string $relativeToDocumentRoot
+     * Find file relative to document root, vendor dir, or tests dir.
+     *
+     * @see TestHelper::PATH_VENDOR
+     * @see TestHelper::PATH_TESTS
+     *
+     * @param string $path
+     * @param string $relativeTo
+     *      'document_root': relative to document root; default and fallback.
+     *      'vendor': relative to the vendor PATH_VENDOR.
+     *      'tests': relative to PATH_TESTS.
      *
      * @throws \RuntimeException
      *      Propagated; from Utils::resolvePath()
      * @throws \LogicException
      *      Propagated.
      *
-     * @return bool
+     * @return string
+     *      Empty: not found.
      */
-    public static function fileExists(string $relativeToDocumentRoot) : bool
+    public static function fileFind(string $path, string $relativeTo = 'document_root') : string
     {
         $document_root = static::documentRoot();
-        $absolute_path = Utils::getInstance()->resolvePath($relativeToDocumentRoot);
-        return file_exists($document_root . $absolute_path);
+        $absolute_path = Utils::getInstance()->resolvePath($path);
+        switch ($relativeTo) {
+            case 'tests':
+            case 'test':
+                foreach (static::PATH_VENDOR as $vendor) {
+                    if (file_exists($document_root . $vendor . static::PATH_TESTS . $absolute_path)) {
+                        return $document_root . $vendor . static::PATH_TESTS . $absolute_path;
+                    }
+                }
+                return '';
+            case 'vendor':
+                foreach (static::PATH_VENDOR as $vendor) {
+                    if (file_exists($document_root . $vendor . $absolute_path)) {
+                        return $document_root . $vendor . $absolute_path;
+                    }
+                }
+                return '';
+        }
+        return file_exists($document_root . $absolute_path) ? ($document_root . $absolute_path) : '';
     }
 }
