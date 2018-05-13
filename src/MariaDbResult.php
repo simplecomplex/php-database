@@ -197,23 +197,6 @@ class MariaDbResult extends DbResult
      * prepared statement cannot be 'store' in this implementation.
      *
      * @deprecated  Go for design patterns that don't require numRows().
-     * ```
-     * <?php
-     * // Alternatives - only needing row count:
-     * $num_rows = count($result->fetchAll(Database::FETCH_NUMERIC));
-     * // Alternatives - do-if:
-     * $num_rows = 0;
-     * while (($row = $result->fetchArray())) {
-     *     if (!$num_rows) {
-     *         // Fetch expensive resources required to process rows.
-     *     }
-     *     ++$num_rows;
-     *     // Process row.
-     * }
-     * if (!$num_rows) {
-     *     // Workaround.
-     * }
-     * ```
      * @code
      * // Alternatives - only needing row count:
      * $num_rows = count($result->fetchAll(Database::FETCH_NUMERIC));

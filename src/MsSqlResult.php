@@ -231,6 +231,27 @@ class MsSqlResult extends DbResult
      * @see MsSqlQuery::__constructor()
      *
      * @deprecated  Go for design patterns that don't require numRows().
+     * @code
+     * // Alternatives - only needing row count:
+     * $num_rows = count($result->fetchAll(Database::FETCH_NUMERIC));
+     * // Alternatives - only needing row count, and giant amounts of data:
+     * $num_rows = 0;
+     * while (($result->nextRow())) {
+     *     ++$num_rows;
+     * }
+     * // Alternatives - do-if:
+     * $num_rows = 0;
+     * while (($row = $result->fetchArray())) {
+     *     if (!$num_rows) {
+     *         // Fetch expensive resources required to process rows.
+     *     }
+     *     ++$num_rows;
+     *     // Process row.
+     * }
+     * if (!$num_rows) {
+     *     // Workaround.
+     * }
+     * @endcode
      *
      * @return int
      *
