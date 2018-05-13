@@ -31,7 +31,7 @@ class RubbishTest extends TestCase
         $client = (new ClientTest())->testInstantiation();
 
         /** @var MariaDbQuery $query */
-        $query = $client->multiQuery(
+        $query = $client->query(
             'TRUNCATE TABLE rubbish; TRUNCATE TABLE trash'
         );
 

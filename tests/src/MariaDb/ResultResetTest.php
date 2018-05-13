@@ -43,7 +43,7 @@ class ResultResetTest extends TestCase
         $query = $client->query(
             'TRUNCATE TABLE child; TRUNCATE TABLE relationship; TRUNCATE TABLE parent',
             [
-                'detect_multi' => true,
+                //'detect_multi' => true,
             ]
         );
 
@@ -72,7 +72,7 @@ class ResultResetTest extends TestCase
         $query = $client->query(
             'SET FOREIGN_KEY_CHECKS=0; TRUNCATE TABLE child; TRUNCATE TABLE relationship; TRUNCATE TABLE parent',
             [
-                'detect_multi' => true,
+                //'detect_multi' => true,
             ]
         );
 
@@ -112,7 +112,7 @@ class ResultResetTest extends TestCase
         $query = $client->query(
             $sql,
             [
-                'detect_multi' => true,
+                //'detect_multi' => true,
             ]
         );
 

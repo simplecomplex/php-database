@@ -58,7 +58,7 @@ use SimpleComplex\Database\Exception\DbConnectionException;
  * @property-read bool $transactionStarted  Value of client ditto.
  *
  * Own properties:
- * @property-read bool $isMultiQuery
+ * @property-read int $multiQuery  True if >=4.
  * @property-read bool $sqlAppended
  *
  * @package SimpleComplex\Database
@@ -180,9 +180,20 @@ class MariaDbQuery extends DbQuery
     protected $resultMode;
 
     /**
-     * @var bool
+     * If multi-query (or batch query); true if >=4.
+     *
+     * Values, bit mask logic:
+     * - zero: no, and no auto-detection
+     * - 1: auto-detection on by class constant default
+     * - 2: auto-detection on by query option
+     * - 4: turned on by option multi_query
+     * - 8: turned on by behaviour; like the append() method
+     * - 17: (1 + 16) auto-detected, triggered by constant default
+     * - 18: (2 + 16) auto-detected, triggerd by query option
+     *
+     * @var int
      */
-    protected $isMultiQuery = false;
+    protected $multiQuery = 0;
 
     /**
      * @var bool
@@ -244,13 +255,34 @@ class MariaDbQuery extends DbQuery
             $this->client->reConnectDisable();
         }
 
-        $this->isMultiQuery = !empty($options['multi_query']);
-
-        if (!empty($options['detect_multi']) && strpos($this->sql, ';')) {
-            $this->isMultiQuery = true;
+        /**
+         * Is multi-query (or batch query)?
+         *
+         * Values, bit mask logic:
+         * - zero: no, and turned on and no auto-detection
+         * - 1: auto-detection on by class constant default
+         * - 2: auto-detection on by query option
+         * - 4: turned on by option multi_query
+         * - 8: turned on by behaviour; call to append()
+         * - 17: (1 + 16) auto-detected, triggered by constant default
+         * - 18: (2 + 16) auto-detected, triggerd by query option
+         */
+        if (!empty($options['multi_query'])) {
+            $this->multiQuery = 4;
+        }
+        elseif (isset($options['detect_multi'])) {
+            if ($options['detect_multi']) {
+                // query option + detected >< just query option.
+                $this->multiQuery = strpos($this->sql, ';') ? 18 : 2;
+            }
+            // Otherwise false option rules out class constant.
+        }
+        elseif (static::DETECT_MULTI) {
+            // constant default + detected >< just constant default.
+            $this->multiQuery = strpos($this->sql, ';') ? 17 : 1;
         }
 
-        $this->explorableIndex[] = 'isMultiQuery';
+        $this->explorableIndex[] = 'multiQuery';
         $this->explorableIndex[] = 'sqlAppended';
     }
 
@@ -481,7 +513,8 @@ class MariaDbQuery extends DbQuery
             );
         }
 
-        $this->isMultiQuery = $this->sqlAppended = true;
+        $this->multiQuery = 8;
+        $this->sqlAppended = true;
 
         if (!$this->sqlTampered) {
             // First time appending.
@@ -577,7 +610,7 @@ class MariaDbQuery extends DbQuery
                 );
             }
         }
-        elseif ($this->isMultiQuery) {
+        elseif ($this->multiQuery > 4) {
             // Allow re-connection.
             /** @var \MySQLi $mysqli */
             $mysqli = $this->client->getConnection(true);
