@@ -8,6 +8,7 @@ SimpleComplex/Database 1.x, 2018-05-12
   as well as single simple query.
 - Result numRows() methods deprecated because only supported for simple use/edge
   cases; by MariaDB/MySQL as well as SQL Server.
+- Release 0.9.2.
 
 SimpleComplex/Database 1.x, 2018-05-12
 --------------------------------------

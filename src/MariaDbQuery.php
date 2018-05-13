@@ -20,7 +20,7 @@ use SimpleComplex\Database\Exception\DbConnectionException;
  * MariaDB query.
  *
  * Prepared statement are 'use' and num-rows unavailable
- * -----------------------------------------------------------
+ * -----------------------------------------------------
  * Result mode 'store' is not supported for prepared statements (by this
  * implementation) because result binding is MySQLi's only way to work with
  * 'store'd prepared statement results - and result binding sucks IMHO.
@@ -218,7 +218,6 @@ class MariaDbQuery extends DbQuery
      *
      * Option num_rows may override default result mode (not option result_mode)
      * and adjust to support result numRows().
-     * Option affected_rows is ignored, irrelevant.
      *
      * Allowed options:
      * @see DbQuery::OPTIONS_GENERIC
