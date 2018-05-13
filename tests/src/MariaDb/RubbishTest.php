@@ -48,7 +48,6 @@ class RubbishTest extends TestCase
             ++$num_rows;
         }
 
-
         while (($row = $result->fetchArray())) {
             if (!$num_rows) {
                 // Fetch expensive resources required to process rows.
@@ -71,16 +70,5 @@ class RubbishTest extends TestCase
                 'Result set[' . (++$i) . '] was type[' . gettype($success) . '] ~bool[' . !!$success . '].'
             );
         }*/
-    }
-
-
-
-    /**
-     * @param MariaDbResult $dbResult
-     * @return bool
-     */
-    protected function processRows(MariaDbResult $dbResult)
-    {
-        return true;
     }
 }

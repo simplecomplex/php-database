@@ -1,7 +1,13 @@
 SimpleComplex/Database 1.x, 2018-05-12
 --------------------------------------
 - result mode renamed; from cursor mode.
-- Query generic options allowed vs. specific options supported.
+- Query generic options allowed vs. specific options supported;
+  and detect query option name misspelling.
+- MariaDb auto-detect multi-query.
+- Calling MariaDB/MySQL stored procedure _is_ possible with prepared statement
+  as well as single simple query.
+- Result numRows() methods deprecated because only supported for simple use/edge
+  cases; by MariaDB/MySQL as well as SQL Server.
 
 SimpleComplex/Database 1.x, 2018-05-12
 --------------------------------------

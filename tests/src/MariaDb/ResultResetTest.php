@@ -80,7 +80,8 @@ class ResultResetTest extends TestCase
         $result = $query->execute();
         $this->assertInstanceOf(MariaDbResult::class, $result);
 
-        $i = -1;
+        // Do traverse all result sets; an erroring query in a MariaDB/MySQL
+        // multi-query might not materialize until traversed.
         while (($success = $result->nextSet())) {
             $this->assertSame(
                 true,
@@ -120,6 +121,8 @@ class ResultResetTest extends TestCase
         $result = $query->execute();
         $this->assertInstanceOf(MariaDbResult::class, $result);
 
+        // Do traverse all result sets; an erroring query in a MariaDB/MySQL
+        // multi-query might not materialize until traversed.
         while (($success = $result->nextSet())) {
             $this->assertSame(
                 true,
