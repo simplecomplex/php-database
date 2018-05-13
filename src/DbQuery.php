@@ -37,7 +37,7 @@ use SimpleComplex\Database\Interfaces\DbQueryInterface;
  *
  * @property-read string $id
  * @property-read int $execution
- * @property-read string $cursorMode
+ * @property-read string $resultMode
  * @property-read bool $isPreparedStatement
  * @property-read bool $hasLikeClause
  * @property-read string $sql
@@ -76,6 +76,29 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
      * @int
      */
     const LOG_SQL_TRUNCATE = 8192;
+
+    /**
+     * Query options allowed by any implementation.
+     *
+     * If any of these options isn't supported by an implementation,
+     * it must be ignored; not cause an error.
+     *
+     * @var string[]
+     */
+    const OPTIONS_GENERIC = [
+        'result_mode',
+        'affected_rows',
+        'insert_id',
+        'num_rows',
+        'query_timeout',
+    ];
+
+    /**
+     * RMDBS specific query options supported, adding to generic options.
+     *
+     * @var string[]
+     */
+    const OPTIONS_SPECIFIC = [];
 
     /**
      * Ought to be protected, but too costly since result instance
@@ -158,34 +181,47 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
     /**
      * Create a query.
      *
-     * Options affected_rows and num_rows may override default
-     * cursor mode (not option cursor_mode) and adjust to support result
-     * affectedRows/insertId/numRows().
+     * Allowed options:
+     * @see DbQuery::OPTIONS_GENERIC
+     * @see MariaDbQuery::OPTIONS_SPECIFIC
+     * @see MsSqlQuery::OPTIONS_SPECIFIC
      *
-     * For more options, see:
+     * Actual use of options:
      * @see MariaDbQuery::__construct()
      * @see MsSqlQuery::__construct()
      *
      * @param DbClientInterface|DbClient $client
      *      Reference to parent client.
      * @param string $sql
-     * @param array $options {
-     *      @var string $cursor_mode
-     *      @var bool $affected_rows
-     *      @var bool $num_rows
-     * }
+     * @param array $options
      *
      * @throws \InvalidArgumentException
      *      Arg $sql effectively empty.
+     * @throws \LogicException
+     *      Arg $options contains illegal option.
      */
     public function __construct(DbClientInterface $client, string $sql, array $options = [])
     {
         $this->client = $client;
+
         $this->sql = trim($sql, static::SQL_TRIM);
         if (!$this->sql) {
             throw new \InvalidArgumentException(
                 $this->client->errorMessagePrefix() . ' - arg $sql length[' . strlen($sql) . '] is effectively empty.'
             );
+        }
+
+        if ($options) {
+            $specifics = array_diff(array_keys($options), static::OPTIONS_GENERIC);
+            if ($specifics) {
+                $illegals = array_diff($specifics, static::OPTIONS_SPECIFIC);
+                if ($illegals) {
+                    throw new \LogicException(
+                        $this->client->errorMessagePrefix() . ' - query arg $options contains illegal options['
+                        . join(', ', $illegals) . '].'
+                    );
+                }
+            }
         }
     }
 
@@ -551,7 +587,7 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
         // Protected; readable via 'magic' __get().
         'id',
         'execution',
-        'cursorMode',
+        'resultMode',
         'isPreparedStatement',
         'hasLikeClause',
         'sql',

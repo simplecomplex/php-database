@@ -44,7 +44,7 @@ class QueryTest extends TestCase
     }
 
     /**
-     * Throw \InvalidArgumentException: query option[cursor_mode] value invalid.
+     * Throw \InvalidArgumentException: query option[result_mode] value invalid.
      *
      * @see ClientTest::testInstantiation()
      *
@@ -57,10 +57,10 @@ class QueryTest extends TestCase
 
         /**
          * @throws \InvalidArgumentException
-         *      Arg $option['cursor_mode'] invalid.
+         *      Arg $option['result_mode'] invalid.
          */
         $client->query(MariaDbQuery::SQL_SNIPPET['select_uuid'], [
-            'cursor_mode' => 'rubbish',
+            'result_mode' => 'rubbish',
         ]);
     }
 }

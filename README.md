@@ -32,15 +32,14 @@ Compact cross-engine relational database abstraction which handles common engine
 - moving to next set/row
 
 ### MariaDB/MySQL features ###
-- SELECT'ing multi-queries, append query
-- cursor mode _use_; _store_ only for non-prepared statement
+- multiple selecting queries, append query
+- result mode _use_; _store_ only for non-prepared statement
 - number of rows not supported for prepared statement (because _use_)
 
 ### MS SQL features ###
-- non-SELECT'ing multi-queries
 - automated (array) arguments handling (SQLSRV_PARAM_IN etc.)
 - automated insert ID retrieval
-- cursor mode (SQLSRV_CURSOR_FORWARD etc.) defense against wrong use
+- result mode (SQLSRV_CURSOR_FORWARD etc.) defense against wrong use
 
 ## Database engine specifics ##
 
@@ -60,9 +59,9 @@ Fairly confusing; this abstraction only utilizes a dozen or so of them.
 
 PHP's Sqlsrv offers native ?-parameter substitution for simple statements as well as prepared statements.
 
-There's no MS SQL **cursor mode** which supports (INSERT) affected-rows as well as (SELECT) num-rows.  
+There's no MS SQL **result mode** which supports (INSERT) affected-rows as well as (SELECT) num-rows.  
 So care should be taken to use 'forward' when inserting and 'static' or 'keyset' when selecting;  
-use **``` MsSqlClient::query() ```** option ``` (string) cursor_mode ```.
+use **``` MsSqlClient::query() ```** option ``` (string) result_mode ```.
 
 MS SQL/Sqlsrv has no direct means for getting insert ID, but supports likewise via a 'magic' query
 appended to an INSERT statement.  
@@ -162,7 +161,7 @@ $arguments = [
 /** @var \SimpleComplex\Database\MsSqlQuery $query */
 $query = $client->query('INSERT INTO person (lastName, firstName, birthday) VALUES (?, ?, ?)', [
         // SQLSRV_CURSOR_FORWARD to get affected rows.
-        'cursor_mode' => 'forward',
+        'result_mode' => 'forward',
         // For MsSqlResult::insertId().
         'insert_id' => true,
     ])

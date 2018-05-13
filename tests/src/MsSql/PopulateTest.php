@@ -15,7 +15,7 @@ use SimpleComplex\Database\MsSqlClient;
 use SimpleComplex\Database\MsSqlQuery;
 use SimpleComplex\Database\MsSqlResult;
 
-use SimpleComplex\Tests\Database\Log;
+use SimpleComplex\Tests\Database\TestHelper;
 
 /**
  * @code
@@ -61,10 +61,10 @@ class PopulateTest extends TestCase
         /** @var MsSqlResult $result_insert */
         $result_insert = $query_insert->execute();
         $this->assertInstanceOf(MsSqlResult::class, $result_insert);
-        Log::variable('set type', $result_insert);
+        TestHelper::logVariable('set type', $result_insert);
         $this->assertSame(1, $result_insert->affectedRows());
         $insert_id = $result_insert->insertId('i');
-        Log::variable('insert ID', $insert_id);
+        TestHelper::logVariable('insert ID', $insert_id);
         $this->assertInternalType('integer', $insert_id);
 
         $args_select = [
@@ -75,7 +75,7 @@ class PopulateTest extends TestCase
         $result_select = $query_select->execute();
         $this->assertInstanceOf(MsSqlResult::class, $result_select);
         $row_select = $result_select->fetchArray();
-        Log::variable('row select', $row_select);
+        TestHelper::logVariable('row select', $row_select);
         $this->assertInternalType('array', $row_select);
         $result_select->free();
 
@@ -100,9 +100,9 @@ class PopulateTest extends TestCase
         $args = [];
         $result_select = $query_select->execute();
         $num_rows = $result_select->numRows();
-        Log::variable('num_rows', $num_rows);
+        TestHelper::logVariable('num_rows', $num_rows);
         $all_rows = $result_select->fetchAll();
-        Log::variable('count rows', count($all_rows));
+        TestHelper::logVariable('count rows', count($all_rows));
     }
 
 }

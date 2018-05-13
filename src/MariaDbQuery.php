@@ -21,19 +21,19 @@ use SimpleComplex\Database\Exception\DbConnectionException;
  *
  * Prepared statement are 'use' and num-rows unavailable
  * -----------------------------------------------------------
- * Cursor mode 'store' is not supported for prepared statements (by this
+ * Result mode 'store' is not supported for prepared statements (by this
  * implementation) because result binding is the only way to work with 'store'd
  * prepared statement results - and result binding sucks IMHO.
- * Getting number of rows isn't possible in cursor mode 'use', so you can't
+ * Getting number of rows isn't possible in result mode 'use', so you can't
  * num rows for prepared statement.
  *
  * Multi-query
  * -----------
- * Multi-query is supported by MariaDB; about multi-query, see:
+ * Multi-query is supported by MariaDB; for multi vs. batch query, see:
  * @see DbQueryInterface
- * Multi-query is even required when:
- * - calling a stored procedure
- * - using an SQL string containing more queries, SELECT'ing or not
+ * Multi-query is even required:
+ * - for batch query; multiple non-selecting queries
+ * - when calling a stored procedure
  *
  *
  * Prepared statement requires the mysqlnd driver.
@@ -44,7 +44,7 @@ use SimpleComplex\Database\Exception\DbConnectionException;
  * Properties inherited from DatabaseQuery:
  * @property-read string $id
  * @property-read int $execution
- * @property-read string $cursorMode
+ * @property-read string $resultMode
  * @property-read bool $isPreparedStatement
  * @property-read bool $hasLikeClause
  * @property-read string $sql
@@ -83,12 +83,11 @@ class MariaDbQuery extends DbQuery
     const CURSOR_STORE = 'store';
 
     /**
-     * Cursor modes.
+     * Result modes/cursor types.
      *
      * 'use':
      * - unbuffered
-     * - heavy serverside, light clientside
-     * - forbids getting number of rows until all rows have been retrieved
+     * - number of rows forbidden
      * - MYSQLI_CURSOR_TYPE_NO_CURSOR
      *
      * 'read_only':
@@ -97,9 +96,7 @@ class MariaDbQuery extends DbQuery
      * - spells segmentation fault
      *
      * 'store':
-     * - buffered clientside
-     * - light serverside, heavy clientside
-     * - allows number of rows
+     * - buffered client side; light server side, heavy client side
      * - illegal for prepared statement in this implemention because useless
      *
      * @see http://php.net/manual/en/mysqli.use-result.php
@@ -109,18 +106,34 @@ class MariaDbQuery extends DbQuery
      *
      * @var string[]
      */
-    const CURSOR_MODES = [
+    const RESULT_MODES = [
         MariaDbQuery::CURSOR_USE,
         MariaDbQuery::CURSOR_READ_ONLY,
         MariaDbQuery::CURSOR_STORE,
     ];
 
     /**
-     * Default cursor mode.
+     * Default result mode.
      *
      * @var string
      */
-    const CURSOR_MODE_DEFAULT = MariaDbQuery::CURSOR_USE;
+    const RESULT_MODE_DEFAULT = MariaDbQuery::CURSOR_USE;
+
+    /**
+     * RMDBS specific query options supported, adding to generic options.
+     *
+     * Specific options:
+     * - multi_query: sql contains more queries, or calls a stored procedure
+     * - detect_query: auto-detect multi-query, check for semicolon in sql
+     *
+     * @see DbQuery::OPTIONS_GENERIC
+     *
+     * @var string[]
+     */
+    const OPTIONS_SPECIFIC = [
+        'multi_query',
+        'detect_multi',
+    ];
 
     /**
      * @var string[]
@@ -146,14 +159,14 @@ class MariaDbQuery extends DbQuery
     protected $statement;
 
     /**
-     * Option (str) cursor_mode.
+     * Option (str) result_mode.
      *
-     * @see MariaDbQuery::CURSOR_MODES
-     * @see MariaDbQuery::CURSOR_MODE_DEFAULT
+     * @see MariaDbQuery::RESULT_MODES
+     * @see MariaDbQuery::RESULT_MODE_DEFAULT
      *
      * @var string
      */
-    protected $cursorMode;
+    protected $resultMode;
 
     /**
      * @var bool
@@ -168,9 +181,14 @@ class MariaDbQuery extends DbQuery
     /**
      * Create query.
      *
-     * Option num_rows may override default cursor mode (not option cursor_mode)
+     * Option num_rows may override default result mode (not option result_mode)
      * and adjust to support result numRows().
      * Option affected_rows is ignored, irrelevant.
+     *
+     * Allowed options:
+     * @see DbQuery::OPTIONS_GENERIC
+     * @see MariaDbQuery::OPTIONS_SPECIFIC
+     * @see MsSqlQuery::OPTIONS_SPECIFIC
      *
      * @param DbClientInterface|DbClient|MariaDbClient $client
      *      Reference to parent client.
@@ -184,34 +202,40 @@ class MariaDbQuery extends DbQuery
      *
      * @throws \InvalidArgumentException
      *      Propagated; arg $sql empty.
-     *      Unsupported 'cursor_mode'.
+     *      Unsupported 'result_mode'.
+     * @throws \LogicException
+     *      Propagated; arg $options contains illegal option.
      */
     public function __construct(DbClientInterface $client, string $sql, array $options = [])
     {
         parent::__construct($client, $sql, $options);
 
-        if (!empty($options['cursor_mode'])) {
-            if (!in_array($options['cursor_mode'], static::CURSOR_MODES, true)) {
+        if (!empty($options['result_mode'])) {
+            if (!in_array($options['result_mode'], static::RESULT_MODES, true)) {
                 throw new \InvalidArgumentException(
                     $this->client->errorMessagePrefix()
-                    . ' query option \'cursor_mode\' value[' . $options['cursor_mode'] . '] is invalid.'
+                    . ' query option \'result_mode\' value[' . $options['result_mode'] . '] is invalid.'
                 );
             }
-            $this->cursorMode = $options['cursor_mode'];
+            $this->resultMode = $options['result_mode'];
         }
         elseif (!empty($options['num_rows'])) {
-            $this->cursorMode = MariaDbQuery::CURSOR_STORE;
+            $this->resultMode = MariaDbQuery::CURSOR_STORE;
         }
         else {
-            $this->cursorMode = static::CURSOR_MODE_DEFAULT;
+            $this->resultMode = static::RESULT_MODE_DEFAULT;
         }
 
-        // Re-connect requires client buffered cursor mode.
-        if ($this->cursorMode != MariaDbQuery::CURSOR_STORE) {
+        // Re-connect requires client buffered result mode.
+        if ($this->resultMode != MariaDbQuery::CURSOR_STORE) {
             $this->client->reConnectDisable();
         }
 
         $this->isMultiQuery = !empty($options['multi_query']);
+
+        if (!empty($options['detect_multi']) && strpos($this->sql, ';')) {
+            $this->isMultiQuery = true;
+        }
 
         $this->explorableIndex[] = 'isMultiQuery';
         $this->explorableIndex[] = 'sqlAppended';
@@ -251,7 +275,7 @@ class MariaDbQuery extends DbQuery
      *
      * @throws \LogicException
      *      Method called more than once for this query.
-     *      Cursor mode is 'store'; illegal for prepared statement.
+     *      Result mode is 'store'; illegal for prepared statement.
      * @throws \InvalidArgumentException
      *      Propagated; parameters/arguments count mismatch.
      *      Arg $types contains illegal char(s).
@@ -272,16 +296,16 @@ class MariaDbQuery extends DbQuery
         $this->isPreparedStatement = true;
 
         /**
-         * Cursor mode 'store' is not supported for prepared statements
+         * Result mode 'store' is not supported for prepared statements
          * by this implementation, because useless.
          * @see MariaDbQuery
          */
-        if ($this->cursorMode == MariaDbQuery::CURSOR_STORE) {
+        if ($this->resultMode == MariaDbQuery::CURSOR_STORE) {
             // Unset prepared statement arguments reference.
             $this->unsetReferences();
             throw new \LogicException(
                 $this->client->errorMessagePrefix()
-                . ' - cursor mode \'' . MariaDbQuery::CURSOR_STORE . '\' is illegal for prepared statement.'
+                . ' - result mode \'' . MariaDbQuery::CURSOR_STORE . '\' is illegal for prepared statement.'
             );
         }
 
@@ -335,14 +359,14 @@ class MariaDbQuery extends DbQuery
         $this->statementClosed = false;
         $this->statement = $mysqli_stmt;
 
-        if ($this->cursorMode == MariaDbQuery::CURSOR_READ_ONLY) {
+        if ($this->resultMode == MariaDbQuery::CURSOR_READ_ONLY) {
             $this->statement->attr_set(MYSQLI_STMT_ATTR_CURSOR_TYPE, MYSQLI_CURSOR_TYPE_READ_ONLY);
             $errors = $this->getErrors();
             if ($errors) {
                 $this->log(__FUNCTION__);
                 $cls_xcptn = $this->client->errorsToException($errors);
                 throw new $cls_xcptn(
-                    $this->errorMessagePrefix() . ' - query failed to set cursor mode \''
+                    $this->errorMessagePrefix() . ' - query failed to set result mode \''
                     . MariaDbQuery::CURSOR_READ_ONLY . '\', error: ' . $this->client->errorsToString($errors) . '.'
                 );
             }
@@ -515,7 +539,7 @@ class MariaDbQuery extends DbQuery
              * Reset to state after prepare, if CURSOR_TYPE_READ_ONLY.
              * @see https://dev.mysql.com/doc/refman/8.0/en/mysql-stmt-attr-set.html
              */
-            if ($this->execution && $this->cursorMode == MariaDbQuery::CURSOR_READ_ONLY) {
+            if ($this->execution && $this->resultMode == MariaDbQuery::CURSOR_READ_ONLY) {
                 $this->statement->reset();
                 $errors = $this->getErrors();
                 if ($errors) {

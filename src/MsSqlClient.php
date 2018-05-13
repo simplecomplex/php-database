@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace SimpleComplex\Database;
 
+use SimpleComplex\Database\Interfaces\DbQueryInterface;
+
 use SimpleComplex\Database\Exception\DbRuntimeException;
 use SimpleComplex\Database\Exception\DbConnectionException;
 
@@ -118,6 +120,26 @@ class MsSqlClient extends DbClient
         parent::__construct($name, $databaseInfo);
 
         $this->explorableIndex[] = 'info';
+    }
+
+    /**
+     * Create a query for calling a stored procedure.
+     *
+     * @param string $sql
+     * @param array $options
+     *
+     * @return DbQueryInterface
+     */
+    public function call(string $sql, array $options = []) : DbQueryInterface
+    {
+        // sqlsrv requires no special handling when calling stored procedure.
+        $class_query = static::CLASS_QUERY;
+        /** @var DbQueryInterface|MariaDbQuery */
+        return new $class_query(
+            $this,
+            $sql,
+            $options
+        );
     }
 
     /**
@@ -385,7 +407,7 @@ class MsSqlClient extends DbClient
      *
      * Re-connection gets disabled:
      * - temporarily when a transaction is started.
-     * - permanently when a query doesn't use client buffered cursor mode
+     * - permanently when a query doesn't use client buffered result mode
      *
      * @internal Package protected; for MsSqlQuery|DbQueryInterface.
      *

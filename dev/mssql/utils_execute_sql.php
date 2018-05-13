@@ -94,7 +94,7 @@ $arguments = [
 /** @var \SimpleComplex\Database\MsSqlQuery $query */
 $query = $database->query('INSERT INTO Persons (LastName, FirstName, Age) VALUES (?, ?, ?)', [
 //$query = $database->query('UPDATE Persons SET LastName = ? WHERE ID = ?', [
-    'cursor_mode' => 'forward',
+    'result_mode' => 'forward',
     'insert_id' => true,
 ]);
 //$query->prepare('ssi', $arguments);
@@ -103,7 +103,7 @@ $query->parameters('ssi', $arguments);
 
 /*$arguments = [10];
 $query = $database->query('SELECT * FROM Persons WHERE ID = ?', [
-    // 'cursor_mode' => 'forward',
+    // 'result_mode' => 'forward',
 ]);*/
 
 

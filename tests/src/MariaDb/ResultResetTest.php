@@ -14,6 +14,7 @@ use PHPUnit\Framework\TestCase;
 use SimpleComplex\Database\MariaDbClient;
 use SimpleComplex\Database\MariaDbQuery;
 use SimpleComplex\Database\MariaDbResult;
+use SimpleComplex\Tests\Database\TestHelper;
 
 /**
  * @code
@@ -38,8 +39,11 @@ class ResultResetTest extends TestCase
         $client = (new ClientTest())->testInstantiation();
 
         /** @var MariaDbQuery $query */
-        $query = $client->multiQuery(
-            'TRUNCATE TABLE child; TRUNCATE TABLE relationship; TRUNCATE TABLE parent'
+        $query = $client->query(
+            'TRUNCATE TABLE child; TRUNCATE TABLE relationship; TRUNCATE TABLE parent',
+            [
+                'detect_multi' => true,
+            ]
         );
 
         /** @var MariaDbResult $result */
@@ -64,8 +68,11 @@ class ResultResetTest extends TestCase
         $client = (new ClientTest())->testInstantiation();
 
         /** @var MariaDbQuery $query */
-        $query = $client->multiQuery(
-            'SET FOREIGN_KEY_CHECKS=0; TRUNCATE TABLE child; TRUNCATE TABLE relationship; TRUNCATE TABLE parent'
+        $query = $client->query(
+            'SET FOREIGN_KEY_CHECKS=0; TRUNCATE TABLE child; TRUNCATE TABLE relationship; TRUNCATE TABLE parent',
+            [
+                'detect_multi' => true,
+            ]
         );
 
         /** @var MariaDbResult $result */
@@ -76,8 +83,78 @@ class ResultResetTest extends TestCase
         while (($success = $result->nextSet())) {
             $this->assertSame(
                 true,
-                $success,
-                'Result set[' . (++$i) . '] was type[' . gettype($success) . '] ~bool[' . !!$success . '].'
+                $success
+            );
+        }
+    }
+
+    /**
+     * Inserts getting sql from file.
+     *
+     * @see ClientTest::testInstantiation
+     */
+    public function testResetPopulate()
+    {
+        /** @var MariaDbClient $client */
+        $client = (new ClientTest())->testInstantiation();
+
+        // Get .sql file containing inserts.
+        $document_root = \SimpleComplex\Utils\CliEnvironment::getInstance()->documentRoot;
+        $this->assertInternalType('string', $document_root);
+        $this->assertNotEmpty($document_root);
+        $file_path = '/vendor/simplecomplex/database/tests/src/MariaDb/sql/test_scx_mariadb.data.sql';
+        $file_exists = file_exists($document_root . $file_path);
+        if ($file_exists) {
+            $file_path = $document_root . $file_path;
+        } else {
+            $file_exists = file_exists($document_root . '/backend' . $file_path);
+            if ($file_exists) {
+                $file_path = $document_root . '/backend' . $file_path;
+            }
+        }
+
+        $document_root = TestHelper::documentRoot();
+        $file_path = TestHelper::PATH_TESTS_SRC . '/MariaDb/sql/test_scx_mariadb.data.sql';
+        $file_exists = TestHelper::fileExists($file_path);
+        if ($file_exists) {
+            $file_path = $document_root . $file_path;
+        } else {
+            $file_exists = file_exists($document_root . '/backend' . $file_path);
+            if ($file_exists) {
+                $file_path = $document_root . '/backend' . $file_path;
+            }
+        }
+
+
+
+        if (!$file_exists) {
+            TestHelper::logVariable('Failed finding file test_scx_mariadb.data.sql, tried:', [
+                $document_root . $file_path,
+                $document_root . '/backend' . $file_path
+            ]);
+        }
+        $this->assertTrue($file_exists);
+
+        $sql = file_get_contents($file_path);
+        $this->assertInternalType('string', $sql);
+        $this->assertNotEmpty($sql);
+
+        /** @var MariaDbQuery $query */
+        $query = $client->query(
+            $sql,
+            [
+                'detect_multi' => true,
+            ]
+        );
+
+        /** @var MariaDbResult $result */
+        $result = $query->execute();
+        $this->assertInstanceOf(MariaDbResult::class, $result);
+
+        while (($success = $result->nextSet())) {
+            $this->assertSame(
+                true,
+                $success
             );
         }
     }

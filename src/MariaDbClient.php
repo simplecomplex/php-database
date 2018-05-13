@@ -166,6 +166,30 @@ class MariaDbClient extends DbClient
     }
 
     /**
+     * Create a query for calling a stored procedure.
+     *
+     * @param string $sql
+     * @param array $options
+     *
+     * @return DbQueryInterface
+     */
+    public function call(string $sql, array $options = []) : DbQueryInterface
+    {
+        // Set multi_query option; MySQLi can only call a stored procedure
+        // using multi-query API.
+        $opts =& $options;
+        $opts['multi_query'] = true;
+
+        $class_query = static::CLASS_QUERY;
+        /** @var DbQueryInterface|MariaDbQuery */
+        return new $class_query(
+            $this,
+            $sql,
+            $opts
+        );
+    }
+
+    /**
      * Create a query.
      *
      * For options, see:
@@ -178,9 +202,9 @@ class MariaDbClient extends DbClient
     /**
      * Create a multi-query.
      *
-     * Multi-query is even required when:
-     * - calling a stored procedure
-     * - using an SQL string containing more queries, SELECT'ing or not
+     * Multi-query is even required:
+     * - for batch query; multiple non-selecting queries
+     * - when calling a stored procedure
      *
      * Sadly MariaDb requires use of special multi-query methods even for
      * an SQL string containing more non-SELECTing queries - and when calling
@@ -198,7 +222,7 @@ class MariaDbClient extends DbClient
      */
     public function multiQuery(string $sql, array $options = []) : DbQueryInterface
     {
-        // Pass multi_query option.
+        // Set multi_query option.
         $opts =& $options;
         $opts['multi_query'] = true;
 
@@ -207,7 +231,7 @@ class MariaDbClient extends DbClient
         return new $class_query(
             $this,
             $sql,
-            $options
+            $opts
         );
     }
 
@@ -488,7 +512,7 @@ class MariaDbClient extends DbClient
      *
      * Re-connection gets disabled:
      * - temporarily when a transaction is started.
-     * - permanently when a query doesn't use client buffered cursor mode
+     * - permanently when a query doesn't use client buffered result mode
      *
      * @internal Package protected; for MariaDbQuery|DbQueryInterface.
      *

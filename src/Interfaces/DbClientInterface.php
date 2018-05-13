@@ -55,6 +55,16 @@ interface DbClientInterface
     public function query(string $sql, array $options = []) : DbQueryInterface;
 
     /**
+     * Create a query for calling a stored procedure.
+     *
+     * @param string $sql
+     * @param array $options
+     *
+     * @return DbQueryInterface
+     */
+    public function call(string $sql, array $options = []) : DbQueryInterface;
+
+    /**
      * @return void
      *      Throws exception on failure.
      */
@@ -115,7 +125,7 @@ interface DbClientInterface
      *
      * Re-connection gets disabled:
      * - temporarily when a transaction is started.
-     * - permanently when a query doesn't use client buffered cursor mode
+     * - permanently when a query doesn't use client buffered result mode
      *
      * @internal Package protected; for DbQueryInterface.
      *

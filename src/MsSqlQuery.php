@@ -21,13 +21,13 @@ use SimpleComplex\Database\Exception\DbQueryException;
  * MS SQL query.
  *
  * Multi-query producing more results sets is not supported by MS SQL,
- * except when calling stored procedure(?). About multi-query, see:
+ * except when calling stored procedure(?). For multi vs. batch query, see:
  * @see DbQueryInterface
  *
  * Inherited properties:
  * @property-read string $id
  * @property-read int $execution
- * @property-read string $cursorMode
+ * @property-read string $resultMode
  * @property-read bool $isPreparedStatement
  * @property-read bool $hasLikeClause
  * @property-read string $sql
@@ -70,21 +70,33 @@ class MsSqlQuery extends DbQuery
     const QUERY_TIMEOUT = 0;
 
     /**
-     * Cursor modes.
+     * Result modes/cursor types.
+     *
+     * Summary:
+     * - all scrollable except 'forward'
+     * - all unbuffered except the 'buffered' cursor type
+     * - affected rows is 'forward' only (an sqlsrv bug?)
+     * - number of rows is 'static/keyset/buffered' only
      *
      * 'forward', Sqlsrv default:
-     * - unbuffered
-     * - fast
      * - reflects changes serverside
-     * - allows getting affected rows
-     * - forbids getting number of rows
+     * - number of rows forbidden
      *
      * 'static':
-     * - unbuffered
-     * - slower
+     * - access rows in any order
      * - doesn't reflect changes serverside
-     * - forbids getting affected rows
-     * - allows getting number of rows
+     * - affected rows forbidden
+     *
+     * 'dynamic':
+     * - affected rows forbidden
+     * - number of rows forbidden
+     *
+     * 'keyset':
+     * - affected rows forbidden
+     *
+     * 'buffered':
+     * - buffered client side; light server side, heavy client side
+     * - affected rows forbidden
      *
      * Scrollable:
      * @see http://php.net/manual/en/function.sqlsrv-query.php
@@ -92,9 +104,12 @@ class MsSqlQuery extends DbQuery
      * Sqlsrv Cursor Types:
      * @see https://docs.microsoft.com/en-us/sql/connect/php/cursor-types-sqlsrv-driver
      *
+     * Affected rows must be consumed when
+     * https://docs.microsoft.com/en-us/sql/relational-databases/native-client-odbc-results/processing-results-odbc
+     *
      * @var string[]
      */
-    const CURSOR_MODES = [
+    const RESULT_MODES = [
         SQLSRV_CURSOR_FORWARD,
         SQLSRV_CURSOR_STATIC,
         SQLSRV_CURSOR_DYNAMIC,
@@ -103,11 +118,23 @@ class MsSqlQuery extends DbQuery
     ];
 
     /**
-     * Default cursor mode.
+     * Default result mode.
      *
      * @var string
      */
-    const CURSOR_MODE_DEFAULT = SQLSRV_CURSOR_FORWARD;
+    const RESULT_MODE_DEFAULT = SQLSRV_CURSOR_FORWARD;
+
+    /**
+     * RMDBS specific query options supported, adding to generic options.
+     *
+     * @see DbQuery::OPTIONS_GENERIC
+     *
+     * @var string[]
+     */
+    const OPTIONS_SPECIFIC = [
+        'send_data_chunked',
+        'sendChunksLimit',
+    ];
 
     /**
      * @var int
@@ -156,14 +183,14 @@ class MsSqlQuery extends DbQuery
     protected $queryTimeout;
 
     /**
-     * Option (str) cursor_mode.
+     * Option (str) result_mode.
      *
-     * @see MsSqlQuery::CURSOR_MODES
-     * @see MsSqlQuery::CURSOR_MODE_DEFAULT
+     * @see MsSqlQuery::RESULT_MODES
+     * @see MsSqlQuery::RESULT_MODE_DEFAULT
      *
      * @var string
      */
-    protected $cursorMode;
+    protected $resultMode;
 
     /**
      * Option (bool) send_data_chunked.
@@ -200,17 +227,18 @@ class MsSqlQuery extends DbQuery
 
     /**
      * Options affected_rows and num_rows may override default
-     * cursor mode (not option cursor_mode) and adjust to support result
+     * result mode (not option result_mode) and adjust to support result
      * affectedRows/numRows().
+     * @see MsSqlQuery::RESULT_MODES
      *
      * @param DbClientInterface|DbClient|MsSqlClient $client
      *      Reference to parent client.
      * @param string $sql
      * @param array $options {
-     *      @var string $cursor_mode
-     *      @var bool $affected_rows  May adjust cursor mode to 'forward'.
+     *      @var string $result_mode
+     *      @var bool $affected_rows  May adjust result mode to 'forward'.
      *      @var bool $insert_id
-     *      @var bool $num_rows  May adjust cursor mode to 'static'|'keyset'.
+     *      @var bool $num_rows  May adjust result mode to 'static'|'keyset'.
      *      @var int $query_timeout
      *      @var bool $send_data_chunked
      *      @var int $send_chunks_limit
@@ -218,46 +246,48 @@ class MsSqlQuery extends DbQuery
      *
      * @throws \InvalidArgumentException
      *      Propagated; arg $sql empty.
-     *      Unsupported 'cursor_mode'.
+     *      Unsupported 'result_mode'.
+     * @throws \LogicException
+     *      Propagated; arg $options contains illegal option.
      */
     public function __construct(DbClientInterface $client, string $sql, array $options = [])
     {
         parent::__construct($client, $sql, $options);
 
-        if (!empty($options['cursor_mode'])) {
-            if (!in_array($options['cursor_mode'], static::CURSOR_MODES, true)) {
+        if (!empty($options['result_mode'])) {
+            if (!in_array($options['result_mode'], static::RESULT_MODES, true)) {
                 throw new \InvalidArgumentException(
                     $this->client->errorMessagePrefix()
-                    . ' query option \'cursor_mode\' value[' . $options['cursor_mode'] . '] is invalid.'
+                    . ' query option \'result_mode\' value[' . $options['result_mode'] . '] is invalid.'
                 );
             }
-            $this->cursorMode = $options['cursor_mode'];
+            $this->resultMode = $options['result_mode'];
         }
         elseif (!empty($options['affected_rows'])) {
             /**
              * @see MsSqlResult::affectedRows()
              */
-            $this->cursorMode = SQLSRV_CURSOR_FORWARD;
+            $this->resultMode = SQLSRV_CURSOR_FORWARD;
         }
         elseif (!empty($options['num_rows'])) {
             /**
              * @see MsSqlResult::numRows()
              */
-            switch (static::CURSOR_MODE_DEFAULT) {
+            switch (static::RESULT_MODE_DEFAULT) {
                 case SQLSRV_CURSOR_STATIC:
                 case SQLSRV_CURSOR_KEYSET:
-                    $this->cursorMode = static::CURSOR_MODE_DEFAULT;
+                    $this->resultMode = static::RESULT_MODE_DEFAULT;
                     break;
                 default:
-                    $this->cursorMode = SQLSRV_CURSOR_STATIC;
+                    $this->resultMode = SQLSRV_CURSOR_STATIC;
             }
         }
         else {
-            $this->cursorMode = static::CURSOR_MODE_DEFAULT;
+            $this->resultMode = static::RESULT_MODE_DEFAULT;
         }
 
-        // Re-connect requires client buffered cursor mode.
-        if ($this->cursorMode != SQLSRV_CURSOR_CLIENT_BUFFERED) {
+        // Re-connect requires client buffered result mode.
+        if ($this->resultMode != SQLSRV_CURSOR_CLIENT_BUFFERED) {
             $this->client->reConnectDisable();
         }
 
@@ -358,7 +388,7 @@ class MsSqlQuery extends DbQuery
         }
 
         $options = [
-            'Scrollable' => $this->cursorMode,
+            'Scrollable' => $this->resultMode,
             'SendStreamParamsAtExec' => !$this->sendDataChunked,
         ];
         if ($this->queryTimeout) {
@@ -499,7 +529,7 @@ class MsSqlQuery extends DbQuery
         }
         else {
             $options = [
-                'Scrollable' => $this->cursorMode,
+                'Scrollable' => $this->resultMode,
                 'SendStreamParamsAtExec' => !$this->sendDataChunked,
             ];
             if ($this->queryTimeout) {

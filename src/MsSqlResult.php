@@ -67,13 +67,13 @@ class MsSqlResult extends DbResult
     /**
      * Number of rows affected by a CRUD statement.
      *
-     * NB: Query class cursor mode must be SQLSRV_CURSOR_FORWARD ('forward').
+     * NB: Query class result mode must be SQLSRV_CURSOR_FORWARD ('forward').
      * @see MsSqlQuery::__constructor()
      *
      * @return int
      *
      * @throws \LogicException
-     *      Bad query class cursor mode.
+     *      Bad query class result mode.
      * @throws DbRuntimeException
      */
     public function affectedRows() : int
@@ -81,7 +81,7 @@ class MsSqlResult extends DbResult
         $count = @sqlsrv_rows_affected(
             $this->statement
         );
-        // @todo: does sqlsrv_rows_affected() move to first result set, since requiring cursor mode 'forward'?
+        // @todo: does sqlsrv_rows_affected() move to first result set, since requiring result mode 'forward'?
         // @todo: ++$this->setIndex;
         if (($count && $count > 0) || $count === 0) {
             return $count;
@@ -93,11 +93,11 @@ class MsSqlResult extends DbResult
                 . ' - rejected counting affected rows (native returned -1), probably not a CRUD query.'
             );
         }
-        // Cursor mode must be SQLSRV_CURSOR_FORWARD ('forward').
-        if ($this->query->cursorMode != SQLSRV_CURSOR_FORWARD) {
+        // Result mode must be SQLSRV_CURSOR_FORWARD ('forward').
+        if ($this->query->resultMode != SQLSRV_CURSOR_FORWARD) {
             $this->closeAndLog(__FUNCTION__);
             throw new \LogicException(
-                $this->query->client->errorMessagePrefix() . ' - cursor mode[' . $this->query->cursorMode
+                $this->query->client->errorMessagePrefix() . ' - result mode[' . $this->query->resultMode
                 . '] forbids getting affected rows, use SQLSRV_CURSOR_FORWARD (\'forward\') instead.'
             );
         }
@@ -226,14 +226,14 @@ class MsSqlResult extends DbResult
     /**
      * Number of rows in a result set.
      *
-     * NB: Query class cursor mode must be SQLSRV_CURSOR_STATIC ('static')
+     * NB: Query class result mode must be SQLSRV_CURSOR_STATIC ('static')
      * or SQLSRV_CURSOR_KEYSET ('keyset').
      * @see MsSqlQuery::__constructor()
      *
      * @return int
      *
      * @throws \LogicException
-     *      Statement cursor mode not 'static' or 'keyset'.
+     *      Statement result mode not 'static' or 'keyset'.
      * @throws DbRuntimeException
      */
     public function numRows() : int
@@ -244,14 +244,14 @@ class MsSqlResult extends DbResult
         if (($count && $count > 0) || $count === 0) {
             return $count;
         }
-        switch ($this->query->cursorMode) {
+        switch ($this->query->resultMode) {
             case SQLSRV_CURSOR_STATIC:
             case SQLSRV_CURSOR_KEYSET:
                 break;
             default:
                 $this->closeAndLog(__FUNCTION__);
                 throw new \LogicException(
-                    $this->query->client->errorMessagePrefix() . ' - cursor mode[' . $this->query->cursorMode
+                    $this->query->client->errorMessagePrefix() . ' - result mode[' . $this->query->resultMode
                     . '] forbids getting number of rows'
                     . ', use SQLSRV_CURSOR_STATIC (\'static\') or SQLSRV_CURSOR_KEYSET (\'static\') instead.'
                 );
@@ -669,7 +669,7 @@ class MsSqlResult extends DbResult
             !$this->query->getInsertId
             && stripos(
                 $this->query->sqlTampered ?? $this->query->sql,
-                'SELECT SCOPE_IDENTITY() AS IDENTITY_COLUMN_NAME'
+                MsSqlQuery::SQL_INSERT_ID
             ) === false
         ) {
             $this->closeAndLog(__FUNCTION__);

@@ -106,12 +106,10 @@ REFERENCES parent(id)
         $result = $query->execute();
         $this->assertInstanceOf(MsSqlResult::class, $result);
 
-        $i = -1;
         while (($success = $result->nextSet())) {
             $this->assertSame(
                 true,
-                $success,
-                'Result set[' . (++$i) . '] was type[' . gettype($success) . '] ~bool[' . !!$success . '].'
+                $success
             );
         }
     }

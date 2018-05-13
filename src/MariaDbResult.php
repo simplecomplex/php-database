@@ -24,8 +24,8 @@ use SimpleComplex\Database\Exception\DbResultException;
  * MySQLi's default stored procedure result handling is not used,
  * because binding result vars is useless; instead the result gets stored.
  * @see \mysqli_stmt::get_result()
- * When stored procedure, query class cursorMode is ignored.
- * @see MariaDbQuery::$cursorMode
+ * When stored procedure, query class resultMode is ignored.
+ * @see MariaDbQuery::$resultMode
  *
  * Properties inherited from DatabaseResult:
  * @property-read int $setIndex
@@ -192,7 +192,7 @@ class MariaDbResult extends DbResult
     /**
      * Number of rows in a result set.
      *
-     * NB: Query class cursor mode must be 'store'.
+     * NB: Query class result mode must be 'store'.
      * @see MsSqlQuery::__constructor()
      *
      * Effectively not available for prepared statement, because
@@ -201,14 +201,14 @@ class MariaDbResult extends DbResult
      * @return int
      *
      * @throws \LogicException
-     *      Statement cursor mode not 'store'.
+     *      Statement result mode not 'store'.
      * @throws DbRuntimeException
      */
     public function numRows() : int
     {
-        if ($this->query->cursorMode != MariaDbQuery::CURSOR_STORE) {
+        if ($this->query->resultMode != MariaDbQuery::CURSOR_STORE) {
             throw new \LogicException(
-                $this->query->client->errorMessagePrefix() . ' - cursor mode[' . $this->query->cursorMode
+                $this->query->client->errorMessagePrefix() . ' - result mode[' . $this->query->resultMode
                 . '] forbids getting number of rows, because unreliable.'
             );
         }
@@ -674,7 +674,7 @@ class MariaDbResult extends DbResult
         $this->rowIndex = -1;
         if ($this->isPreparedStatement) {
             /**
-             * Cursor mode 'store' is not supported for prepared statements
+             * Result mode 'store' is not supported for prepared statements
              * by this implementation, because useless.
              * @see MariaDbQuery
              * @see \mysqli_stmt::store_result()
@@ -684,7 +684,7 @@ class MariaDbResult extends DbResult
             // see error check further down.
         }
         else {
-            if ($this->query->cursorMode == MariaDbQuery::CURSOR_STORE) {
+            if ($this->query->resultMode == MariaDbQuery::CURSOR_STORE) {
                 // MySQLi::store_result() returns false on successful CRUD;
                 // see error check further down.
                 $set = @$this->mySqlI->store_result();

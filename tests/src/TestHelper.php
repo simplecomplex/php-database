@@ -10,11 +10,12 @@ declare(strict_types=1);
 namespace SimpleComplex\Tests\Database;
 
 use SimpleComplex\Utils\Dependency;
+use SimpleComplex\Utils\Utils;
 
 /**
  * @package SimpleComplex\Tests\Database
  */
-class Log
+class TestHelper
 {
     const LOG_LEVEL = 'debug';
 
@@ -25,7 +26,7 @@ class Log
      *
      * @return void
      */
-    public static function variable($message, $subject) /*: void*/
+    public static function logVariable($message, $subject) /*: void*/
     {
         $msg = '' . $message;
         try {
@@ -67,7 +68,7 @@ class Log
      *
      * @return void
      */
-    public static function trace($message = '', \Throwable $xcptn = null) /*: void*/
+    public static function logTrace($message = '', \Throwable $xcptn = null) /*: void*/
     {
         $msg = '' . $message;
         try {
@@ -99,5 +100,50 @@ class Log
         }
         catch (\Throwable $ignore) {
         }
+    }
+
+    /**
+     * Expected PHP composer vendor dir.
+     *
+     * @var string
+     */
+    const DIR_VENDOR = [
+        '/vendor',
+        '/backend/vendor',
+    ];
+
+    /**
+     * Expected path to tests' src dir.
+     *
+     * @var string
+     */
+    const PATH_TESTS_SRC = TestHelper::DIR_VENDOR . '/simplecomplex/database/tests/src';
+
+    /**
+     * @return string
+     *
+     * @throws \SimpleComplex\Utils\Exception\ConfigurationException
+     *      Propagated; from Utils::documentRoot().
+     */
+    public static function documentRoot() : string
+    {
+        return Utils::getInstance()->documentRoot();
+    }
+
+    /**
+     * @param string $relativeToDocumentRoot
+     *
+     * @throws \RuntimeException
+     *      Propagated; from Utils::resolvePath()
+     * @throws \LogicException
+     *      Propagated.
+     *
+     * @return bool
+     */
+    public static function fileExists(string $relativeToDocumentRoot) : bool
+    {
+        $document_root = static::documentRoot();
+        $absolute_path = Utils::getInstance()->resolvePath($relativeToDocumentRoot);
+        return file_exists($document_root . $absolute_path);
     }
 }

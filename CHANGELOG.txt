@@ -1,5 +1,9 @@
 SimpleComplex/Database 1.x, 2018-05-12
 --------------------------------------
+- result mode renamed; from cursor mode.
+
+SimpleComplex/Database 1.x, 2018-05-12
+--------------------------------------
 - MySQLi multi-query _is_ executed immediately; not until getting result set.
 - Bugfix parameter substitution; wrong checks for parameter count,
   and tampered sql var forgotten.

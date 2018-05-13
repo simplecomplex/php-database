@@ -13,16 +13,13 @@ namespace SimpleComplex\Database\Interfaces;
  * Database query interface.
  *
  *
- * About multi-query
- * -----------------
- * A multi-query is an SQL string containing more queries, delimited by
- * semicolon, producing result set.
+ * Multi-query versus batch query
+ * ------------------------------
+ * A batch query contains more non-selecting queries.
+ * A multi-query contains more selecting queries; producing result set.
+ * Batch query is supported by all RMDSs.
  * Multi-query is supported by MariaDB/MySQL and Postgresql; for simple query,
  * not prepared statement.
- * Other database engines (like MS SQL) support multiple queries, but only
- * a single SELECT (or likewise) query.
- * MS SQL example - it's 'get insert insert ID'-routine:
- * INSERT INTO some_table (Whatever) VALUES (?); SELECT SCOPE_IDENTITY() AS IDENTITY_COLUMN_NAME
  *
  *
  * @property-read string $id

@@ -15,7 +15,7 @@ use SimpleComplex\Database\DatabaseBroker;
 use SimpleComplex\Database\Interfaces\DbClientInterface;
 use SimpleComplex\Database\MsSqlClient;
 
-use SimpleComplex\Tests\Database\Log;
+use SimpleComplex\Tests\Database\TestHelper;
 use SimpleComplex\Tests\Database\BrokerTest;
 use SimpleComplex\Tests\Database\ConfigurationTest;
 
@@ -103,7 +103,7 @@ class ClientTest extends TestCase
         $this->assertSame(false, $client->isConnected());
         $errors = $client->getErrors();
         $this->assertNotEmpty($errors);
-        Log::variable('Connection errors', $errors);
+        TestHelper::logVariable('Connection errors', $errors);
         /**
          * @throws \SimpleComplex\Database\Exception\DbConnectionException
          */
