@@ -136,7 +136,7 @@ class TestHelper
     }
 
     /**
-     * Find file relative to document root, vendor dir, or tests dir.
+     * Find file relative to document root, vendor dir, or the tests dir.
      *
      * @see TestHelper::PATH_VENDOR
      * @see TestHelper::PATH_TESTS

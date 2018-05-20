@@ -16,6 +16,8 @@ use SimpleComplex\Utils\Dependency;
 use SimpleComplex\Utils\Bootstrap;
 
 /**
+ * @todo: move to Utils tests.
+ *
  * @code
  * // CLI, in document root:
  * vendor/bin/phpunit vendor/simplecomplex/database/tests/src/BootstrapTest.php
@@ -34,8 +36,6 @@ class BootstrapTest extends TestCase
      */
     public function testDependencies()
     {
-        // @todo: what about error handlers?
-
         if (!static::$booted) {
             static::$booted = true;
             Bootstrap::prepareDependenciesIfExist();
