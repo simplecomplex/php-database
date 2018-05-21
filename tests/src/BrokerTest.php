@@ -7,7 +7,7 @@
  */
 declare(strict_types=1);
 
-namespace SimpleComplex\Database\Tests;
+namespace SimpleComplex\Tests\Database;
 
 use PHPUnit\Framework\TestCase;
 
@@ -19,7 +19,7 @@ use SimpleComplex\Database\DatabaseBroker;
  * vendor/bin/phpunit vendor/simplecomplex/database/tests/src/BrokerTest.php
  * @endcode
  *
- * @package SimpleComplex\Database\Tests
+ * @package SimpleComplex\Tests\Database
  */
 class BrokerTest extends TestCase
 {

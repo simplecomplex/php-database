@@ -7,7 +7,7 @@
  */
 declare(strict_types=1);
 
-namespace SimpleComplex\Database\Tests\MsSql;
+namespace SimpleComplex\Tests\Database\MsSql;
 
 use PHPUnit\Framework\TestCase;
 
@@ -15,7 +15,7 @@ use SimpleComplex\Database\MsSqlClient;
 use SimpleComplex\Database\MsSqlQuery;
 use SimpleComplex\Database\MsSqlResult;
 
-use SimpleComplex\Database\Tests\TestHelper;
+use SimpleComplex\Tests\Database\TestHelper;
 
 /**
  * @code
@@ -23,7 +23,7 @@ use SimpleComplex\Database\Tests\TestHelper;
  * vendor/bin/phpunit vendor/simplecomplex/database/tests/src/MsSql/PopulateTest.php
  * @endcode
  *
- * @package SimpleComplex\Database\Tests
+ * @package SimpleComplex\Tests\Database
  */
 class PopulateTest extends TestCase
 {

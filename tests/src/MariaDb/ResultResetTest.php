@@ -7,11 +7,11 @@
  */
 declare(strict_types=1);
 
-namespace SimpleComplex\Database\Tests\MariaDb;
+namespace SimpleComplex\Tests\Database\MariaDb;
 
 use PHPUnit\Framework\TestCase;
 
-use SimpleComplex\Database\Tests\TestHelper;
+use SimpleComplex\Tests\Database\TestHelper;
 
 use SimpleComplex\Database\MariaDbClient;
 use SimpleComplex\Database\MariaDbQuery;
@@ -23,7 +23,7 @@ use SimpleComplex\Database\MariaDbResult;
  * vendor/bin/phpunit vendor/simplecomplex/database/tests/src/MariaDb/ResetResultTest.php
  * @endcode
  *
- * @package SimpleComplex\Database\Tests
+ * @package SimpleComplex\Tests\Database
  */
 class ResultResetTest extends TestCase
 {

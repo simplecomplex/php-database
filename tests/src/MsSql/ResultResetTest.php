@@ -7,11 +7,11 @@
  */
 declare(strict_types=1);
 
-namespace SimpleComplex\Database\Tests\MsSql;
+namespace SimpleComplex\Tests\Database\MsSql;
 
 use PHPUnit\Framework\TestCase;
 
-use SimpleComplex\Database\Tests\TestHelper;
+use SimpleComplex\Tests\Database\TestHelper;
 
 use SimpleComplex\Database\MsSqlClient;
 use SimpleComplex\Database\MsSqlQuery;
@@ -23,7 +23,7 @@ use SimpleComplex\Database\MsSqlResult;
  * vendor/bin/phpunit vendor/simplecomplex/database/tests/src/MsSql/ResetResultTest.php
  * @endcode
  *
- * @package SimpleComplex\Database\Tests
+ * @package SimpleComplex\Tests\Database
  */
 class ResultResetTest extends TestCase
 {

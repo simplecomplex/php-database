@@ -7,7 +7,7 @@
  */
 declare(strict_types=1);
 
-namespace SimpleComplex\Database\Tests\MariaDb;
+namespace SimpleComplex\Tests\Database\MariaDb;
 
 use PHPUnit\Framework\TestCase;
 
@@ -20,7 +20,7 @@ use SimpleComplex\Database\MariaDbQuery;
  * vendor/bin/phpunit vendor/simplecomplex/database/tests/src/MariaDb/QueryTest.php
  * @endcode
  *
- * @package SimpleComplex\Database\Tests
+ * @package SimpleComplex\Tests\Database
  */
 class QueryTest extends TestCase
 {
