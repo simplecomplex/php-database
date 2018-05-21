@@ -17,7 +17,7 @@ use SimpleComplex\Database\MariaDbQuery;
 /**
  * @code
  * // CLI, in document root:
- * vendor/bin/phpunit vendor/simplecomplex/database/tests/src/MariaDb/QueryTest.php
+ * backend/vendor/bin/phpunit backend/vendor/simplecomplex/database/tests/src/MariaDb/QueryTest.php
  * @endcode
  *
  * @package SimpleComplex\Tests\Database

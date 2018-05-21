@@ -230,7 +230,7 @@ class MsSqlResult extends DbResult
      * or SQLSRV_CURSOR_KEYSET ('keyset').
      * @see MsSqlQuery::__constructor()
      *
-     * @deprecated  Go for design patterns that don't require numRows().
+     * Go for design patterns that don't require numRows().
      * @code
      * // Alternatives - only needing row count:
      * $num_rows = count($result->fetchAll(Database::FETCH_NUMERIC));

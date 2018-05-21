@@ -11,11 +11,10 @@ namespace SimpleComplex\Tests\Database\MariaDb;
 
 use PHPUnit\Framework\TestCase;
 
+use SimpleComplex\Database\Database;
 use SimpleComplex\Database\MariaDbClient;
 use SimpleComplex\Database\MariaDbQuery;
 use SimpleComplex\Database\MariaDbResult;
-
-use SimpleComplex\Database\Database;
 
 /**
  * @code

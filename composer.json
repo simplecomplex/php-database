@@ -29,9 +29,5 @@
             "SimpleComplex\\Database\\": "src/",
             "SimpleComplex\\Tests\\Database\\": "tests/src/"
         }
-    },
-    "autoload-dev": {
-        "psr-4": {
-        }
     }
 }

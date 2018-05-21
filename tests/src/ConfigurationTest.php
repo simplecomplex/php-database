@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace SimpleComplex\Tests\Database;
 
 use PHPUnit\Framework\TestCase;
+use SimpleComplex\Tests\Utils\BootstrapTest;
 
 use Psr\Container\ContainerInterface;
 use SimpleComplex\Database\DbClient;

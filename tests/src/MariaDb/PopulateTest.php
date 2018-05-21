@@ -10,12 +10,11 @@ declare(strict_types=1);
 namespace SimpleComplex\Tests\Database\MariaDb;
 
 use PHPUnit\Framework\TestCase;
+use SimpleComplex\Tests\Database\TestHelper;
 
 use SimpleComplex\Database\MariaDbClient;
 use SimpleComplex\Database\MariaDbQuery;
 use SimpleComplex\Database\MariaDbResult;
-
-use SimpleComplex\Tests\Database\TestHelper;
 
 /**
  * @code

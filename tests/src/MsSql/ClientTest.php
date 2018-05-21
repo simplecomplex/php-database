@@ -10,14 +10,13 @@ declare(strict_types=1);
 namespace SimpleComplex\Tests\Database\MsSql;
 
 use PHPUnit\Framework\TestCase;
+use SimpleComplex\Tests\Database\TestHelper;
+use SimpleComplex\Tests\Database\BrokerTest;
+use SimpleComplex\Tests\Database\ConfigurationTest;
 
 use SimpleComplex\Database\DatabaseBroker;
 use SimpleComplex\Database\Interfaces\DbClientInterface;
 use SimpleComplex\Database\MsSqlClient;
-
-use SimpleComplex\Tests\Database\TestHelper;
-use SimpleComplex\Tests\Database\BrokerTest;
-use SimpleComplex\Tests\Database\ConfigurationTest;
 
 /**
  *
