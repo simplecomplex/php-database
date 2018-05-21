@@ -7,7 +7,7 @@
  */
 declare(strict_types=1);
 
-namespace SimpleComplex\Tests\Database\MariaDb;
+namespace SimpleComplex\Database\Tests\MariaDb;
 
 use PHPUnit\Framework\TestCase;
 
@@ -15,7 +15,7 @@ use SimpleComplex\Database\MariaDbClient;
 use SimpleComplex\Database\MariaDbQuery;
 use SimpleComplex\Database\MariaDbResult;
 
-use SimpleComplex\Tests\Database\TestHelper;
+use SimpleComplex\Database\Tests\TestHelper;
 
 /**
  * @code
@@ -23,7 +23,7 @@ use SimpleComplex\Tests\Database\TestHelper;
  * vendor/bin/phpunit vendor/simplecomplex/database/tests/src/MariaDb/PopulateTest.php
  * @endcode
  *
- * @package SimpleComplex\Tests\Database
+ * @package SimpleComplex\Database\Tests
  */
 class PopulateTest extends TestCase
 {

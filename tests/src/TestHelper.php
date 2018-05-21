@@ -7,7 +7,7 @@
  */
 declare(strict_types=1);
 
-namespace SimpleComplex\Tests\Database;
+namespace SimpleComplex\Database\Tests;
 
 use SimpleComplex\Utils\Dependency;
 use SimpleComplex\Utils\Utils;
@@ -15,7 +15,7 @@ use SimpleComplex\Utils\Utils;
 /**
  * @todo: move to Utils tests; non-Utils tests must override constant PATH_TESTS.
  *
- * @package SimpleComplex\Tests\Database
+ * @package SimpleComplex\Database\Tests
  */
 class TestHelper
 {

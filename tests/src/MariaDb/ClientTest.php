@@ -7,7 +7,7 @@
  */
 declare(strict_types=1);
 
-namespace SimpleComplex\Tests\Database\MariaDb;
+namespace SimpleComplex\Database\Tests\MariaDb;
 
 use PHPUnit\Framework\TestCase;
 
@@ -15,9 +15,9 @@ use SimpleComplex\Database\DatabaseBroker;
 use SimpleComplex\Database\Interfaces\DbClientInterface;
 use SimpleComplex\Database\MariaDbClient;
 
-use SimpleComplex\Tests\Database\TestHelper;
-use SimpleComplex\Tests\Database\BrokerTest;
-use SimpleComplex\Tests\Database\ConfigurationTest;
+use SimpleComplex\Database\Tests\TestHelper;
+use SimpleComplex\Database\Tests\BrokerTest;
+use SimpleComplex\Database\Tests\ConfigurationTest;
 
 /**
  *
@@ -26,7 +26,7 @@ use SimpleComplex\Tests\Database\ConfigurationTest;
  * vendor/bin/phpunit vendor/simplecomplex/database/tests/src/MariaDb/ClientTest.php
  * @endcode
  *
- * @package SimpleComplex\Tests\Database
+ * @package SimpleComplex\Database\Tests
  */
 class ClientTest extends TestCase
 {

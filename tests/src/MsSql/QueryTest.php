@@ -7,7 +7,7 @@
  */
 declare(strict_types=1);
 
-namespace SimpleComplex\Tests\Database\MsSql;
+namespace SimpleComplex\Database\Tests\MsSql;
 
 use PHPUnit\Framework\TestCase;
 
@@ -20,7 +20,7 @@ use SimpleComplex\Database\MsSqlQuery;
  * vendor/bin/phpunit vendor/simplecomplex/database/tests/src/MsSql/QueryTest.php
  * @endcode
  *
- * @package SimpleComplex\Tests\Database
+ * @package SimpleComplex\Database\Tests
  */
 class QueryTest extends TestCase
 {

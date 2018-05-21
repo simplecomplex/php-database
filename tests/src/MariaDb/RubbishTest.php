@@ -7,7 +7,7 @@
  */
 declare(strict_types=1);
 
-namespace SimpleComplex\Tests\Database\MariaDb;
+namespace SimpleComplex\Database\Tests\MariaDb;
 
 use PHPUnit\Framework\TestCase;
 
@@ -23,7 +23,7 @@ use SimpleComplex\Database\Database;
  * vendor/bin/phpunit vendor/simplecomplex/database/tests/src/MariaDb/ResetResultTest.php
  * @endcode
  *
- * @package SimpleComplex\Tests\Database
+ * @package SimpleComplex\Database\Tests
  */
 class RubbishTest extends TestCase
 {
