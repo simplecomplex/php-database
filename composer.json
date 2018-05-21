@@ -16,9 +16,6 @@
         "psr/log": "^1.0",
         "simplecomplex/utils": "^1.4 || dev-develop"
     },
-    "require-dev": {
-        "phpunit/phpunit": "^6.5"
-    },
     "suggest": {
         "ext-mysqli": "PHP MySQLi extension is required when using MySQL/MariaDB databases.",
         "ext-sqlsrv": "PHP (PECL) Sqlsrv extension is required when using MS SQL DB databases.",
