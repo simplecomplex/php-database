@@ -1,3 +1,8 @@
+SimpleComplex/Database 1.x, 2018-05-21
+--------------------------------------
+- Tests use helpers of the Utils package.
+- Release 0.9.3.
+
 SimpleComplex/Database 1.x, 2018-05-12
 --------------------------------------
 - result mode renamed; from cursor mode.
