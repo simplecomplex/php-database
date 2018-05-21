@@ -69,7 +69,7 @@ class ConfigurationTest extends TestCase
                     $database_info = $config_store->get('database-info.test_scx_mssql', '*', []);
                 }
                 // Nope, config cache key is valid; for IDE.
-                catch (\Psr\SimpleCache\InvalidArgumentException $xcptn) {
+                catch (\InvalidArgumentException $xcptn) {
                     $database_info = [];
                 }
                 if (!is_array($database_info) || !$database_info) {

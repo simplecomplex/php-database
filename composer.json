@@ -17,8 +17,7 @@
         "simplecomplex/utils": "^1.3.2 || dev-develop"
     },
     "require-dev": {
-        "phpunit/phpunit": "^6.5",
-        "psr/simple-cache": "^1.0"
+        "phpunit/phpunit": "^6.5"
     },
     "suggest": {
         "ext-mysqli": "PHP MySQLi extension is required when using MySQL/MariaDB databases.",
@@ -27,7 +26,11 @@
     },
     "autoload": {
         "psr-4": {
-            "SimpleComplex\\Database\\": "src/",
+            "SimpleComplex\\Database\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
             "SimpleComplex\\Tests\\Database\\": "tests/src/"
         }
     }
