@@ -15,7 +15,7 @@ use SimpleComplex\Database\Interfaces\DbClientInterface;
 /**
  * Database abstraction decoupling MariaDB, MS SQL interaction.
  *
- * @dependency-injection-container database-broker
+ * @dependency-injection-container-id database-broker
  *      Suggested ID of the DatabaseBroker instance.
  *
  * All registered database clients are accessible via 'magic' getters.
