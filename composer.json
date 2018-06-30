@@ -14,7 +14,7 @@
     "require": {
         "php": ">=7.0",
         "psr/log": "^1.0",
-        "simplecomplex/utils": "^1.4 || dev-develop"
+        "simplecomplex/utils": "^1.7.2 || dev-develop"
     },
     "suggest": {
         "ext-mysqli": "PHP MySQLi extension is required when using MySQL/MariaDB databases.",

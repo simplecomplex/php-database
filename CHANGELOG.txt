@@ -1,3 +1,7 @@
+SimpleComplex/Database 1.x, 2018-06-30
+--------------------------------------
+- Minor test fixes; requires Utils >=1.7.2.
+
 SimpleComplex/Database 1.x, 2018-05-21
 --------------------------------------
 - Tests use helpers of the Utils package.

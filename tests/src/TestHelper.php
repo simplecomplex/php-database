@@ -21,5 +21,5 @@ class TestHelper extends \SimpleComplex\Tests\Utils\TestHelper
      *
      * @var string
      */
-    const PATH_TESTS = '/simplecomplex/database/tests/src';
+    const PATH_TESTS = 'simplecomplex/database/tests/src';
 }

@@ -19,7 +19,7 @@ use SimpleComplex\Database\MariaDbResult;
 /**
  * @code
  * // CLI, in document root:
- * vendor/bin/phpunit vendor/simplecomplex/database/tests/src/MariaDb/ResetResultTest.php
+ * backend/vendor/bin/phpunit backend/vendor/simplecomplex/database/tests/src/MariaDb/ResultResetTest.php
  * @endcode
  *
  * @package SimpleComplex\Tests\Database
@@ -100,7 +100,7 @@ class ResultResetTest extends TestCase
         $client = (new ClientTest())->testInstantiation();
 
         // Get .sql file containing inserts.
-        $file_path = TestHelper::fileFind('/MariaDb/sql/test_scx_mariadb.data.sql', 'tests');
+        $file_path = TestHelper::fileFind('MariaDb/sql/test_scx_mariadb.data.sql', 'tests');
         $this->assertInternalType('string', $file_path);
         $this->assertNotEmpty($file_path);
 

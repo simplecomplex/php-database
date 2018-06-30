@@ -19,7 +19,7 @@ use SimpleComplex\Database\MsSqlResult;
 /**
  * @code
  * // CLI, in document root:
- * vendor/bin/phpunit vendor/simplecomplex/database/tests/src/MsSql/ResetResultTest.php
+ * backend/vendor/bin/phpunit backend/vendor/simplecomplex/database/tests/src/MsSql/ResultResetTest.php
  * @endcode
  *
  * @package SimpleComplex\Tests\Database
@@ -126,7 +126,7 @@ REFERENCES parent(id)
         $client = (new ClientTest())->testInstantiation();
 
         // Get .sql file containing inserts.
-        $file_path = TestHelper::fileFind('/MsSql/sql/test_scx_mssql.data.sql', 'tests');
+        $file_path = TestHelper::fileFind('MsSql/sql/test_scx_mssql.data.sql', 'tests');
         $this->assertInternalType('string', $file_path);
         $this->assertNotEmpty($file_path);
 
