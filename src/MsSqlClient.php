@@ -86,6 +86,8 @@ class MsSqlClient extends DbClient
         'character_set' => 'CharacterSet',
         // int. default: TLS_TRUST_SELF_SIGNED
         'tls_trust_self_signed' => 'TrustServerCertificate',
+        // int. default: ISO_QUOTED_IDENTIFIER
+        'iso_quoted_identifier' => 'QuotedId',
     ];
 
     /**
@@ -97,6 +99,20 @@ class MsSqlClient extends DbClient
      *      0|1.
      */
     const TLS_TRUST_SELF_SIGNED = 0;
+
+    /**
+     * Whether using ISO quoted identifiers.
+     *
+     * Constructor $databaseInfo option (bool) iso_quoted_identifier.
+     *
+     * Like t-sql SET QUOTED_IDENTIFIER [ON|OFF].
+     *
+     * @see https://docs.microsoft.com/en-us/sql/t-sql/statements/set-quoted-identifier-transact-sql
+     *
+     * @var int
+     *      0|1.
+     */
+    const ISO_QUOTED_IDENTIFIER = 1;
 
     /**
      * @var string
@@ -315,13 +331,13 @@ class MsSqlClient extends DbClient
             /**
              * Remove character set option; handled prior to this, elsewhere.
              * @see MsSqlClient::characterSetResolve()
-             * @see MariaDbClient::OPTION_SHORTHANDS
+             * @see MsSqlClient::OPTION_SHORTHANDS
              */
             unset($options['character_set']);
 
             /**
              * Secure TLS trust self-signed.
-             * @see MariaDbClient::OPTION_SHORTHANDS
+             * @see MsSqlClient::OPTION_SHORTHANDS
              */
             if (isset($options['tls_trust_self_signed'])) {
                 $options['TrustServerCertificate'] = (int) $options['tls_trust_self_signed'];
@@ -329,6 +345,17 @@ class MsSqlClient extends DbClient
             }
             elseif (!isset($options['TrustServerCertificate'])) {
                 $options['TrustServerCertificate'] = static::TLS_TRUST_SELF_SIGNED;
+            }
+            /**
+             * Secure quoted identifier mode.
+             * @see MsSqlClient::OPTION_SHORTHANDS
+             */
+            if (isset($options['iso_quoted_identifier'])) {
+                $options['QuotedId'] = (int) $options['iso_quoted_identifier'];
+                unset($options['iso_quoted_identifier']);
+            }
+            elseif (!isset($options['QuotedId'])) {
+                $options['QuotedId'] = static::ISO_QUOTED_IDENTIFIER;
             }
 
             // user+pass shan't be recorded in resolved options.

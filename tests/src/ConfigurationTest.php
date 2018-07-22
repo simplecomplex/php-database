@@ -100,10 +100,12 @@ class ConfigurationTest extends TestCase
         $this->assertInternalType('array', $database_info);
         $this->assertNotEmpty($database_info);
         if (is_array($database_info) && $database_info) {
-            $requireds = DbClient::DATABASE_INFO_REQUIRED;
-            foreach ($requireds as $key) {
-                $this->assertArrayHasKey($key, $database_info);
-                $this->assertNotEmpty($database_info[$key]);
+            $requireds = DbClient::DATABASE_INFO;
+            foreach ($requireds as $key => $required) {
+                if ($required) {
+                    $this->assertArrayHasKey($key, $database_info);
+                    $this->assertNotEmpty($database_info[$key]);
+                }
             }
         }
 
@@ -127,10 +129,12 @@ class ConfigurationTest extends TestCase
         $this->assertInternalType('array', $database_info);
         $this->assertNotEmpty($database_info);
         if (is_array($database_info) && $database_info) {
-            $requireds = DbClient::DATABASE_INFO_REQUIRED;
-            foreach ($requireds as $key) {
-                $this->assertArrayHasKey($key, $database_info);
-                $this->assertNotEmpty($database_info[$key]);
+            $requireds = DbClient::DATABASE_INFO;
+            foreach ($requireds as $key => $required) {
+                if ($required) {
+                    $this->assertArrayHasKey($key, $database_info);
+                    $this->assertNotEmpty($database_info[$key]);
+                }
             }
         }
 

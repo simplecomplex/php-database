@@ -1,6 +1,11 @@
 SimpleComplex/Database 1.x, 2018-07-22
 --------------------------------------
 - Methods messagePrefix() renamed; from errorMessagePrefix().
+- DbClient constant DATABASE_INFO_REQUIRED replaced by DATABASE_INFO.
+- DbClient support options passed in root of arg databaseInfo; as well as
+  options passed in options bucket.
+- MsSql client default to use ISO quoted identifier, and support shorthand
+  option.
 
 SimpleComplex/Database 1.x, 2018-06-30
 --------------------------------------

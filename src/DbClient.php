@@ -92,25 +92,34 @@ abstract class DbClient extends Explorable implements DbClientInterface
     const CHARACTER_SET = 'UTF-8';
 
     /**
-     * All buckets are required.
+     * Database info buckets supported.
+     *
+     * Value true means required.
      *
      * Buckets:
      * - (str) host: 'domain.tld'
+     * - (int|str) port: optional, defaults to SERVER_PORT
      * - (str) database: database name
      * - (str) user: 'xyz123'
      * - (str) pass: '∙∙∙∙∙∙∙∙∙∙∙∙'
      *
+     * @see DbClient::__construct()
+     *
      * @var string[]
      */
-    const DATABASE_INFO_REQUIRED = [
+    const DATABASE_INFO = [
         // string.
-        'host',
+        'host' => true,
+        // int|string.
+        'port' => false,
         // string.
-        'database',
+        'database' => true,
         // string.
-        'user',
+        'user' => true,
         // string.
-        'pass',
+        'pass' => true,
+        // array.
+        'options' => false,
     ];
 
     /**
@@ -221,6 +230,9 @@ abstract class DbClient extends Explorable implements DbClientInterface
      *
      * Connection to the database server is created later, on demand.
      *
+     * Options may be passed in root of arg databaseInfo
+     * as well as in the options bucket.
+     *
      * @see DbClient::OPTION_SHORTHANDS
      *
      * @see DbClient::characterSetResolve()
@@ -240,25 +252,35 @@ abstract class DbClient extends Explorable implements DbClientInterface
     {
         $this->name = $name;
 
-        $requireds = static::DATABASE_INFO_REQUIRED;
-        foreach ($requireds as $key) {
-            if (empty($databaseInfo[$key])) {
+        $info_items = static::DATABASE_INFO;
+        foreach ($info_items as $key => $required) {
+            if (isset($databaseInfo[$key])) {
+                if ($required && !$databaseInfo[$key]) {
+                    throw new \LogicException(
+                        'Database arg databaseInfo key[' . $key
+                        . '] type[' . gettype($databaseInfo[$key]) . '] is empty'
+                        . '. Saw keys ' . (!$databaseInfo ? '- none -' : join(', ', array_keys($databaseInfo))) . '.'
+                    );
+                }
+                $this->{$key} = $databaseInfo[$key];
+            }
+            elseif ($required) {
                 throw new \LogicException(
                     'Database arg databaseInfo key[' . $key  . '] '
-                    . (array_key_exists($key, $databaseInfo) ?
-                        ('type[' . gettype($databaseInfo[$key]) . '] is empty') :
-                        'is missing')
-                    . '. Required keys are ' . join(', ', $requireds) . '; saw keys '
-                    . (!$databaseInfo ? '- none -' : join(', ', array_keys($databaseInfo))) . '.'
+                    . (array_key_exists($key, $databaseInfo) ? 'is null' : 'is missing')
+                    . '. Saw keys ' . (!$databaseInfo ? '- none -' : join(', ', array_keys($databaseInfo))) . '.'
                 );
             }
         }
-        $this->host = $databaseInfo['host'];
-        $this->port = !empty($databaseInfo['port']) ? (int) $databaseInfo['port'] : static::SERVER_PORT;
-        $this->database = $databaseInfo['database'];
-        $this->user = $databaseInfo['user'];
-        $this->pass = $databaseInfo['pass'];
-        $this->options = $databaseInfo['options'] ?? [];
+        // Safeguard against null options.
+        if (!$this->options) {
+            $this->options = [];
+        }
+        // Coerce port to integer or use fallback.
+        $this->port = $this->port ? (int) $this->port : static::SERVER_PORT;
+
+        // Pass options placed in root of databaseInfo to options.
+        $this->options += array_diff_key($databaseInfo, $info_items);
 
         $this->characterSetResolve();
     }
