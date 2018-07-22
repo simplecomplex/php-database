@@ -257,7 +257,7 @@ class MsSqlQuery extends DbQuery
         if (!empty($options['result_mode'])) {
             if (!in_array($options['result_mode'], static::RESULT_MODES, true)) {
                 throw new \InvalidArgumentException(
-                    $this->client->errorMessagePrefix()
+                    $this->client->messagePrefix()
                     . ' query option \'result_mode\' value[' . $options['result_mode'] . '] is invalid.'
                 );
             }
@@ -372,7 +372,7 @@ class MsSqlQuery extends DbQuery
             // Unset prepared statement arguments reference.
             $this->unsetReferences();
             throw new \LogicException(
-                $this->client->errorMessagePrefix() . ' - can\'t prepare statement more than once.'
+                $this->client->messagePrefix() . ' - can\'t prepare statement more than once.'
             );
         }
         $this->isPreparedStatement = true;
@@ -411,7 +411,7 @@ class MsSqlQuery extends DbQuery
             $this->log(__FUNCTION__);
             $cls_xcptn = $this->client->errorsToException($errors);
             throw new $cls_xcptn(
-                $this->errorMessagePrefix() . ' - failed to prepare statement, error: '
+                $this->messagePrefix() . ' - failed to prepare statement, error: '
                 . $this->client->errorsToString($errors) . '.'
             );
         }
@@ -460,7 +460,7 @@ class MsSqlQuery extends DbQuery
             // Unset prepared statement arguments reference.
             $this->unsetReferences();
             throw new \LogicException(
-                $this->client->errorMessagePrefix()
+                $this->client->messagePrefix()
                 . ' - passing parameters to prepared statement is illegal except via call to prepare().'
             );
         }
@@ -496,7 +496,7 @@ class MsSqlQuery extends DbQuery
         // (Sqlsrv) Even a simple statement is a 'statement'.
         if ($this->statementClosed) {
             throw new \LogicException(
-                $this->client->errorMessagePrefix()
+                $this->client->messagePrefix()
                 . ' - can\'t execute previously closed statement.'
             );
         }
@@ -510,7 +510,7 @@ class MsSqlQuery extends DbQuery
                 $this->log(__FUNCTION__);
                 $cls_xcptn = $this->client->errorsToException($errors);
                 throw new $cls_xcptn(
-                    $this->errorMessagePrefix() . ' - can\'t execute prepared statement when connection lost, error: '
+                    $this->messagePrefix() . ' - can\'t execute prepared statement when connection lost, error: '
                     . $this->client->errorsToString($errors) . '.'
                 );
             }
@@ -522,7 +522,7 @@ class MsSqlQuery extends DbQuery
                 $this->log(__FUNCTION__);
                 $cls_xcptn = $this->client->errorsToException($errors);
                 throw new $cls_xcptn(
-                    $this->errorMessagePrefix() . ' - failed executing prepared statement, error: '
+                    $this->messagePrefix() . ' - failed executing prepared statement, error: '
                     . $this->client->errorsToString($errors) . '.'
                 );
             }
@@ -551,7 +551,7 @@ class MsSqlQuery extends DbQuery
                 $this->log(__FUNCTION__);
                 $cls_xcptn = $this->client->errorsToException($errors);
                 throw new $cls_xcptn(
-                    $this->errorMessagePrefix() . ' - failed executing simple query, error: '
+                    $this->messagePrefix() . ' - failed executing simple query, error: '
                     . $this->client->errorsToString($errors) . '.'
                 );
             }
@@ -575,7 +575,7 @@ class MsSqlQuery extends DbQuery
                 $this->log(__FUNCTION__);
                 $cls_xcptn = $this->client->errorsToException($errors);
                 throw new $cls_xcptn(
-                    $this->errorMessagePrefix() . ' - failed to complete sending data chunked, after chunk['
+                    $this->messagePrefix() . ' - failed to complete sending data chunked, after chunk['
                     . $chunks . '], error: ' . $this->client->errorsToString($errors) . '.'
                 );
             }
@@ -765,7 +765,7 @@ class MsSqlQuery extends DbQuery
             $count = count($arg);
             if (!$count) {
                 throw new \InvalidArgumentException(
-                    $this->client->errorMessagePrefix() . ' - arg $arguments bucket ' . $i . ' is empty array.'
+                    $this->client->messagePrefix() . ' - arg $arguments bucket ' . $i . ' is empty array.'
                 );
             }
             // An 'in' parameter must have 4th bucket,
@@ -810,13 +810,13 @@ class MsSqlQuery extends DbQuery
         }
         elseif (strlen($types) != $n_params) {
             throw new \InvalidArgumentException(
-                $this->client->errorMessagePrefix() . ' - arg $types length[' . strlen($types)
+                $this->client->messagePrefix() . ' - arg $types length[' . strlen($types)
                 . '] doesn\'t match sql\'s ?-parameters count[' . $n_params . '].'
             );
         }
         elseif (($type_illegals = $this->parameterTypesCheck($types))) {
             throw new \InvalidArgumentException(
-                $this->client->errorMessagePrefix()
+                $this->client->messagePrefix()
                 . ' - arg $types contains illegal char(s) ' . $type_illegals . '.'
             );
         }

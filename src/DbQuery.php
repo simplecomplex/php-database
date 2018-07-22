@@ -207,7 +207,7 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
         $this->sql = trim($sql, static::SQL_TRIM);
         if (!$this->sql) {
             throw new \InvalidArgumentException(
-                $this->client->errorMessagePrefix() . ' - arg $sql length[' . strlen($sql) . '] is effectively empty.'
+                $this->client->messagePrefix() . ' - arg $sql length[' . strlen($sql) . '] is effectively empty.'
             );
         }
 
@@ -217,7 +217,7 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
                 $illegals = array_diff($specifics, static::OPTIONS_SPECIFIC);
                 if ($illegals) {
                     throw new \LogicException(
-                        $this->client->errorMessagePrefix() . ' - query arg $options contains illegal options['
+                        $this->client->messagePrefix() . ' - query arg $options contains illegal options['
                         . join(', ', $illegals) . '].'
                     );
                 }
@@ -266,14 +266,14 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
         if ($this->isPreparedStatement) {
             $this->unsetReferences();
             throw new \LogicException(
-                $this->client->errorMessagePrefix()
+                $this->client->messagePrefix()
                 . ' - passing parameters to prepared statement is illegal except via call to prepare().'
             );
         }
 
         if ($types !== '' && ($type_illegals = $this->parameterTypesCheck($types))) {
             throw new \InvalidArgumentException(
-                $this->client->errorMessagePrefix()
+                $this->client->messagePrefix()
                 . ' - arg $types contains illegal char(s) ' . $type_illegals . '.'
             );
         }
@@ -363,7 +363,7 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
         $n_args = count($arguments);
         if ($n_args != $n_params) {
             throw new \InvalidArgumentException(
-                $this->client->errorMessagePrefix() . ' - arg $arguments length[' . $n_args
+                $this->client->messagePrefix() . ' - arg $arguments length[' . $n_args
                 . '] doesn\'t match sql\'s ?-parameters count[' . $n_params . '].'
             );
         }
@@ -443,7 +443,7 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
         $n_params = count($sqlFragments) - 1;
         if ($n_params < 1) {
             throw new \LogicException(
-                $this->client->errorMessagePrefix() . ' - calling this method when no parameters is illegal.'
+                $this->client->messagePrefix() . ' - calling this method when no parameters is illegal.'
             );
         }
 
@@ -454,7 +454,7 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
         }
         elseif (strlen($types) != $n_params) {
             throw new \InvalidArgumentException(
-                $this->client->errorMessagePrefix() . ' - arg $types length[' . strlen($types)
+                $this->client->messagePrefix() . ' - arg $types length[' . strlen($types)
                 . '] doesn\'t match sql\'s ?-parameters count[' . $n_params . '].'
             );
         }
@@ -475,7 +475,7 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
             if (!is_scalar($value) || is_bool($value)) {
                 // Unlikely when checked via parameterTypesCheck().
                 throw new \InvalidArgumentException(
-                    $this->client->errorMessagePrefix() . ' - arg $arguments index[' . $i
+                    $this->client->messagePrefix() . ' - arg $arguments index[' . $i
                     . '] type[' . gettype($value) . '] is not integer|float|string|binary.'
                 );
             }
@@ -491,7 +491,7 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
                 default:
                     // Unlikely when checked via parameterTypesCheck().
                     throw new \InvalidArgumentException(
-                        $this->client->errorMessagePrefix()
+                        $this->client->messagePrefix()
                         . ' - arg $types[' . $types . '] index[' . $i . '] char[' . $tps{$i} . '] is not i|d|s|b.'
                     );
             }
@@ -522,9 +522,9 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
      *
      * @return string
      */
-    public function errorMessagePrefix() : string
+    public function messagePrefix() : string
     {
-        return $this->client->errorMessagePrefix() . '[' . $this->__get('id') . ']';
+        return $this->client->messagePrefix() . '[' . $this->__get('id') . ']';
     }
 
     /**
@@ -538,7 +538,7 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
     {
         $sql_only = $sqlOnly ? true : !Dependency::container()->has('inspect');
         $this->client->log(
-            $this->errorMessagePrefix() . ' - dump for erring ' . $method . '(), ' . (!$sqlOnly ? 'query' : 'sql') . ':',
+            $this->messagePrefix() . ' - dump for erring ' . $method . '(), ' . (!$sqlOnly ? 'query' : 'sql') . ':',
             !$sql_only ? $this : substr(
                 $this->sqlTampered ?? $this->sql,
                 0,

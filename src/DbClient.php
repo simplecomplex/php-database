@@ -419,7 +419,7 @@ abstract class DbClient extends Explorable implements DbClientInterface
      *
      * @return string
      */
-    public function errorMessagePrefix() : string
+    public function messagePrefix() : string
     {
         return 'Database[' . $this->name . '][' . $this->type . '][' . $this->database . ']';
     }

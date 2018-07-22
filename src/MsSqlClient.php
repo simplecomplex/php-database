@@ -144,7 +144,7 @@ class MsSqlClient extends DbClient
     {
         if ($this->transactionStarted) {
             throw new \LogicException(
-                $this->errorMessagePrefix() . ' - previously started transaction isn\'t committed/rolled-back.'
+                $this->messagePrefix() . ' - previously started transaction isn\'t committed/rolled-back.'
             );
         }
         // Allow re-connection.
@@ -155,7 +155,7 @@ class MsSqlClient extends DbClient
             $errors = $this->getErrors();
             $cls_xcptn = $this->errorsToException($errors);
             throw new $cls_xcptn(
-                $this->errorMessagePrefix() . ' - failed to start transaction, error: '
+                $this->messagePrefix() . ' - failed to start transaction, error: '
                 . $this->errorsToString($errors) . '.'
             );
         }
@@ -186,7 +186,7 @@ class MsSqlClient extends DbClient
                 $errors = $this->getErrors();
                 $cls_xcptn = $this->errorsToException($errors);
                 throw new $cls_xcptn(
-                    $this->errorMessagePrefix() . $msg . $this->errorsToString($errors) . '.'
+                    $this->messagePrefix() . $msg . $this->errorsToString($errors) . '.'
                 );
             }
             $this->transactionStarted = false;
@@ -218,7 +218,7 @@ class MsSqlClient extends DbClient
                 $errors = $this->getErrors();
                 $cls_xcptn = $this->errorsToException($errors);
                 throw new $cls_xcptn(
-                    $this->errorMessagePrefix() . $msg . $this->errorsToString($errors) . '.'
+                    $this->messagePrefix() . $msg . $this->errorsToString($errors) . '.'
                 );
             }
             $this->transactionStarted = false;

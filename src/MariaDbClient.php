@@ -258,7 +258,7 @@ class MariaDbClient extends DbClient
     {
         if ($this->transactionStarted) {
             throw new \LogicException(
-                $this->errorMessagePrefix() . ' - previously started transaction isn\'t committed/rolled-back.'
+                $this->messagePrefix() . ' - previously started transaction isn\'t committed/rolled-back.'
             );
         }
         // Allow re-connection.
@@ -269,7 +269,7 @@ class MariaDbClient extends DbClient
             $errors = $this->getErrors();
             $cls_xcptn = $this->errorsToException($errors);
             throw new $cls_xcptn(
-                $this->errorMessagePrefix() . ' - failed to start transaction, error: '
+                $this->messagePrefix() . ' - failed to start transaction, error: '
                 . $this->errorsToString($errors) . '.'
             );
         }
@@ -303,7 +303,7 @@ class MariaDbClient extends DbClient
                 $errors = $this->getErrors();
                 $cls_xcptn = $this->errorsToException($errors);
                 throw new $cls_xcptn(
-                    $this->errorMessagePrefix() . $msg . $this->errorsToString($errors) . '.'
+                    $this->messagePrefix() . $msg . $this->errorsToString($errors) . '.'
                 );
             }
             $this->transactionStarted = false;
@@ -337,7 +337,7 @@ class MariaDbClient extends DbClient
                 $errors = $this->getErrors();
                 $cls_xcptn = $this->errorsToException($errors);
                 throw new $cls_xcptn(
-                    $this->errorMessagePrefix() . $msg . $this->errorsToString($errors) . '.'
+                    $this->messagePrefix() . $msg . $this->errorsToString($errors) . '.'
                 );
             }
             $this->transactionStarted = false;
@@ -449,14 +449,14 @@ class MariaDbClient extends DbClient
                 // Name must be (string) name, not constant value.
                 if (ctype_digit('' . $name)) {
                     throw new \LogicException(
-                        $this->errorMessagePrefix()
+                        $this->messagePrefix()
                         . ' - option[' . $name . '] is integer, must be string name of PHP constant.'
                     );
                 }
                 $constant = @constant($name);
                 if ($constant === null) {
                     throw new \LogicException(
-                        $this->errorMessagePrefix() . ' - invalid option[' . $name . '] value[' . $value
+                        $this->messagePrefix() . ' - invalid option[' . $name . '] value[' . $value
                         . '], there\'s no PHP constant by that name.'
                     );
                 }
@@ -471,14 +471,14 @@ class MariaDbClient extends DbClient
                     // Name must be (string) name, not constant value.
                     if (ctype_digit('' . $name)) {
                         throw new \LogicException(
-                            $this->errorMessagePrefix() . ' - flag[' . $name
+                            $this->messagePrefix() . ' - flag[' . $name
                             . '] is integer, must be string name of MYSQLI_CLIENT_* PHP constant.'
                         );
                     }
                     $constant = @constant($name);
                     if ($constant === null) {
                         throw new \LogicException(
-                            $this->errorMessagePrefix()
+                            $this->messagePrefix()
                             . ' - invalid flag[' . $name . '], there\'s no PHP constant by that name.'
                         );
                     }
