@@ -1,3 +1,8 @@
+SimpleComplex/Database 1.x, 2018-07-27
+--------------------------------------
+- MsSql client: remove redundant phrase from native error messages;
+  [Microsoft][ODBC ...].
+
 SimpleComplex/Database 1.x, 2018-07-22
 --------------------------------------
 - Methods messagePrefix() renamed; from errorMessagePrefix().

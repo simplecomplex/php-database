@@ -115,6 +115,19 @@ class MsSqlClient extends DbClient
     const ISO_QUOTED_IDENTIFIER = 1;
 
     /**
+     * Phrase to be removed from native error messages.
+     *
+     * Regular expression; gets replaced once.
+     *
+     * Current regex matches stuff like:
+     * - [Microsoft][ODBC SQL Server Driver]
+     * - [Microsoft][ODBC Driver 17 for SQL Server]
+     *
+     * @var string
+     */
+    const ERROR_MESSAGE_REMOVE = '/\[Microsoft\]\[ODBC[^\n\]]+\]/';
+
+    /**
      * @var string
      */
     protected $type = 'mssql';
@@ -286,10 +299,14 @@ class MsSqlClient extends DbClient
         $list = [];
         if (($errors = sqlsrv_errors())) {
             foreach ($errors as $error) {
+                $msg = $error['message'] ?? '';
+                if ($msg && static::ERROR_MESSAGE_REMOVE) {
+                    $msg = preg_replace(static::ERROR_MESSAGE_REMOVE, '', $msg, 1);
+                }
                 $list[] = [
                     'code' => $error['code'] ?? 0,
                     'sqlstate' => $error['SQLSTATE'] ?? '00000',
-                    'msg' => $error['message'] ?? '',
+                    'msg' => $msg,
                 ];
             }
         }
