@@ -71,6 +71,19 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
     const SQL_TRIM = " \t\n\r\0\x0B;";
 
     /**
+     * Whether to minify the base sql string.
+     *
+     * Option (bool) sql_minify overrules.
+     *
+     * Defaults to false because costly; uses regular expressions.
+     *
+     * @see DbQuery::sqlMinify()
+     *
+     * @var bool
+     */
+    const SQL_MINIFY = false;
+
+    /**
      * Truncate sql to that length when logging.
      *
      * @int
@@ -86,6 +99,7 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
      * @var string[]
      */
     const OPTIONS_GENERIC = [
+        'sql_minify',
         'result_mode',
         'affected_rows',
         'insert_id',
@@ -209,6 +223,9 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
             throw new \InvalidArgumentException(
                 $this->client->messagePrefix() . ' - arg $sql length[' . strlen($sql) . '] is effectively empty.'
             );
+        }
+        if ($options['sql_minify'] ?? static::SQL_MINIFY) {
+            $this->sql = $this->sqlMinify($sql);
         }
 
         if ($options) {
@@ -339,6 +356,41 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
         }
 
         return '' . preg_replace($this->escapeStringPattern, '\\\$0', $str);
+    }
+
+    /**
+     * Minify sql string.
+     *
+     * Transformations:
+     * - remove carriage return
+     * - remove leading line space
+     * - remove line comment, except first line as comment
+     * - convert newline to single space
+     *
+     * @param string $sql
+     *
+     * @return string
+     */
+    public function sqlMinify(string $sql) : string
+    {
+        return
+            // Convert newline to space.
+            str_replace(
+                "\n",
+                ' ',
+                // remove line comment, except first line as comment.
+                preg_replace(
+                    '/\n\-\-[^\n]*/',
+                    '',
+                    // Remove leading line space.
+                    preg_replace(
+                        '/\n[ ]+/',
+                        "\n",
+                        // Remove carriage return.
+                        str_replace("\r", '', $sql)
+                    )
+                )
+            );
     }
 
     /**

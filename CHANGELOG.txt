@@ -1,3 +1,11 @@
+SimpleComplex/Database 1.x, 2018-07-29
+--------------------------------------
+- MariaDbClient secure databaseInfo flags now that parent DbClient passes all
+  non-standard databaseInfo buckets to options.
+- DbQuery option sql_minify, and method to match it.
+- MsSql affected_rows goes to first result set initially,
+  but doesn't move to next.
+
 SimpleComplex/Database 1.x, 2018-07-27
 --------------------------------------
 - MsSql client: remove redundant phrase from native error messages;

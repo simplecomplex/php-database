@@ -110,7 +110,7 @@ class MariaDbClient extends DbClient
      *
      * @var string[]
      */
-    protected $flags;
+    protected $flags = [];
 
     /**
      * Connection flags resolved.
@@ -133,6 +133,10 @@ class MariaDbClient extends DbClient
      *
      * Connection to the database server is created later, on demand.
      *
+     * Options may be passed in root of arg databaseInfo
+     * as well as in the options bucket.
+     * That includes the flags array; if any.
+     *
      * @see MariaDbClient::OPTION_SHORTHANDS
      *
      * MySQLi connection options:
@@ -152,6 +156,7 @@ class MariaDbClient extends DbClient
      *      @var string[] $flags
      *          Database type specific bitmask flags, by name not value;
      *          'MYSQLI_CLIENT_COMPRESS', not MYSQLI_CLIENT_COMPRESS.
+     *          Alternatively, set the flags in $options['flags'].
      * }
      */
     public function __construct(string $name, array $databaseInfo)
@@ -160,7 +165,17 @@ class MariaDbClient extends DbClient
 
         parent::__construct($name, $databaseInfo);
 
-        $this->flags = $databaseInfo['flags'] ?? [];
+        /**
+         * Parent constructor passes all non-standard $databaseInfo buckets,
+         * like $databaseInfo['flags'], to options.
+         *
+         * @see DbClient::DATABASE_INFO
+         */
+        if (isset($this->options['flags'])) {
+            $this->flags = $this->options['flags'];
+            unset($this->options['flags']);
+        }
+
         $this->explorableIndex[] = 'flags';
         $this->explorableIndex[] = 'flagsResolved';
     }

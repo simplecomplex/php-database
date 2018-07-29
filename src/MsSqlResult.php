@@ -70,6 +70,8 @@ class MsSqlResult extends DbResult
      * NB: Query class result mode must be SQLSRV_CURSOR_FORWARD ('forward').
      * @see MsSqlQuery::__constructor()
      *
+     * Goes to first result set (initially), but doesn't move to next set.
+     *
      * @return int
      *
      * @throws \LogicException
@@ -81,8 +83,11 @@ class MsSqlResult extends DbResult
         $count = @sqlsrv_rows_affected(
             $this->statement
         );
-        // @todo: does sqlsrv_rows_affected() move to first result set, since requiring result mode 'forward'?
-        // @todo: ++$this->setIndex;
+        // sqlsrv_rows_affected() moves to first result set.
+        // However doesn't move to next on later call.
+        if ($this->setIndex < 0) {
+            ++$this->setIndex;
+        }
         if (($count && $count > 0) || $count === 0) {
             return $count;
         }

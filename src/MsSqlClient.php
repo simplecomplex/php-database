@@ -138,12 +138,30 @@ class MsSqlClient extends DbClient
     protected $connection;
 
     /**
-     * @inheritdoc
+     * Configures database client.
      *
-     * @see DbClient::__construct()
+     * Connection to the database server is created later, on demand.
+     *
+     * @see MsSqlClient::OPTION_SHORTHANDS
+     *
+     * SQL Server connection options:
+     * @see https://docs.microsoft.com/en-us/sql/connect/php/connection-options
+     *
+     * @param string $name
+     * @param array $databaseInfo {
+     *      @var string $host
+     *      @var string $port  Optional, defaults to class constant SERVER_PORT.
+     *      @var string $database
+     *      @var string $user
+     *      @var string $pass
+     *      @var array $options
+     *          Database type specific options, see also OPTION_SHORTHANDS.
+     * }
      */
     public function __construct(string $name, array $databaseInfo)
     {
+        // Overrides parent constructor to add info as explorable property.
+
         parent::__construct($name, $databaseInfo);
 
         $this->explorableIndex[] = 'info';
