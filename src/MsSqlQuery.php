@@ -642,6 +642,12 @@ class MsSqlQuery extends DbQuery
      */
     public function nativeType($value, string $typeChar = '')
     {
+        // @todo: should take ($value, string $types, int $index) and guess type based on value (as this method also supports)
+        // @todo: that will also allow that we can report which char index in the type string was wrong.
+
+        // @todo: and use the same guessing principle for the parameters() method - and in MariaDbQuery.
+
+
         if ($typeChar) {
             switch ($typeChar) {
                 case 'i':
