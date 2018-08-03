@@ -475,4 +475,54 @@ class QueryArgumentTest extends TestCase
         $result = $query->execute();
         $this->assertSame(1, $result->affectedRows());
     }
+
+    /**
+     * Detect argument types, using arguments' actual types.
+     *
+     * @see ClientTest::testInstantiation()
+     */
+    public function testQueryArgumentTypeQualifiedPartially()
+    {
+        $client = (new ClientTest())->testInstantiation();
+
+        $query = $client->query(
+            'INSERT INTO typish (_0_int, _1_float, _2_decimal, _3_varchar, _4_blob, _5_date, _6_datetime, _7_nvarchar)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            [
+                'validate_arguments' => static::DB_QUERY_VALIDATE_ARGUMENTS,
+                'sql_minify' => true,
+                'affected_rows' => true,
+            ]
+        );
+
+        $types = 'idssbsss';
+
+        $time = new Time();
+        $args = [
+            '_0_int' => 0,
+            '_1_float' => 1.0,
+            '_2_decimal' => '2.0',
+            '_3_varchar' => 'arguments types detected',
+            '_4_blob' => [
+                sprintf("%08d", decbin(4)),
+                SQLSRV_PARAM_IN,
+                null,
+                SQLSRV_SQLTYPE_VARBINARY('max'),
+            ],
+            '_5_date' => $time,
+            '_6_datetime' => [
+                $time,
+                SQLSRV_PARAM_IN,
+                null,
+                SQLSRV_SQLTYPE_VARCHAR('max'),
+            ],
+            '_7_nvarchar' => 'n varchar',
+        ];
+        $query->prepare($types, $args);
+
+        TestHelper::logVariable(__FUNCTION__ . ' query', $query);
+
+        $result = $query->execute();
+        $this->assertSame(1, $result->affectedRows());
+    }
 }

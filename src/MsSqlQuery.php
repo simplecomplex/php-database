@@ -630,11 +630,7 @@ class MsSqlQuery extends DbQuery
     //  Helpers.----------------------------------------------------------------
 
     /**
-     * Get native SQLSRV_SQLTYPE_* constant equivalent of arg $value type.
-     *
-     * Checks that non-empty $typeChar matches $value type.
-     *
-     * Cannot detect binary unless non-empty $typeChar (b).
+     * Get native SQLSRV_SQLTYPE_* constant equivalent of a type char and a value.
      *
      * SQLTYPE Constants:
      * @see https://docs.microsoft.com/en-us/sql/connect/php/constants-microsoft-drivers-for-php-for-sql-server
@@ -646,6 +642,8 @@ class MsSqlQuery extends DbQuery
      * @param string $types
      *      Chars: i|d|s|b|t.
      * @param int $index
+     * @param bool $actualTypeChecked
+     *      False: check that $value's actual type matches the type char.
      *
      * @return int
      *      SQLSRV_SQLTYPE_* constant.
@@ -655,105 +653,68 @@ class MsSqlQuery extends DbQuery
      * @throws \RuntimeException
      *      Non-empty arg $typeChar doesn't arg $value type.
      */
-    public function nativeType($value, string $types = '', int $index = -1)
+    public function nativeType($value, string $types, int $index, bool $actualTypeChecked = false)
     {
-        // @todo: should take ($value, string $types, int $index) and guess type based on value (as this method also supports)
-        // @todo: that will also allow that we can report which char index in the type string was wrong.
-
-        // @todo: and use the same guessing principle for the parameters() method - and in MariaDbQuery.
-
-        if ($index > -1) {
-            if (strlen($types) <= $index) {
-                throw new \InvalidArgumentException(
-                    'Arg $types value[' . $types . '] is too short for arg $index[' . $index . '].'
-                );
-            }
-
+        if ($index < 0 || $index >= strlen($types)) {
+            throw new \OutOfRangeException(
+                'Arg $index[' . $index . '] is not within range of arg $types length[' . strlen($types) . '].'
+            );
         }
-
-        $typeChar = $types{$index};
-
-        if ($typeChar) {
-            switch ($typeChar) {
-                case 'i':
-                    if (!is_int($value)) {
-                        throw new \RuntimeException(
-                            'Arg $typeChar value[' . $typeChar
-                            . '] doesn\'t match arg $value type[' . gettype($value) . '].'
-                        );
-                    }
-                    // Integer; continue to end of method body.
-                    break;
-                case 'd':
-                    if (!is_float($value)) {
-                        throw new \RuntimeException(
-                            'Arg $typeChar value[' . $typeChar
-                            . '] doesn\'t match arg $value type[' . gettype($value) . '].'
-                        );
-                    }
-                    return SQLSRV_SQLTYPE_FLOAT;
-                case 's':
-                    if (!is_string($value)) {
-                        /**
-                         * Sending as string works, but let's play it correctly.
-                         * @see MsSqlQuery::AUTO_STRINGABLE_CLASSES
-                         */
-                        if ($value instanceof \DateTime) {
-                            return SQLSRV_SQLTYPE_DATETIME2;
-                        }
-                        throw new \RuntimeException(
-                            'Arg $typeChar value[' . $typeChar
-                            . '] doesn\'t match arg $value type[' . gettype($value) . '].'
-                        );
-                    }
-                    return SQLSRV_SQLTYPE_VARCHAR('max');
-                case 'b':
-                    if (!is_string($value)) {
-                        throw new \RuntimeException(
-                            'Arg $typeChar value[' . $typeChar
-                            . '] doesn\'t match arg $value type[' . gettype($value) . '].'
-                        );
-                    }
-                    return SQLSRV_SQLTYPE_VARBINARY('max');
-                default:
-                    throw new \InvalidArgumentException(
-                        'Arg $typeChar value[' . $typeChar . '] is not '. join('|', static::PARAMETER_TYPE_CHARS) . '.'
+        switch ($types{$index}) {
+            case 'i':
+                if (!$actualTypeChecked && !is_int($value)) {
+                    throw new \RuntimeException(
+                        'Arg $types index[' . $index . '] char[' . $types{$index}
+                            . '] doesn\'t match actual type[' . Utils::getType($value) . '].'
                     );
-            }
-        }
-        else {
-            if ($value === '') {
-                return SQLSRV_SQLTYPE_VARCHAR(0);
-            }
-
-            $type = gettype($value);
-            switch ($type) {
-                case 'string':
-                    // Cannot discern binary from string.
-                    return SQLSRV_SQLTYPE_VARCHAR(strlen($value));
-                case 'integer':
-                    // Integer; continue to end of method body.
-                    break;
-                case 'double':
-                case 'float':
-                    return SQLSRV_SQLTYPE_FLOAT;
-                default:
-                    throw new \InvalidArgumentException(
-                        'Arg $value type[' . $type . '] is not integer|float|string.'
+                }
+                if ($value >= 0 && $value <= 255) {
+                    return SQLSRV_SQLTYPE_TINYINT;
+                }
+                if ($value >= -32768 && $value <= 32767) {
+                    return SQLSRV_SQLTYPE_SMALLINT;
+                }
+                if ($value >= -2147483648 && $value <= 2147483647) {
+                    return SQLSRV_SQLTYPE_INT;
+                }
+                return SQLSRV_SQLTYPE_BIGINT;
+            case 'd':
+                if ($actualTypeChecked && !is_float($value)) {
+                    throw new \RuntimeException(
+                        'Arg $types index[' . $index . '] char[' . $types{$index}
+                            . '] doesn\'t match actual type[' . Utils::getType($value) . '].'
                     );
-            }
+                }
+                return SQLSRV_SQLTYPE_FLOAT;
+            case 's':
+                if (!$actualTypeChecked && !is_string($value)) {
+                    /**
+                     * Sending as string works, but let's play it correctly.
+                     * @see MsSqlQuery::AUTO_STRINGABLE_CLASSES
+                     */
+                    if ($value instanceof \DateTime) {
+                        return SQLSRV_SQLTYPE_DATETIME2;
+                    }
+                    throw new \RuntimeException(
+                        'Arg $types index[' . $index . '] char[' . $types{$index}
+                            . '] doesn\'t match actual type[' . Utils::getType($value) . '].'
+                    );
+                }
+                return SQLSRV_SQLTYPE_VARCHAR('max');
+            case 'b':
+                if (!$actualTypeChecked && !is_string($value)) {
+                    throw new \RuntimeException(
+                        'Arg $types index[' . $index . '] char[' . $types{$index}
+                            . '] doesn\'t match actual type[' . Utils::getType($value) . '].'
+                    );
+                }
+                return SQLSRV_SQLTYPE_VARBINARY('max');
         }
 
-        if ($value >= 0 && $value <= 255) {
-            return SQLSRV_SQLTYPE_TINYINT;
-        }
-        if ($value >= -32768 && $value <= 32767) {
-            return SQLSRV_SQLTYPE_SMALLINT;
-        }
-        if ($value >= -2147483648 && $value <= 2147483647) {
-            return SQLSRV_SQLTYPE_INT;
-        }
-        return SQLSRV_SQLTYPE_BIGINT;
+        throw new \InvalidArgumentException(
+            'Arg $types index[' . $index . '] char[' . $types{$index}
+                . '] is not '. join('|', static::PARAMETER_TYPE_CHARS) . '.'
+        );
     }
 
     /**
@@ -776,11 +737,13 @@ class MsSqlQuery extends DbQuery
             return;
         }
 
-        // Use arg $arguments directly if all args have type flags.
-        // Otherwise build new arguments list, securing type flags.
+        // Use buckets arg $arguments directly if all args are type qualified.
+        //
+        // Otherwise arg $types - or actual type detection - for those buckets
+        // that aren't type qualifying arrays.
 
-        $args_typed = true;
-        $some_arg_is_array = false;
+        $all_args_type_qualified = true;
+        $type_detection_skip_indexes = [];
         /**
          * Type qualifying array argument:
          * - 0: (mixed) value
@@ -794,28 +757,29 @@ class MsSqlQuery extends DbQuery
             ++$i;
             if (!is_array($arg)) {
                 // Argumment is arg value only.
-                $args_typed = false;
-                break;
+                $all_args_type_qualified = false;
             }
-            $some_arg_is_array = true;
-            $count = count($arg);
-            if (!$count) {
-                throw new \InvalidArgumentException(
-                    $this->client->messagePrefix() . ' - arg $arguments bucket ' . $i . ' is empty array.'
-                );
-            }
-            // An 'in' parameter must have 4th bucket,
-            // containing SQLSRV_SQLTYPE_* constant.
-            if (
-                $count == 1
-                || ($arg[1] != SQLSRV_PARAM_OUT && ($count < 4 || !$arg[3]))
-            ) {
-                $args_typed = false;
-                break;
+            else {
+                $type_detection_skip_indexes[] = $i;
+                $count = count($arg);
+                if (!$count) {
+                    throw new \InvalidArgumentException(
+                        $this->client->messagePrefix() . ' - arg $arguments bucket ' . $i . ' is empty array.'
+                    );
+                }
+                // An 'in' parameter must have 4th bucket,
+                // containing SQLSRV_SQLTYPE_* constant.
+                if (
+                    $count == 1
+                    || ($arg[1] != SQLSRV_PARAM_OUT && ($count < 4 || !$arg[3]))
+                ) {
+                    $all_args_type_qualified = false;
+                    break;
+                }
             }
         }
 
-        if ($args_typed) {
+        if ($all_args_type_qualified) {
             if ($this->isPreparedStatement) {
                 // Support assoc array; sqlsrv_prepare() doesn't.
                 // And prevent de-referencing when using an arguments list whose
@@ -840,15 +804,11 @@ class MsSqlQuery extends DbQuery
 
         // Use arg $types to establish types.
         $tps = $types;
+        $actual_types_checked = false;
         if ($tps === '') {
             // Detect types.
-            if ($some_arg_is_array) {
-                throw new \InvalidArgumentException(
-                    $this->client->messagePrefix() . ' - arg $types empty'
-                    . ', cannot detect types by arguments\' actual types because some argument(s) are array.'
-                );
-            }
-            $tps = $this->parameterTypesDetect($arguments);
+            $tps = $this->parameterTypesDetect($arguments, $type_detection_skip_indexes);
+            $actual_types_checked = true;
         }
         elseif (strlen($types) != $n_params) {
             throw new \InvalidArgumentException(
@@ -873,11 +833,12 @@ class MsSqlQuery extends DbQuery
             ++$i;
             if (!is_array($arg)) {
                 // Argumment is arg value only.
+                // Use type char and perhaps value.
                 $type_qualifieds[] = [
                     null,
                     SQLSRV_PARAM_IN,
                     null,
-                    $this->nativeType($arg, $tps, $i)
+                    $this->nativeType($arg, $tps, $i, $actual_types_checked)
                 ];
                 if ($is_prep_stat) {
                     $type_qualifieds[$i][0] = &$arg;
@@ -895,7 +856,10 @@ class MsSqlQuery extends DbQuery
                         null,
                         $arg[1],
                         $arg[2],
-                        $arg[3] ?? ($arg[1] == SQLSRV_PARAM_OUT ? null : $this->nativeType($arg[0], $tps, $i))
+                        $arg[3] ?? (
+                            $arg[1] == SQLSRV_PARAM_OUT ? null :
+                                $this->nativeType($arg[0], $tps, $i, $actual_types_checked)
+                        )
                     ];
                     if ($is_prep_stat) {
                         $type_qualifieds[$i][0] = &$arg[0];
@@ -908,7 +872,8 @@ class MsSqlQuery extends DbQuery
                         null,
                         $count > 1 ? $arg[1] : null,
                         $count > 2 ? $arg[2] : null,
-                        $count > 1 && $arg[1] == SQLSRV_PARAM_OUT ? null : $this->nativeType($arg[0], $tps, $i)
+                        $count > 1 && $arg[1] == SQLSRV_PARAM_OUT ? null :
+                            $this->nativeType($arg[0], $tps, $i, $actual_types_checked)
                     ];
                     if ($is_prep_stat) {
                         $type_qualifieds[$i][0] = &$arg[0];

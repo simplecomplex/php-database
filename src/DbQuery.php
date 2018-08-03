@@ -609,46 +609,54 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
      * Only supports string, integer, float.
      *
      * @param array $arguments
+     * @param array $skipIndexes
+     *      Skip detecting type of buckets at those indexes, setting underscore
+     *      as mock type char at those indexes in the output type string.
      *
      * @return string
      */
-    public function parameterTypesDetect(array $arguments) : string
+    public function parameterTypesDetect(array $arguments, array $skipIndexes = []) : string
     {
         $types = '';
         $index = -1;
         foreach ($arguments as $value) {
             ++$index;
-            $type = gettype($value);
-            switch ($type) {
-                case 'string':
-                    // Cannot discern binary from string.
-                    $types .= 's';
-                    break;
-                case 'integer':
-                    $types .= 'i';
-                    break;
-                case 'double':
-                case 'float':
-                    $types .= 'd';
-                    break;
-                default:
-                    $auto_stringable_object = false;
-                    if ($type == 'object' && static::AUTO_STRINGABLE_CLASSES) {
-                        foreach (static::AUTO_STRINGABLE_CLASSES as $class_name) {
-                            if (is_a($value, $class_name)) {
-                                $auto_stringable_object = true;
-                                $types .= 's';
-                                break;
+            if ($skipIndexes && in_array($index, $skipIndexes)) {
+                $types .= '_';
+            }
+            else {
+                $type = gettype($value);
+                switch ($type) {
+                    case 'string':
+                        // Cannot discern binary from string.
+                        $types .= 's';
+                        break;
+                    case 'integer':
+                        $types .= 'i';
+                        break;
+                    case 'double':
+                    case 'float':
+                        $types .= 'd';
+                        break;
+                    default:
+                        $auto_stringable_object = false;
+                        if ($type == 'object' && static::AUTO_STRINGABLE_CLASSES) {
+                            foreach (static::AUTO_STRINGABLE_CLASSES as $class_name) {
+                                if (is_a($value, $class_name)) {
+                                    $auto_stringable_object = true;
+                                    $types .= 's';
+                                    break;
+                                }
                             }
                         }
-                    }
-                    if (!$auto_stringable_object) {
-                        throw new \InvalidArgumentException(
-                            $this->client->messagePrefix()
-                                . ' - cannot detect parameter type char for arguments index[' . $index
-                                . '], type[' . Utils::getType($value) . '] not supported.'
-                        );
-                    }
+                        if (!$auto_stringable_object) {
+                            throw new \InvalidArgumentException(
+                                $this->client->messagePrefix()
+                                    . ' - cannot detect parameter type char for arguments index[' . $index
+                                    . '], type[' . Utils::getType($value) . '] not supported.'
+                            );
+                        }
+                }
             }
         }
         return $types;
