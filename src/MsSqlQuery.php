@@ -10,7 +10,6 @@ declare(strict_types=1);
 namespace SimpleComplex\Database;
 
 use SimpleComplex\Utils\Utils;
-use SimpleComplex\Validate\Validate;
 
 use SimpleComplex\Database\Interfaces\DbClientInterface;
 use SimpleComplex\Database\Interfaces\DbQueryInterface;
@@ -23,8 +22,10 @@ use SimpleComplex\Database\Exception\DbQueryException;
 /**
  * MS SQL query.
  *
+ * Sqlsrv handles DateTimes transparently, as strings.
+ *
  * Multi-query producing more results sets is not supported by MS SQL,
- * except when calling stored procedure(?). For multi vs. batch query, see:
+ * except when calling stored procedure. For multi vs. batch query, see:
  * @see DbQueryInterface
  *
  * Inherited properties:
@@ -62,23 +63,6 @@ class MsSqlQuery extends DbQuery
      * @var string
      */
     const CLASS_RESULT = MsSqlResult::class;
-
-    /**
-     * List of more supported parameter type characters.
-     *
-     * Types:
-     * - n: string ~ nvarchar
-     * - t: datetime
-     *
-     * @see MsSqlQuery::prepare()
-     * @see MsSqlQuery::parameters()
-     *
-     * @var string[]
-     */
-    const PARAMETER_TYPE_CHARS_MORE = [
-        'n',
-        't',
-    ];
 
     /**
      * Default query timeout.
@@ -634,52 +618,6 @@ class MsSqlQuery extends DbQuery
 
 
     //  Helpers.----------------------------------------------------------------
-
-    /**
-     * Handles types vs. arguments mismatch validation for custom param types.
-     *
-     * @see DbQuery::typesArgumentsMismatch()
-     * @see DbQuery::PARAMETER_TYPE_CHARS
-     * @see MsSqlQuery::PARAMETER_TYPE_CHARS_MORE
-     *
-     * @param int $i
-     * @param string $types
-     * @param mixed $value
-     *
-     * @return string
-     */
-    protected function customTypesArgumentsMismatch(int $i, string $types, $value)
-    {
-        switch ($types{$i}) {
-            case 'n':
-                if (!is_string($value)) {
-                    return 'index[' . $i . '] char[' . $types{$i} . '] type[' . Utils::getType($value) . ']';
-                }
-                break;
-            case 't':
-                if (!($value instanceof \DateTime)) {
-                    if (is_string($value)) {
-                        // sqlsrv accepts ISO-8601 date and datetime
-                        // interchangeably.
-                        if (!$this->validate->dateISO8601Local($value) && !$this->validate->dateTimeISO8601($value)) {
-                            $invalids[] = 'index[' . $i . '] char[' . $types{$i}
-                                . '] type[string] not date/datetime ISO-8601';
-                        }
-                    }
-                    else {
-                        return 'index[' . $i . '] char[' . $types{$i} . '] type[' . Utils::getType($value) . ']';
-                    }
-                }
-                break;
-            default:
-                throw new \InvalidArgumentException(
-                    'Arg $types index[' . $i . '] char[' . $types{$i} . '] is not '
-                    . join('|', static::PARAMETER_TYPE_CHARS) . '.'
-                );
-        }
-
-        return '';
-    }
 
     /**
      * Create arguments type string based on arguments' actual types.

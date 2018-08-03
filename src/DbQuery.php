@@ -84,13 +84,6 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
     ];
 
     /**
-     * List of more supported parameter type characters.
-     *
-     * @var string[]
-     */
-    const PARAMETER_TYPE_CHARS_MORE = [];
-
-    /**
      * Remove trailing (and leading) semicolon,
      * to prevent appearance as more queries.
      *
@@ -505,21 +498,11 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
             '',
             $types
         );
-        if ($invalids && static::PARAMETER_TYPE_CHARS_MORE) {
-            $invalids = str_replace(
-                static::PARAMETER_TYPE_CHARS_MORE,
-                '',
-                $invalids
-            );
-        }
         if ($invalids) {
             $invalids = [];
             $le = strlen($types);
             for ($i = 0; $i < $le; ++$i) {
-                if (
-                    !in_array($types{$i}, static::PARAMETER_TYPE_CHARS)
-                    && !in_array($types{$i}, static::PARAMETER_TYPE_CHARS_MORE)
-                ) {
+                if (!in_array($types{$i}, static::PARAMETER_TYPE_CHARS)) {
                     $invalids[] = 'index[' . $i . '] char[' . $types{$i} . ']';
                 }
             }
@@ -598,17 +581,10 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
                     }
                     break;
                 default:
-                    if (DbQuery::PARAMETER_TYPE_CHARS_MORE) {
-                        if ($custom_invalid = $this->customTypesArgumentsMismatch($i, $types, $value)) {
-                            $invalids[] = $custom_invalid;
-                        }
-                    }
-                    else {
-                        throw new \InvalidArgumentException(
-                            'Arg $types index[' . $i . '] char[' . $types{$i} . '] is not '
-                            . join('|', static::PARAMETER_TYPE_CHARS) . '.'
-                        );
-                    }
+                    throw new \InvalidArgumentException(
+                        'Arg $types index[' . $i . '] char[' . $types{$i} . '] is not '
+                        . join('|', static::PARAMETER_TYPE_CHARS) . '.'
+                    );
             }
         }
 
@@ -617,31 +593,6 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
         }
 
         return '';
-    }
-
-    /**
-     * Handles types vs. arguments mismatch validation for custom param types.
-     *
-     * Extending class supporting more parameter types must override this method.
-     *
-     * This un-extended version always throws exception.
-     *
-     * @see DbQuery::typesArgumentsMismatch()
-     * @see DbQuery::PARAMETER_TYPE_CHARS
-     *
-     * @param int $i
-     * @param string $types
-     * @param mixed $value
-     *
-     * @return string
-     *
-     * @throws \LogicException
-     */
-    protected function customTypesArgumentsMismatch(int $i, string $types, $value)
-    {
-        throw new \LogicException(
-            'Class ' . get_class($this) . ' supporting more parameter types should override this method.'
-        );
     }
 
     /**
@@ -673,37 +624,14 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
                     $types .= 'd';
                     break;
                 default:
-                    if (DbQuery::PARAMETER_TYPE_CHARS_MORE) {
-                        $types .= $this->customParameterTypesDetect($index, $value);
-                    }
-                    else {
-                        throw new \InvalidArgumentException(
-                            $this->client->messagePrefix()
-                            . ' - cannot detect parameter type char for arguments index[' . $index
-                            . '], type[' . Utils::getType($value) . '] not supported.'
-                        );
-                    }
+                    throw new \InvalidArgumentException(
+                        $this->client->messagePrefix()
+                        . ' - cannot detect parameter type char for arguments index[' . $index
+                        . '], type[' . Utils::getType($value) . '] not supported.'
+                    );
             }
         }
         return $types;
-    }
-
-    /**
-     * @param int $index
-     * @param $value
-     *
-     * @return string
-     */
-    protected function customParameterTypesDetect(int $index, $value) : string
-    {
-        if ($value instanceof \DateTime) {
-            return 't';
-        }
-        throw new \InvalidArgumentException(
-            $this->client->messagePrefix()
-            . ' - cannot detect parameter type char for arguments index[' . $index
-            . '], type[' . Utils::getType($value) . '] not supported.'
-        );
     }
 
     /**

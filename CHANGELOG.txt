@@ -3,7 +3,10 @@ SimpleComplex/Database 1.x, 2018-08-03
 - Unit test query arguments: simple referred, update bucket in indexed list,
   update bucket in assoc. keyed list.
 - Query method argumentsInvalid() renamed; from parameterTypesCheck().
-
+- MsSql doesn't need support for more type chars (t ~ datetime, n ~ nvarchar),
+  because Sqlsrv handles DateTime transparently (stringifying when for varchar)
+  and nvarchar may be handled with type qualifying argument array (only needed
+  when the parameter is to be used in a sql where clause, anyway).
 
 SimpleComplex/Database 1.x, 2018-07-29
 --------------------------------------
