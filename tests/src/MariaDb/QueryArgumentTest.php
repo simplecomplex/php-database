@@ -27,6 +27,12 @@ use SimpleComplex\Utils\Time;
  */
 class QueryArgumentTest extends TestCase
 {
+
+    /**
+     * @see \SimpleComplex\Database\DbQuery::VALIDATE_ARGUMENTS
+     */
+    const DB_QUERY_VALIDATE_ARGUMENTS = 2;
+
     /**
      * Arguments referred; old-school pattern.
      *
@@ -44,6 +50,7 @@ class QueryArgumentTest extends TestCase
             'INSERT INTO typish (_0_int, _1_float, _2_decimal, _3_varchar, _4_blob, _5_date, _6_datetime)
             VALUES (?, ?, ?, ?, ?, ?, ?)',
             [
+                'validate_arguments' => static::DB_QUERY_VALIDATE_ARGUMENTS,
                 'sql_minify' => true,
                 'affected_rows' => true,
             ]
@@ -56,7 +63,7 @@ class QueryArgumentTest extends TestCase
         $_1_float = 1.0;
         $_2_decimal = '2.0';
         $_3_varchar = 'arguments referred';
-        $_4_blob = decbin(4);
+        $_4_blob = sprintf("%08d", decbin(4));
         $_5_date = $time->getDateISOlocal();
         $_6_datetime = '' . $time;
         
@@ -96,6 +103,7 @@ class QueryArgumentTest extends TestCase
             'INSERT INTO typish (_0_int, _1_float, _2_decimal, _3_varchar, _4_blob, _5_date, _6_datetime)
             VALUES (?, ?, ?, ?, ?, ?, ?)',
             [
+                'validate_arguments' => static::DB_QUERY_VALIDATE_ARGUMENTS,
                 'sql_minify' => true,
                 'affected_rows' => true,
             ]
@@ -109,7 +117,7 @@ class QueryArgumentTest extends TestCase
             1.0,
             '2.0',
             'arguments indexed',
-            decbin(4),
+            sprintf("%08d", decbin(4)),
             $time->getDateISOlocal(),
             '' . $time,
         ];
@@ -136,6 +144,7 @@ class QueryArgumentTest extends TestCase
             'INSERT INTO typish (_0_int, _1_float, _2_decimal, _3_varchar, _4_blob, _5_date, _6_datetime)
             VALUES (?, ?, ?, ?, ?, ?, ?)',
             [
+                'validate_arguments' => static::DB_QUERY_VALIDATE_ARGUMENTS,
                 'sql_minify' => true,
                 'affected_rows' => true,
             ]
@@ -149,7 +158,7 @@ class QueryArgumentTest extends TestCase
             '_1_float' => 1.0,
             '_2_decimal' => '2.0',
             '_3_varchar' => 'arguments keyed',
-            '_4_blob' => decbin(4),
+            '_4_blob' => sprintf("%08d", decbin(4)),
             '_5_date' => $time->getDateISOlocal(),
             '_6_datetime' => '' . $time,
         ];
@@ -159,6 +168,42 @@ class QueryArgumentTest extends TestCase
 
         $args['_1_float'] = 1.1;
         $args['_2_decimal'] = '2.2';
+        $result = $query->execute();
+        $this->assertSame(1, $result->affectedRows());
+    }
+
+    /**
+     * Detect argument types, using arguments' actual types.
+     *
+     * @see ClientTest::testInstantiation()
+     */
+    public function testQueryArgumentTypesDetect()
+    {
+        $client = (new ClientTest())->testInstantiation();
+
+        $query = $client->query(
+            'INSERT INTO typish (_0_int, _1_float, _2_decimal, _3_varchar, _4_blob, _5_date, _6_datetime)
+            VALUES (?, ?, ?, ?, null, ?, ?)',
+            [
+                'validate_arguments' => static::DB_QUERY_VALIDATE_ARGUMENTS,
+                'sql_minify' => true,
+                'affected_rows' => true,
+            ]
+        );
+
+        $types = '';
+
+        $time = new Time();
+        $args = [
+            '_0_int' => 0,
+            '_1_float' => 1.0,
+            '_2_decimal' => '2.0',
+            '_3_varchar' => 'arguments types detected',
+            //'_4_blob' => sprintf("%08d", decbin(4)),
+            '_5_date' => $time->getDateISOlocal(),
+            '_6_datetime' => '' . $time,
+        ];
+        $query->prepare($types, $args);
         $result = $query->execute();
         $this->assertSame(1, $result->affectedRows());
     }

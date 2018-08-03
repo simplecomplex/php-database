@@ -46,9 +46,7 @@ class ConfigurationTest extends TestCase
             'database' => 'test_scx_mssql',
             'user' => 'SA',
             'pass' => '1234*Sql',
-            'options' => [
-                'tls_trust_self_signed' => true,
-            ],
+            'tls_trust_self_signed' => true,
         ],
     ];
 

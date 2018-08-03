@@ -51,7 +51,7 @@ interface DbQueryInterface
      *
      * Chainable.
      *
-     * Types:
+     * Types, at least (more types may be supported):
      * - i: integer.
      * - d: float (double).
      * - s: string.
@@ -79,14 +79,13 @@ interface DbQueryInterface
      *
      * Chainable.
      *
-     * Types:
+     * Types, at least (more types may be supported):
      * - i: integer.
      * - d: float (double).
      * - s: string.
      * - b: blob.
      *
      * @param string $types
-     *      Empty: uses string for all.
      * @param array $arguments
      *      Values to substitute sql parameter markers with.
      *      Arguments are consumed once, not referred.

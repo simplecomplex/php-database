@@ -2,6 +2,8 @@ SimpleComplex/Database 1.x, 2018-08-03
 --------------------------------------
 - Unit test query arguments: simple referred, update bucket in indexed list,
   update bucket in assoc. keyed list.
+- Query method argumentsInvalid() renamed; from parameterTypesCheck().
+
 
 SimpleComplex/Database 1.x, 2018-07-29
 --------------------------------------

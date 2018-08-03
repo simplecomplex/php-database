@@ -379,8 +379,8 @@ class MariaDbQuery extends DbQuery
 
             $tps = $types;
             if ($tps === '') {
-                // Be friendly, all strings.
-                $tps = str_repeat('s', $n_params);
+                // Detect types.
+                $tps = $this->parameterTypesDetect($arguments);
             }
             elseif (strlen($types) != $n_params) {
                 $this->log(__FUNCTION__);
@@ -389,10 +389,12 @@ class MariaDbQuery extends DbQuery
                     . '] doesn\'t match sql\'s ?-parameters count[' . $n_params . '].'
                 );
             }
-            elseif (($type_illegals = $this->parameterTypesCheck($types))) {
+            elseif (
+                $this->validateArguments
+                && ($invalid = $this->argumentsInvalid($types, $this->validateArguments < 2 ? null : $arguments))
+            ) {
                 throw new \InvalidArgumentException(
-                    $this->client->messagePrefix()
-                    . ' - arg $types contains illegal char(s) ' . $type_illegals . '.'
+                    $this->client->messagePrefix() . ' - ' . $invalid . '.'
                 );
             }
         }

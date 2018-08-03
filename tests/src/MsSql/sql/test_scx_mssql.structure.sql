@@ -88,6 +88,7 @@ CREATE TABLE typish (
     _3_varchar VARCHAR(255) NOT NULL,
     _4_blob VARBINARY(max),
     _5_date DATE NOT NULL,
-    _6_datetime DATETIME2 NOT NULL
+    _6_datetime DATETIME2 NOT NULL,
+    _7_nvarchar NVARCHAR(255) NOT NULL,
     PRIMARY KEY (id)
 );

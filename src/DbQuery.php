@@ -12,6 +12,7 @@ namespace SimpleComplex\Database;
 use SimpleComplex\Utils\Explorable;
 use SimpleComplex\Utils\Utils;
 use SimpleComplex\Utils\Dependency;
+use SimpleComplex\Validate\Validate;
 
 use SimpleComplex\Database\Interfaces\DbClientInterface;
 use SimpleComplex\Database\Interfaces\DbQueryInterface;
@@ -45,6 +46,7 @@ use SimpleComplex\Database\Interfaces\DbQueryInterface;
  * @property-read array $arguments
  * @property-read bool|null $statementClosed
  * @property-read bool $transactionStarted  Value of client ditto.
+ * @property-read int $validateArguments
  *
  * @package SimpleComplex\Database
  */
@@ -59,6 +61,34 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
      * @var string
      */
     const SQL_PARAMETER = '?';
+
+    /**
+     * List of supported parameter type characters.
+     *
+     * Types:
+     * - i: integer
+     * - d: float
+     * - s: string
+     * - b: binary
+     *
+     * @see DbQueryInterface::prepare()
+     * @see DbQuery::parameters()
+     *
+     * @var string[]
+     */
+    const PARAMETER_TYPE_CHARS = [
+        'i',
+        'd',
+        's',
+        'b',
+    ];
+
+    /**
+     * List of more supported parameter type characters.
+     *
+     * @var string[]
+     */
+    const PARAMETER_TYPE_CHARS_MORE = [];
 
     /**
      * Remove trailing (and leading) semicolon,
@@ -84,6 +114,20 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
     const SQL_MINIFY = false;
 
     /**
+     * Whether to validate query arguments.
+     *
+     * Values:
+     * - 0: no check
+     * - 1: validate prepare()/parameters() methods' $types
+     * - 2: validate prepare()/parameters() methods' $arguments against $types
+     *
+     * Option (int) validate_arguments overrules.
+     *
+     * @see DbQuery::argumentsInvalid()
+     */
+    const VALIDATE_ARGUMENTS = 1;
+
+    /**
      * Truncate sql to that length when logging.
      *
      * @int
@@ -100,6 +144,7 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
      */
     const OPTIONS_GENERIC = [
         'sql_minify',
+        'validate_arguments',
         'result_mode',
         'affected_rows',
         'insert_id',
@@ -193,6 +238,16 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
     protected $statementClosed;
 
     /**
+     * @var int
+     */
+    protected $validateArguments;
+
+    /**
+     * @var Validate
+     */
+    protected $validate;
+
+    /**
      * Create a query.
      *
      * Allowed options:
@@ -227,6 +282,9 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
         if ($options['sql_minify'] ?? static::SQL_MINIFY) {
             $this->sql = $this->sqlMinify($sql);
         }
+
+        $this->validateArguments = isset($options['validate_arguments']) ? (int) $options['validate_arguments'] :
+            static::VALIDATE_ARGUMENTS;
 
         if ($options) {
             $specifics = array_diff(array_keys($options), static::OPTIONS_GENERIC);
@@ -288,10 +346,13 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
             );
         }
 
-        if ($types !== '' && ($type_illegals = $this->parameterTypesCheck($types))) {
+        if (
+            $this->validateArguments
+            && ($types || $arguments)
+            && ($invalid = $this->argumentsInvalid($types, $this->validateArguments < 2 ? null : $arguments))
+        ) {
             throw new \InvalidArgumentException(
-                $this->client->messagePrefix()
-                . ' - arg $types contains illegal char(s) ' . $type_illegals . '.'
+                $this->client->messagePrefix() . ' - ' . $invalid . '.'
             );
         }
 
@@ -423,46 +484,226 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
     }
 
     /**
-     * Types:
-     * - i: integer.
-     * - d: float (double).
-     * - s: string.
-     * - b: blob.
+     * Checks that all type chars are valid.
+     *
+     * @see DbQuery::PARAMETER_TYPE_CHARS
+     * @see MsSqlQuery::PARAMETER_TYPE_CHARS
      *
      * @param string $types
+     * @param array|null $arguments
+     *      If array passed, check that the buckets match the $types.
      *
      * @return string
      *      Empty on no error.
+     *      Error details message on error.
      */
-    public function parameterTypesCheck(string $types) : string
+    public function argumentsInvalid(string $types, array $arguments = null) : string
     {
         // Probably faster than regular expression check.
-        $illegals = str_replace(
-            [
-                'i', 'd', 's', 'b',
-            ],
+        $invalids = str_replace(
+            static::PARAMETER_TYPE_CHARS,
             '',
             $types
         );
-
-        if ($illegals !== '') {
-            $illegals = [];
+        if ($invalids && static::PARAMETER_TYPE_CHARS_MORE) {
+            $invalids = str_replace(
+                static::PARAMETER_TYPE_CHARS_MORE,
+                '',
+                $invalids
+            );
+        }
+        if ($invalids) {
+            $invalids = [];
             $le = strlen($types);
             for ($i = 0; $i < $le; ++$i) {
-                switch ($types{$i}) {
-                    case 's':
-                    case 'b':
-                    case 'i':
-                    case 'd':
-                        break;
-                    default:
-                        $illegals[] = 'index[' . $i . '] char[' . $types{$i} . ']';
+                if (
+                    !in_array($types{$i}, static::PARAMETER_TYPE_CHARS)
+                    && !in_array($types{$i}, static::PARAMETER_TYPE_CHARS_MORE)
+                ) {
+                    $invalids[] = 'index[' . $i . '] char[' . $types{$i} . ']';
                 }
             }
-            return join(', ', $illegals);
+            return 'arg $types invalid ' . join(', ', $invalids);
+        }
+
+        if ($arguments !== null) {
+            return $this->typesArgumentsMismatch($types, $arguments);
         }
 
         return '';
+    }
+
+    /**
+     * @param string $types
+     * @param array $arguments
+     *
+     * @return string
+     *      Empty on no error.
+     *      Error details message on error.
+     */
+    public function typesArgumentsMismatch(string $types, array $arguments)
+    {
+        if (strlen($types) != count($arguments)) {
+            return 'arg $types length[' . strlen($types) . '] doesn\'t match arg $arguments length['
+                . count($arguments) . ']';
+        }
+
+        if (!$this->validate) {
+            $this->validate = Validate::getInstance();
+        }
+
+        $invalids = [];
+        $i = -1;
+        foreach ($arguments as $value) {
+            ++$i;
+            switch ($types{$i}) {
+                case 'i':
+                    if (!is_int($value)) {
+                        if (is_string($value)) {
+                            $le = strlen($value);
+                            if (!$le) {
+                                $invalids[] = 'index[' . $i . '] char[' . $types{$i} . '] type[string] is empty';
+                            }
+                            elseif ($this->validate->numeric($value) !== 'integer') {
+                                $invalids[] = 'index[' . $i . '] char[' . $types{$i}
+                                    . '] type[string] is not stringed integer';
+                            }
+                        }
+                        else {
+                            $invalids[] = 'index[' . $i . '] char[' . $types{$i} . '] type['
+                                . Utils::getType($value) . ']';
+                        }
+                    }
+                    break;
+                case 'd':
+                    if (!is_float($value)) {
+                        if (is_string($value)) {
+                            if ($this->validate->numeric($value) !== 'float') {
+                                $invalids[] = 'index[' . $i . '] char[' . $types{$i}
+                                    . '] type[string] is not stringed float';
+                            }else {
+
+                            }
+                        }
+                        else {
+                            $invalids[] = 'index[' . $i . '] char[' . $types{$i} . '] type['
+                                . Utils::getType($value) . ']';
+                        }
+                    }
+                    break;
+                case 's':
+                case 'b':
+                    if (!is_string($value)) {
+                        $invalids[] = 'index[' . $i . '] char[' . $types{$i} . '] type[' . Utils::getType($value) . ']';
+                    }
+                    break;
+                default:
+                    if (DbQuery::PARAMETER_TYPE_CHARS_MORE) {
+                        if ($custom_invalid = $this->customTypesArgumentsMismatch($i, $types, $value)) {
+                            $invalids[] = $custom_invalid;
+                        }
+                    }
+                    else {
+                        throw new \InvalidArgumentException(
+                            'Arg $types index[' . $i . '] char[' . $types{$i} . '] is not '
+                            . join('|', static::PARAMETER_TYPE_CHARS) . '.'
+                        );
+                    }
+            }
+        }
+
+        if ($invalids) {
+            return 'args $types $arguments mismatch ' . join(', ', $invalids);
+        }
+
+        return '';
+    }
+
+    /**
+     * Handles types vs. arguments mismatch validation for custom param types.
+     *
+     * Extending class supporting more parameter types must override this method.
+     *
+     * This un-extended version always throws exception.
+     *
+     * @see DbQuery::typesArgumentsMismatch()
+     * @see DbQuery::PARAMETER_TYPE_CHARS
+     *
+     * @param int $i
+     * @param string $types
+     * @param mixed $value
+     *
+     * @return string
+     *
+     * @throws \LogicException
+     */
+    protected function customTypesArgumentsMismatch(int $i, string $types, $value)
+    {
+        throw new \LogicException(
+            'Class ' . get_class($this) . ' supporting more parameter types should override this method.'
+        );
+    }
+
+    /**
+     * Create arguments type string based on arguments' actual types.
+     *
+     * Only supports string, integer, float.
+     *
+     * @param array $arguments
+     *
+     * @return string
+     */
+    public function parameterTypesDetect(array $arguments) : string
+    {
+        $types = '';
+        $index = -1;
+        foreach ($arguments as $value) {
+            ++$index;
+            $type = gettype($value);
+            switch ($type) {
+                case 'string':
+                    // Cannot discern binary from string.
+                    $types .= 's';
+                    break;
+                case 'integer':
+                    $types .= 'i';
+                    break;
+                case 'double':
+                case 'float':
+                    $types .= 'd';
+                    break;
+                default:
+                    if (DbQuery::PARAMETER_TYPE_CHARS_MORE) {
+                        $types .= $this->customParameterTypesDetect($index, $value);
+                    }
+                    else {
+                        throw new \InvalidArgumentException(
+                            $this->client->messagePrefix()
+                            . ' - cannot detect parameter type char for arguments index[' . $index
+                            . '], type[' . Utils::getType($value) . '] not supported.'
+                        );
+                    }
+            }
+        }
+        return $types;
+    }
+
+    /**
+     * @param int $index
+     * @param $value
+     *
+     * @return string
+     */
+    protected function customParameterTypesDetect(int $index, $value) : string
+    {
+        if ($value instanceof \DateTime) {
+            return 't';
+        }
+        throw new \InvalidArgumentException(
+            $this->client->messagePrefix()
+            . ' - cannot detect parameter type char for arguments index[' . $index
+            . '], type[' . Utils::getType($value) . '] not supported.'
+        );
     }
 
     /**
@@ -501,8 +742,8 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
 
         $tps = $types;
         if ($tps === '') {
-            // Be friendly, all strings.
-            $tps = str_repeat('s', $n_params);
+            // Detect types.
+            $tps = $this->parameterTypesDetect($arguments);
         }
         elseif (strlen($types) != $n_params) {
             throw new \InvalidArgumentException(
@@ -521,11 +762,12 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
 
             /**
              * Reject attempt to use array value.
-             * No compatibility with Sqlsrv type qualifying array.
+             * No compatibility with Sqlsrv type qualifying array,
+             * nor with non-scalar like DateTime.
              * @see MsSqlQuery::prepare()
              */
             if (!is_scalar($value) || is_bool($value)) {
-                // Unlikely when checked via parameterTypesCheck().
+                // Unlikely when checked via argumentsInvalid().
                 throw new \InvalidArgumentException(
                     $this->client->messagePrefix() . ' - arg $arguments index[' . $i
                     . '] type[' . gettype($value) . '] is not integer|float|string|binary.'
@@ -541,11 +783,14 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
                 case 'd':
                     break;
                 default:
-                    // Unlikely when checked via parameterTypesCheck().
-                    throw new \InvalidArgumentException(
-                        $this->client->messagePrefix()
-                        . ' - arg $types[' . $types . '] index[' . $i . '] char[' . $tps{$i} . '] is not i|d|s|b.'
-                    );
+                    if (in_array($tps{$i}, static::PARAMETER_TYPE_CHARS)) {
+                        // Unlikely if previous argumentsInvalid().
+                        throw new \InvalidArgumentException(
+                            $this->client->messagePrefix()
+                            . ' - arg $types[' . $types . '] index[' . $i . '] char[' . $tps{$i} . '] is not '
+                            . join('|', static::PARAMETER_TYPE_CHARS) . '.'
+                        );
+                    }
             }
             $sql_with_args .= $sqlFragments[$i] . $value;
         }
@@ -648,6 +893,7 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
         'statementClosed',
         // Value of client ditto.
         'transactionStarted',
+        'validateArguments',
     ];
 
     /**

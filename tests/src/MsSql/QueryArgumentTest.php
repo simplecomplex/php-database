@@ -27,6 +27,12 @@ use SimpleComplex\Utils\Time;
  */
 class QueryArgumentTest extends TestCase
 {
+
+    /**
+     * @see \SimpleComplex\Database\DbQuery::VALIDATE_ARGUMENTS
+     */
+    const DB_QUERY_VALIDATE_ARGUMENTS = 2;
+
     /**
      * Arguments referred; old-school pattern.
      *
@@ -41,9 +47,10 @@ class QueryArgumentTest extends TestCase
 
         /** @var MsSqlQuery $query */
         $query = $client->query(
-            'INSERT INTO typish (_0_int, _1_float, _2_decimal, _3_varchar, _4_blob, _5_date, _6_datetime)
-            VALUES (?, ?, ?, ?, ?, ?, ?)',
+            'INSERT INTO typish (_0_int, _1_float, _2_decimal, _3_varchar, _4_blob, _5_date, _6_datetime, _7_nvarchar)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
             [
+                'validate_arguments' => static::DB_QUERY_VALIDATE_ARGUMENTS,
                 'sql_minify' => true,
                 'affected_rows' => true,
             ]
@@ -54,11 +61,12 @@ class QueryArgumentTest extends TestCase
         $_1_float = 1.0;
         $_2_decimal = '2.0';
         $_3_varchar = 'arguments referred';
-        $_4_blob = decbin(4);
+        $_4_blob = sprintf("%08d", decbin(4));
         $_5_date = $time->getDateISOlocal();
         $_6_datetime = '' . $time;
+        $_7_nvarchar = 'n varchar';
 
-        $types = 'idssbss';
+        $types = 'idssbttn';
 
         $args = [
             &$_0_int,
@@ -68,6 +76,7 @@ class QueryArgumentTest extends TestCase
             &$_4_blob,
             &$_5_date,
             &$_6_datetime,
+            &$_7_nvarchar,
         ];
         $query->prepare($types, $args);
         /** @var MsSqlResult $result */
@@ -93,15 +102,16 @@ class QueryArgumentTest extends TestCase
         $client = (new ClientTest())->testInstantiation();
 
         $query = $client->query(
-            'INSERT INTO typish (_0_int, _1_float, _2_decimal, _3_varchar, _4_blob, _5_date, _6_datetime)
-            VALUES (?, ?, ?, ?, ?, ?, ?)',
+            'INSERT INTO typish (_0_int, _1_float, _2_decimal, _3_varchar, _4_blob, _5_date, _6_datetime, _7_nvarchar)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
             [
+                'validate_arguments' => static::DB_QUERY_VALIDATE_ARGUMENTS,
                 'sql_minify' => true,
                 'affected_rows' => true,
             ]
         );
 
-        $types = 'idssbss';
+        $types = 'idssbttn';
 
         $time = new Time();
         $args = [
@@ -109,9 +119,10 @@ class QueryArgumentTest extends TestCase
             1.0,
             '2.0',
             'arguments indexed',
-            decbin(4),
+            sprintf("%08d", decbin(4)),
             $time->getDateISOlocal(),
             '' . $time,
+            'n varchar',
         ];
         $query->prepare($types, $args);
         $result = $query->execute();
@@ -133,15 +144,16 @@ class QueryArgumentTest extends TestCase
         $client = (new ClientTest())->testInstantiation();
 
         $query = $client->query(
-            'INSERT INTO typish (_0_int, _1_float, _2_decimal, _3_varchar, _4_blob, _5_date, _6_datetime)
-            VALUES (?, ?, ?, ?, ?, ?, ?)',
+            'INSERT INTO typish (_0_int, _1_float, _2_decimal, _3_varchar, _4_blob, _5_date, _6_datetime, _7_nvarchar)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
             [
+                'validate_arguments' => static::DB_QUERY_VALIDATE_ARGUMENTS,
                 'sql_minify' => true,
                 'affected_rows' => true,
             ]
         );
 
-        $types = 'idssbss';
+        $types = 'idssbttn';
 
         $time = new Time();
         $args = [
@@ -149,9 +161,10 @@ class QueryArgumentTest extends TestCase
             '_1_float' => 1.0,
             '_2_decimal' => '2.0',
             '_3_varchar' => 'arguments keyed',
-            '_4_blob' => decbin(4),
+            '_4_blob' => sprintf("%08d", decbin(4)),
             '_5_date' => $time->getDateISOlocal(),
             '_6_datetime' => '' . $time,
+            '_7_nvarchar' => 'n varchar',
         ];
         $query->prepare($types, $args);
         $result = $query->execute();
@@ -173,15 +186,16 @@ class QueryArgumentTest extends TestCase
         $client = (new ClientTest())->testInstantiation();
 
         $query = $client->query(
-            'INSERT INTO typish (_0_int, _1_float, _2_decimal, _3_varchar, _4_blob, _5_date, _6_datetime)
-            VALUES (?, ?, ?, ?, ?, ?, ?)',
+            'INSERT INTO typish (_0_int, _1_float, _2_decimal, _3_varchar, _4_blob, _5_date, _6_datetime, _7_nvarchar)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
             [
+                'validate_arguments' => static::DB_QUERY_VALIDATE_ARGUMENTS,
                 'sql_minify' => true,
                 'affected_rows' => true,
             ]
         );
 
-        //$types = 'idssbss';
+        //$types = 'idssbttn';
         $types = '';
 
         $time = new Time();
@@ -189,9 +203,10 @@ class QueryArgumentTest extends TestCase
         $_1_float = 1.0;
         $_2_decimal = '2.0';
         $_3_varchar = 'sqlsrv arguments referred';
-        $_4_blob = decbin(4);
+        $_4_blob = sprintf("%08d", decbin(4));
         $_5_date = $time;
         $_6_datetime = $time;
+        $_7_nvarchar = 'n varchar';
 
         $args = [
             [
@@ -236,6 +251,12 @@ class QueryArgumentTest extends TestCase
                 null,
                 SQLSRV_SQLTYPE_DATETIME2,
             ],
+            [
+                &$_7_nvarchar,
+                SQLSRV_PARAM_IN,
+                null,
+                SQLSRV_SQLTYPE_NVARCHAR('max'),
+            ],
         ];
         $query->prepare($types, $args);
         $result = $query->execute();
@@ -257,15 +278,16 @@ class QueryArgumentTest extends TestCase
         $client = (new ClientTest())->testInstantiation();
 
         $query = $client->query(
-            'INSERT INTO typish (_0_int, _1_float, _2_decimal, _3_varchar, _4_blob, _5_date, _6_datetime)
-            VALUES (?, ?, ?, ?, ?, ?, ?)',
+            'INSERT INTO typish (_0_int, _1_float, _2_decimal, _3_varchar, _4_blob, _5_date, _6_datetime, _7_nvarchar)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
             [
+                'validate_arguments' => static::DB_QUERY_VALIDATE_ARGUMENTS,
                 'sql_minify' => true,
                 'affected_rows' => true,
             ]
         );
 
-        //$types = 'idssbss';
+        //$types = 'idssbttn';
         $types = '';
 
         $time = new Time();
@@ -295,7 +317,7 @@ class QueryArgumentTest extends TestCase
                 SQLSRV_SQLTYPE_VARCHAR('max'),
             ],
             [
-                decbin(4),
+                sprintf("%08d", decbin(4)),
                 SQLSRV_PARAM_IN,
                 null,
                 SQLSRV_SQLTYPE_VARBINARY('max'),
@@ -311,6 +333,12 @@ class QueryArgumentTest extends TestCase
                 SQLSRV_PARAM_IN,
                 null,
                 SQLSRV_SQLTYPE_DATETIME2,
+            ],
+            [
+                'n varchar',
+                SQLSRV_PARAM_IN,
+                null,
+                SQLSRV_SQLTYPE_NVARCHAR('max'),
             ],
         ];
         $query->prepare($types, $args);
@@ -333,15 +361,16 @@ class QueryArgumentTest extends TestCase
         $client = (new ClientTest())->testInstantiation();
 
         $query = $client->query(
-            'INSERT INTO typish (_0_int, _1_float, _2_decimal, _3_varchar, _4_blob, _5_date, _6_datetime)
-            VALUES (?, ?, ?, ?, ?, ?, ?)',
+            'INSERT INTO typish (_0_int, _1_float, _2_decimal, _3_varchar, _4_blob, _5_date, _6_datetime, _7_nvarchar)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
             [
+                'validate_arguments' => static::DB_QUERY_VALIDATE_ARGUMENTS,
                 'sql_minify' => true,
                 'affected_rows' => true,
             ]
         );
 
-        //$types = 'idssbss';
+        //$types = 'idssbttn';
         $types = '';
 
         $time = new Time();
@@ -371,7 +400,7 @@ class QueryArgumentTest extends TestCase
                 SQLSRV_SQLTYPE_VARCHAR('max'),
             ],
             '_4_blob' => [
-                decbin(4),
+                sprintf("%08d", decbin(4)),
                 SQLSRV_PARAM_IN,
                 null,
                 SQLSRV_SQLTYPE_VARBINARY('max'),
@@ -388,6 +417,12 @@ class QueryArgumentTest extends TestCase
                 null,
                 SQLSRV_SQLTYPE_DATETIME2,
             ],
+            '_7_nvarchar' => [
+                'n varchar',
+                SQLSRV_PARAM_IN,
+                null,
+                SQLSRV_SQLTYPE_NVARCHAR('max'),
+            ],
         ];
         $query->prepare($types, $args);
         $result = $query->execute();
@@ -395,6 +430,48 @@ class QueryArgumentTest extends TestCase
 
         $args['_1_float'][0] = 1.1;
         $args['_2_decimal'][0] ='2.2';
+        $result = $query->execute();
+        $this->assertSame(1, $result->affectedRows());
+    }
+
+    /**
+     * Detect argument types, using arguments' actual types.
+     *
+     * @see ClientTest::testInstantiation()
+     */
+    public function testQueryArgumentTypesDetect()
+    {
+        $client = (new ClientTest())->testInstantiation();
+
+        $query = $client->query(
+            'INSERT INTO typish (_0_int, _1_float, _2_decimal, _3_varchar, _4_blob, _5_date, _6_datetime, _7_nvarchar)
+            VALUES (?, ?, ?, ?, null, ?, ?, ?)',
+            [
+                'validate_arguments' => static::DB_QUERY_VALIDATE_ARGUMENTS,
+                'sql_minify' => true,
+                'affected_rows' => true,
+            ]
+        );
+
+        $types = '';
+
+        $time = new Time();
+        $args = [
+            '_0_int' => 0,
+            '_1_float' => 1.0,
+            '_2_decimal' => '2.0',
+            '_3_varchar' => 'arguments types detected',
+            /*'_4_blob' => [
+                sprintf("%08d", decbin(4)),
+                SQLSRV_PARAM_IN,
+                null,
+                SQLSRV_SQLTYPE_VARBINARY('max'),
+            ],*/
+            '_5_date' => $time->getDateISOlocal(),
+            '_6_datetime' => '' . $time,
+            '_7_nvarchar' => 'n varchar',
+        ];
+        $query->prepare($types, $args);
         $result = $query->execute();
         $this->assertSame(1, $result->affectedRows());
     }
