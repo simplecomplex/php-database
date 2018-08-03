@@ -550,42 +550,33 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
             switch ($types{$i}) {
                 case 'i':
                     if (!is_int($value)) {
-                        if (is_string($value)) {
-                            $le = strlen($value);
-                            if (!$le) {
-                                $invalids[] = 'index[' . $i . '] char[' . $types{$i} . '] type[string] is empty';
-                            }
-                            elseif ($this->validate->numeric($value) !== 'integer') {
-                                $invalids[] = 'index[' . $i . '] char[' . $types{$i}
-                                    . '] type[string] is not stringed integer';
-                            }
+                        if ($value === '') {
+                            $invalids[] = 'index[' . $i . '] char[' . $types{$i}
+                                . '] empty string is neither integer nor stringed integer';
                         }
-                        else {
-                            $invalids[] = 'index[' . $i . '] char[' . $types{$i} . '] type['
-                                . Utils::getType($value) . ']';
+                        elseif (!is_string($value) || $this->validate->numeric($value) !== 'integer') {
+                            $invalids[] = 'index[' . $i . '] char[' . $types{$i}
+                                . '] type[' . Utils::getType($value) . '] is neither integer nor stringed integer';
                         }
                     }
                     break;
                 case 'd':
                     if (!is_float($value)) {
-                        if (is_string($value)) {
-                            if ($this->validate->numeric($value) !== 'float') {
-                                $invalids[] = 'index[' . $i . '] char[' . $types{$i}
-                                    . '] type[string] is not stringed float';
-                            }else {
-
-                            }
+                        if ($value === '') {
+                            $invalids[] = 'index[' . $i . '] char[' . $types{$i}
+                                . '] empty string is neither float nor stringed float';
                         }
-                        else {
-                            $invalids[] = 'index[' . $i . '] char[' . $types{$i} . '] type['
-                                . Utils::getType($value) . ']';
+                        elseif (!is_string($value) || $this->validate->numeric($value) !== 'float') {
+                            $invalids[] = 'index[' . $i . '] char[' . $types{$i}
+                                . '] type[' . Utils::getType($value) . '] is neither float nor stringed float';
                         }
                     }
                     break;
                 case 's':
                 case 'b':
                     if (!is_string($value)) {
-                        $invalids[] = 'index[' . $i . '] char[' . $types{$i} . '] type[' . Utils::getType($value) . ']';
+                        $invalids[] = 'index[' . $i . '] char[' . $types{$i} . '] type[' . Utils::getType($value)
+                            . '] is not string';
                     }
                     break;
                 default:
