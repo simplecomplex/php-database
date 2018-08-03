@@ -66,7 +66,7 @@ class QueryArgumentTest extends TestCase
         $_6_datetime = '' . $time;
         $_7_nvarchar = 'n varchar';
 
-        $types = 'idssbttn';
+        $types = 'idssbsss';
 
         $args = [
             &$_0_int,
@@ -111,7 +111,7 @@ class QueryArgumentTest extends TestCase
             ]
         );
 
-        $types = 'idssbttn';
+        $types = 'idssbsss';
 
         $time = new Time();
         $args = [
@@ -153,7 +153,7 @@ class QueryArgumentTest extends TestCase
             ]
         );
 
-        $types = 'idssbttn';
+        $types = 'idssbsss';
 
         $time = new Time();
         $args = [
@@ -195,7 +195,7 @@ class QueryArgumentTest extends TestCase
             ]
         );
 
-        //$types = 'idssbttn';
+        //$types = 'idssbsss';
         $types = '';
 
         $time = new Time();
@@ -287,7 +287,7 @@ class QueryArgumentTest extends TestCase
             ]
         );
 
-        //$types = 'idssbttn';
+        //$types = 'idssbsss';
         $types = '';
 
         $time = new Time();
@@ -370,7 +370,7 @@ class QueryArgumentTest extends TestCase
             ]
         );
 
-        //$types = 'idssbttn';
+        //$types = 'idssbsss';
         $types = '';
 
         $time = new Time();
@@ -467,8 +467,8 @@ class QueryArgumentTest extends TestCase
                 null,
                 SQLSRV_SQLTYPE_VARBINARY('max'),
             ],*/
-            '_5_date' => $time->getDateISOlocal(),
-            '_6_datetime' => '' . $time,
+            '_5_date' => $time,
+            '_6_datetime' => $time,
             '_7_nvarchar' => 'n varchar',
         ];
         $query->prepare($types, $args);

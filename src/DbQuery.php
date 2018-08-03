@@ -84,6 +84,14 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
     ];
 
     /**
+     * List of class names of objects that automatically gets stringed,
+     * and accepted as strings, by the DBMS driver.
+     *
+     * @var string[]
+     */
+    const AUTO_STRINGABLE_CLASSES = [];
+
+    /**
      * Remove trailing (and leading) semicolon,
      * to prevent appearance as more queries.
      *
@@ -624,11 +632,23 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
                     $types .= 'd';
                     break;
                 default:
-                    throw new \InvalidArgumentException(
-                        $this->client->messagePrefix()
-                        . ' - cannot detect parameter type char for arguments index[' . $index
-                        . '], type[' . Utils::getType($value) . '] not supported.'
-                    );
+                    $auto_stringable_object = false;
+                    if ($type == 'object' && static::AUTO_STRINGABLE_CLASSES) {
+                        foreach (static::AUTO_STRINGABLE_CLASSES as $class_name) {
+                            if (is_a($value, $class_name)) {
+                                $auto_stringable_object = true;
+                                $types .= 's';
+                                break;
+                            }
+                        }
+                    }
+                    if (!$auto_stringable_object) {
+                        throw new \InvalidArgumentException(
+                            $this->client->messagePrefix()
+                                . ' - cannot detect parameter type char for arguments index[' . $index
+                                . '], type[' . Utils::getType($value) . '] not supported.'
+                        );
+                    }
             }
         }
         return $types;

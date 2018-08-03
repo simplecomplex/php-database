@@ -7,6 +7,7 @@ SimpleComplex/Database 1.x, 2018-08-03
   because Sqlsrv handles DateTime transparently (stringifying when for varchar)
   and nvarchar may be handled with type qualifying argument array (only needed
   when the parameter is to be used in a sql where clause, anyway).
+- Query auto-stringable classes.
 
 SimpleComplex/Database 1.x, 2018-07-29
 --------------------------------------

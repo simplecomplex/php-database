@@ -65,6 +65,16 @@ class MsSqlQuery extends DbQuery
     const CLASS_RESULT = MsSqlResult::class;
 
     /**
+     * List of class names of objects that automatically gets stringed,
+     * and accepted as strings, by the DBMS driver.
+     *
+     * @var string[]
+     */
+    const AUTO_STRINGABLE_CLASSES = [
+        \DateTime::class,
+    ];
+
+    /**
      * Default query timeout.
      *
      * Zero means no timeout; waits forever.
@@ -620,50 +630,6 @@ class MsSqlQuery extends DbQuery
     //  Helpers.----------------------------------------------------------------
 
     /**
-     * Create arguments type string based on arguments' actual types.
-     *
-     * Only supports string, integer, float, DateTime.
-     *
-     * @param array $arguments
-     *
-     * @return string
-     */
-    public function parameterTypesDetect(array $arguments) : string
-    {
-        $types = '';
-        $index = -1;
-        foreach ($arguments as $value) {
-            ++$index;
-            $type = gettype($value);
-            switch ($type) {
-                case 'string':
-                    // Cannot discern binary from string.
-                    $types .= 's';
-                    break;
-                case 'integer':
-                    $types .= 'i';
-                    break;
-                case 'double':
-                case 'float':
-                    $types .= 'd';
-                    break;
-                default:
-                    if ($value instanceof \DateTime) {
-                        $types .= 't';
-                    }
-                    else {
-                        throw new \InvalidArgumentException(
-                            $this->client->messagePrefix()
-                            . ' - cannot detect parameter type char for arguments index[' . $index
-                            . '], type[' . Utils::getType($value) . '] not supported.'
-                        );
-                    }
-            }
-        }
-        return $types;
-    }
-
-    /**
      * Get native SQLSRV_SQLTYPE_* constant equivalent of arg $value type.
      *
      * Checks that non-empty $typeChar matches $value type.
@@ -728,13 +694,18 @@ class MsSqlQuery extends DbQuery
                     return SQLSRV_SQLTYPE_FLOAT;
                 case 's':
                     if (!is_string($value)) {
+                        /**
+                         * Sending as string works, but let's play it correctly.
+                         * @see MsSqlQuery::AUTO_STRINGABLE_CLASSES
+                         */
+                        if ($value instanceof \DateTime) {
+                            return SQLSRV_SQLTYPE_DATETIME2;
+                        }
                         throw new \RuntimeException(
                             'Arg $typeChar value[' . $typeChar
                             . '] doesn\'t match arg $value type[' . gettype($value) . '].'
                         );
                     }
-                    // @todo: Why doesn't SQLSRV_SQLTYPE_VARCHAR(int) work?
-                    //return SQLSRV_SQLTYPE_VARCHAR(strlen($value));
                     return SQLSRV_SQLTYPE_VARCHAR('max');
                 case 'b':
                     if (!is_string($value)) {
@@ -743,28 +714,7 @@ class MsSqlQuery extends DbQuery
                             . '] doesn\'t match arg $value type[' . gettype($value) . '].'
                         );
                     }
-                    // @todo: Why doesn't SQLSRV_SQLTYPE_VARBINARY(int) work?
-                    //return SQLSRV_SQLTYPE_VARBINARY(strlen($value));
                     return SQLSRV_SQLTYPE_VARBINARY('max');
-                case 'n':
-                    if (!is_string($value)) {
-                        throw new \RuntimeException(
-                            'Arg $typeChar value[' . $typeChar
-                            . '] doesn\'t match arg $value type[' . gettype($value) . '].'
-                        );
-                    }
-                    return SQLSRV_SQLTYPE_NVARCHAR('max');
-                case 't':
-                    if ($value instanceof \DateTime) {
-                        return SQLSRV_SQLTYPE_DATETIME2;
-                    }
-                    if (is_string($value) /* @todo: validate iso8601*/) {
-                        return SQLSRV_SQLTYPE_VARCHAR('max');
-                    }
-                    throw new \RuntimeException(
-                        'Arg $typeChar value[' . $typeChar
-                        . '] doesn\'t match arg $value type[' . gettype($value) . '].'
-                    );
                 default:
                     throw new \InvalidArgumentException(
                         'Arg $typeChar value[' . $typeChar . '] is not '. join('|', static::PARAMETER_TYPE_CHARS) . '.'
