@@ -12,6 +12,7 @@ namespace SimpleComplex\Tests\Database\MariaDb;
 use PHPUnit\Framework\TestCase;
 use SimpleComplex\Tests\Database\TestHelper;
 
+use SimpleComplex\Database\Interfaces\DbClientInterface;
 use SimpleComplex\Database\MariaDbClient;
 use SimpleComplex\Database\MariaDbQuery;
 use SimpleComplex\Database\MariaDbResult;
@@ -19,12 +20,12 @@ use SimpleComplex\Database\MariaDbResult;
 /**
  * @code
  * // CLI, in document root:
- * backend/vendor/bin/phpunit backend/vendor/simplecomplex/database/tests/src/MariaDb/ResultResetTest.php
+ * backend/vendor/bin/phpunit backend/vendor/simplecomplex/database/tests/src/MariaDb/ResetTest.php
  * @endcode
  *
  * @package SimpleComplex\Tests\Database
  */
-class ResultResetTest extends TestCase
+class ResetTest extends TestCase
 {
     /**
      * Throw DbQueryException: can't truncate due to foreign key constraint.
@@ -93,6 +94,53 @@ class ResultResetTest extends TestCase
      * Inserts getting sql from file.
      *
      * @see ClientTest::testInstantiation
+     *
+     * @return DbClientInterface|MariaDbClient
+     */
+    public function testResetStructure()
+    {
+        /** @var MariaDbClient $client */
+        $client = (new ClientTest())->testInstantiation();
+
+        // Get .sql file containing inserts.
+        $file_path = TestHelper::fileFind('MariaDb/sql/test_scx_mariadb.structure.sql', 'tests');
+        $this->assertInternalType('string', $file_path);
+        $this->assertNotEmpty($file_path);
+
+        $sql = file_get_contents($file_path);
+        $this->assertInternalType('string', $sql);
+        $this->assertNotEmpty($sql);
+
+        /** @var MariaDbQuery $query */
+        $query = $client->query(
+            $sql,
+            [
+                //'detect_multi' => true,
+            ]
+        );
+
+        /** @var MariaDbResult $result */
+        $result = $query->execute();
+        $this->assertInstanceOf(MariaDbResult::class, $result);
+
+        // Do traverse all result sets; an erroring query in a MariaDB/MySQL
+        // multi-query might not materialize until traversed.
+        while (($success = $result->nextSet())) {
+            $this->assertSame(
+                true,
+                $success
+            );
+        }
+
+        return $client;
+    }
+
+    /**
+     * Inserts getting sql from file.
+     *
+     * @see ClientTest::testInstantiation
+     *
+     * @return DbClientInterface|MariaDbClient
      */
     public function testResetPopulate()
     {
@@ -128,6 +176,8 @@ class ResultResetTest extends TestCase
                 $success
             );
         }
+
+        return $client;
     }
 
 }

@@ -12,6 +12,7 @@ namespace SimpleComplex\Tests\Database\MsSql;
 use PHPUnit\Framework\TestCase;
 use SimpleComplex\Tests\Database\TestHelper;
 
+use SimpleComplex\Database\Interfaces\DbClientInterface;
 use SimpleComplex\Database\MsSqlClient;
 use SimpleComplex\Database\MsSqlQuery;
 use SimpleComplex\Database\MsSqlResult;
@@ -19,12 +20,12 @@ use SimpleComplex\Database\MsSqlResult;
 /**
  * @code
  * // CLI, in document root:
- * backend/vendor/bin/phpunit backend/vendor/simplecomplex/database/tests/src/MsSql/ResultResetTest.php
+ * backend/vendor/bin/phpunit backend/vendor/simplecomplex/database/tests/src/MsSql/ResetTest.php
  * @endcode
  *
  * @package SimpleComplex\Tests\Database
  */
-class ResultResetTest extends TestCase
+class ResetTest extends TestCase
 {
     /**
      * Throw DbQueryException: can't truncate due to foreign key constraint.
@@ -119,6 +120,50 @@ REFERENCES parent(id)
      * Inserts getting sql from file.
      *
      * @see ClientTest::testInstantiation
+     *
+     * @return DbClientInterface|MsSqlClient
+     */
+    public function testResetStructure()
+    {
+        /** @var MsSqlClient $client */
+        $client = (new ClientTest())->testInstantiation();
+
+        // Get .sql file containing inserts.
+        $file_path = TestHelper::fileFind('MsSql/sql/test_scx_mssql.structure.sql', 'tests');
+        $this->assertInternalType('string', $file_path);
+        $this->assertNotEmpty($file_path);
+
+        $sql = file_get_contents($file_path);
+        $this->assertInternalType('string', $sql);
+        $this->assertNotEmpty($sql);
+
+        /** @var MsSqlQuery $query */
+        $query = $client->query(
+            $sql,
+            [
+            ]
+        );
+
+        /** @var MsSqlResult $result */
+        $result = $query->execute();
+        $this->assertInstanceOf(MsSqlResult::class, $result);
+
+        while (($success = $result->nextSet())) {
+            $this->assertSame(
+                true,
+                $success
+            );
+        }
+
+        return $client;
+    }
+
+    /**
+     * Inserts getting sql from file.
+     *
+     * @see ClientTest::testInstantiation
+     *
+     * @return DbClientInterface|MsSqlClient
      */
     public function testResetPopulate()
     {
@@ -151,6 +196,7 @@ REFERENCES parent(id)
                 $success
             );
         }
-    }
 
+        return $client;
+    }
 }

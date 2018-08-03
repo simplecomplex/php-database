@@ -25,7 +25,8 @@ IF EXISTS ( SELECT [name] FROM sys.tables WHERE [name] = 'relationship' )
 
 IF EXISTS ( SELECT [name] FROM sys.tables WHERE [name] = 'parent' )
     DROP TABLE parent;
-
+IF EXISTS ( SELECT [name] FROM sys.tables WHERE [name] = 'typish' )
+    DROP TABLE typish;
 
 CREATE TABLE parent (
     id INT IDENTITY(1,1),
@@ -77,4 +78,16 @@ CREATE TABLE child (
     REFERENCES parent(id)
         ON DELETE NO ACTION
         ON UPDATE NO ACTION
+);
+
+CREATE TABLE typish (
+    id INT IDENTITY(1,1),
+    _0_int INT NOT NULL,
+    _1_float FLOAT(24) NOT NULL,
+    _2_decimal DECIMAL(14,2) NOT NULL,
+    _3_varchar VARCHAR(255) NOT NULL,
+    _4_blob VARBINARY(max),
+    _5_date DATE NOT NULL,
+    _6_datetime DATETIME2 NOT NULL
+    PRIMARY KEY (id)
 );

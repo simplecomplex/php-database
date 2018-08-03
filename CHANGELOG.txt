@@ -1,3 +1,8 @@
+SimpleComplex/Database 1.x, 2018-08-03
+--------------------------------------
+- Unit test query arguments: simple referred, update bucket in indexed list,
+  update bucket in assoc. keyed list.
+
 SimpleComplex/Database 1.x, 2018-07-29
 --------------------------------------
 - MariaDbClient secure databaseInfo flags now that parent DbClient passes all

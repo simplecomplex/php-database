@@ -55,6 +55,18 @@ CREATE TABLE child (
         ON UPDATE RESTRICT
 ) ENGINE=InnoDB;
 
+DROP TABLE IF EXISTS typish;
+CREATE TABLE typish (
+    id int(11) NOT NULL AUTO_INCREMENT,
+    _0_int INT,
+    _1_float FLOAT(24),
+    _2_decimal DECIMAL(14,2) NOT NULL,
+    _3_varchar VARCHAR(255) NOT NULL,
+    _4_blob BLOB,
+    _5_date DATE NOT NULL,
+    _6_datetime DATETIME NOT NULL,
+    PRIMARY KEY (id)
+) ENGINE=InnoDB;
 
 DROP TABLE IF EXISTS rubbish;
 CREATE TABLE rubbish (
