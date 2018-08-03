@@ -484,14 +484,14 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
     }
 
     /**
-     * Checks that all type chars are valid.
+     * Validates type chars, optionally also that arguments match the types.
      *
      * @see DbQuery::PARAMETER_TYPE_CHARS
      * @see MsSqlQuery::PARAMETER_TYPE_CHARS
      *
      * @param string $types
      * @param array|null $arguments
-     *      If array passed, check that the buckets match the $types.
+     *      If array passed, checks that the buckets match the $types.
      *
      * @return string
      *      Empty on no error.
