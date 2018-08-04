@@ -798,6 +798,10 @@ class MsSqlQuery extends DbQuery
      * - varchars and binary allow scalar not boolean
      * - date and datetimes allow \DateTime and string ISO-8601 date (YYYY-MM-DD)
      *
+     * Other observations:
+     * - time type requires seconds
+     * - sending time as varchar fails silently, becomes 00:00:00
+     *
      * @param array $arguments
      * @param array $indices
      * @param bool $errOnFailure
