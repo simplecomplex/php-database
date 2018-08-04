@@ -31,7 +31,7 @@ class QueryArgumentTest extends TestCase
     /**
      * @see \SimpleComplex\Database\DbQuery::VALIDATE_ARGUMENTS
      */
-    const DB_QUERY_VALIDATE_ARGUMENTS = 2;
+    const DB_QUERY_VALIDATE_ARGUMENTS = 1;
 
     /**
      * Arguments referred; old-school pattern.
@@ -522,6 +522,116 @@ class QueryArgumentTest extends TestCase
 
         TestHelper::logVariable(__FUNCTION__ . ' query', $query);
 
+        $result = $query->execute();
+        $this->assertSame(1, $result->affectedRows());
+    }
+
+
+
+    /**
+     * Type qualifying arguments, checked strictly.
+     *
+     * @see ClientTest::testInstantiation()
+     */
+    public function testQueryArgumentsTypeQualifiedStrict()
+    {
+        $client = (new ClientTest())->testInstantiation();
+
+        $query = $client->query(
+            'INSERT INTO typish (_0_int, _1_float, _2_decimal, _3_varchar, _4_blob, _5_date, _6_datetime, _7_nvarchar,
+                _8_bit, _9_time, _10_uuid)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [
+                'validate_arguments' => 3,
+                'sql_minify' => true,
+                'affected_rows' => true,
+            ]
+        );
+
+        //$types = 'idssbsss';
+        $types = '';
+
+        $time = new Time();
+        $args = [
+            '_0_int' => [
+                0,
+                SQLSRV_PARAM_IN,
+                null,
+                SQLSRV_SQLTYPE_INT,
+            ],
+            '_1_float' => [
+                1.0,
+                SQLSRV_PARAM_IN,
+                null,
+                SQLSRV_SQLTYPE_FLOAT,
+            ],
+            '_2_decimal' => [
+                '2.0',
+                SQLSRV_PARAM_IN,
+                null,
+                SQLSRV_SQLTYPE_DECIMAL(14,2),
+            ],
+            '_3_varchar' => [
+                'type qualified strict',
+                SQLSRV_PARAM_IN,
+                null,
+                SQLSRV_SQLTYPE_VARCHAR('max'),
+            ],
+            '_4_blob' => [
+                sprintf("%08d", decbin(4)),
+                SQLSRV_PARAM_IN,
+                null,
+                SQLSRV_SQLTYPE_VARBINARY('max'),
+            ],
+            '_5_date' => [
+                $time,
+                SQLSRV_PARAM_IN,
+                null,
+                SQLSRV_SQLTYPE_DATE,
+            ],
+            '_6_datetime' => [
+                $time,
+                SQLSRV_PARAM_IN,
+                null,
+                //SQLSRV_SQLTYPE_DATETIME2,
+                SQLSRV_SQLTYPE_DATETIME,
+            ],
+            '_7_nvarchar' => [
+                'n varchar',
+                SQLSRV_PARAM_IN,
+                null,
+                SQLSRV_SQLTYPE_NVARCHAR('max'),
+            ],
+            '_8_bit' => [
+                0,
+                SQLSRV_PARAM_IN,
+                null,
+                SQLSRV_SQLTYPE_BIT,
+            ],
+            '_9_time' => [
+                '10:30:01',
+                SQLSRV_PARAM_IN,
+                null,
+                SQLSRV_SQLTYPE_TIME,
+            ],
+            '_10_uuid' => [
+                '123e4567-e89b-12d3-a456-426655440000',
+                SQLSRV_PARAM_IN,
+                null,
+                SQLSRV_SQLTYPE_UNIQUEIDENTIFIER,
+            ],
+        ];
+        $query->prepare($types, $args);
+        $result = $query->execute();
+        $this->assertSame(1, $result->affectedRows());
+
+        $args['_0_int'][0] = '1';
+        $args['_1_float'][0] = '1.1';
+        $args['_2_decimal'][0] ='2.2';
+        $args['_3_varchar'][0] = $time;
+        $args['_5_date'][0] = $time->getDateISOlocal();
+        $args['_6_datetime'][0] = $time->getDateISOlocal();
+        $args['_8_bit'][0] = true;
         $result = $query->execute();
         $this->assertSame(1, $result->affectedRows());
     }

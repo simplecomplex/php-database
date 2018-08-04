@@ -90,5 +90,8 @@ CREATE TABLE typish (
     _5_date DATE NOT NULL,
     _6_datetime DATETIME2 NOT NULL,
     _7_nvarchar NVARCHAR(255) NOT NULL,
+    _8_bit BIT,
+    _9_time TIME,
+    _10_uuid UNIQUEIDENTIFIER
     PRIMARY KEY (id)
 );

@@ -58,7 +58,7 @@ interface DbQueryInterface
      * - b: blob.
      *
      * @param string $types
-     *      Empty: uses string for all.
+     *      Empty: uses $arguments' actual types.
      * @param array &$arguments
      *      By reference.
      *
@@ -86,6 +86,7 @@ interface DbQueryInterface
      * - b: blob.
      *
      * @param string $types
+     *      Empty: uses $arguments' actual types.
      * @param array $arguments
      *      Values to substitute sql parameter markers with.
      *      Arguments are consumed once, not referred.

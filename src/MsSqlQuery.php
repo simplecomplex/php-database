@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace SimpleComplex\Database;
 
 use SimpleComplex\Utils\Utils;
+use SimpleComplex\Validate\Validate;
 
 use SimpleComplex\Database\Interfaces\DbClientInterface;
 use SimpleComplex\Database\Interfaces\DbQueryInterface;
@@ -22,7 +23,9 @@ use SimpleComplex\Database\Exception\DbQueryException;
 /**
  * MS SQL query.
  *
- * Sqlsrv handles DateTimes transparently, as strings.
+ * Sqlsrv handles DateTimes vs. string transparently, interchangeably.
+ * However SQLSRV_SQLTYPE_* date/datetimes only accept (\DateTime and)
+ * string YYYY-MM-DD.
  *
  * Multi-query producing more results sets is not supported by MS SQL,
  * except when calling stored procedure. For multi vs. batch query, see:
@@ -364,7 +367,7 @@ class MsSqlQuery extends DbQuery
      * Supports that arg $arguments is associative array.
      *
      * @param string $types
-     *      Empty: uses string for all.
+     *      Empty: uses $arguments' actual types.
      *      Ignored if all $arguments are type qualifying arrays.
      * @param array &$arguments
      *      By reference.
@@ -516,6 +519,23 @@ class MsSqlQuery extends DbQuery
         }
 
         if ($this->isPreparedStatement) {
+            // Validate arguments on later execution, if validateArguments:3.
+            if ($this->execution && $this->validateArguments > 2 && !empty($this->arguments['prepared'])) {
+                $i = -1;
+                foreach ($this->arguments['prepared'] as $arg) {
+                    ++$i;
+                    if (
+                        $arg[1] == SQLSRV_PARAM_IN && $arg[3]
+                        && ($valid = $this->validateNativeTypeArgument($arg[3], $arg[0], $i)) !== true
+                    ) {
+                        throw new \InvalidArgumentException(
+                            $this->client->messagePrefix()
+                            . ' - execution[' . $this->execution . '] argument ' . $valid . '.'
+                        );
+                    }
+                }
+            }
+
             // Require unbroken connection.
             if (!$this->client->isConnected()) {
                 $errors = $this->client->getErrors();
@@ -524,10 +544,12 @@ class MsSqlQuery extends DbQuery
                 $this->log(__FUNCTION__);
                 $cls_xcptn = $this->client->errorsToException($errors);
                 throw new $cls_xcptn(
-                    $this->messagePrefix() . ' - can\'t execute prepared statement when connection lost, error: '
+                    $this->messagePrefix() . ' - can\'t do execution[' . $this->execution
+                    . '] of prepared statement when connection lost, error: '
                     . $this->client->errorsToString($errors) . '.'
                 );
             }
+
             // bool.
             if (!@sqlsrv_execute($this->statement)) {
                 $errors = $this->client->getErrors();
@@ -536,7 +558,8 @@ class MsSqlQuery extends DbQuery
                 $this->log(__FUNCTION__);
                 $cls_xcptn = $this->client->errorsToException($errors);
                 throw new $cls_xcptn(
-                    $this->messagePrefix() . ' - failed executing prepared statement, error: '
+                    $this->messagePrefix() . ' - failed execution[' . $this->execution
+                    . '] of prepared statement, error: '
                     . $this->client->errorsToString($errors) . '.'
                 );
             }
@@ -643,7 +666,8 @@ class MsSqlQuery extends DbQuery
     {
         if ($index >= strlen($types)) {
             throw new \OutOfRangeException(
-                'Arg $index[' . $index . '] is not within range of arg $types length[' . strlen($types) . '].'
+                $this->client->messagePrefix()
+                . ' - arg $index[' . $index . '] is not within range of arg $types length[' . strlen($types) . '].'
             );
         }
         switch ($types{$index}) {
@@ -666,7 +690,7 @@ class MsSqlQuery extends DbQuery
                 return SQLSRV_SQLTYPE_VARBINARY('max');
         }
         throw new \InvalidArgumentException(
-            'Arg $types index[' . $index . '] char[' . $types{$index}
+            $this->client->messagePrefix() . ' - arg $types index[' . $index . '] char[' . $types{$index}
                 . '] is not '. join('|', static::PARAMETER_TYPE_CHARS) . '.'
         );
     }
@@ -707,9 +731,220 @@ class MsSqlQuery extends DbQuery
                 }
         }
         throw new \InvalidArgumentException(
-            'Arg $arguments value at index[' . $index . '] type[' . Utils::getType($value)
+            $this->client->messagePrefix()
+                . ' - arg $arguments value at index[' . $index . '] type[' . Utils::getType($value)
                 . '] is not integer|float|string or other resolvable and supported sql argument type.'
         );
+    }
+
+    /**
+     * @var int[]
+     */
+    protected static $nativeTypesSupported;
+
+    /**
+     * List native types by name.
+     *
+     * Significant unsupported types:
+     * - char, nchar: because type constant function requires a length
+     *
+     * @return int[]
+     */
+    public function nativeTypes() : array
+    {
+        if (!static::$nativeTypesSupported) {
+            static::$nativeTypesSupported = [
+                'SQLTYPE_BIT' => SQLSRV_SQLTYPE_BIT,
+                'SQLTYPE_TINYINT' => SQLSRV_SQLTYPE_TINYINT,
+                'SQLTYPE_SMALLINT' => SQLSRV_SQLTYPE_SMALLINT,
+                'SQLTYPE_INT' => SQLSRV_SQLTYPE_INT,
+                'SQLTYPE_BIGINT' => SQLSRV_SQLTYPE_BIGINT,
+                'SQLTYPE_FLOAT' => SQLSRV_SQLTYPE_FLOAT,
+                'SQLTYPE_REAL' => SQLSRV_SQLTYPE_REAL,
+                'SQLTYPE_DECIMAL' => SQLSRV_SQLTYPE_DECIMAL(14,2),
+                'SQLTYPE_VARCHAR' => SQLSRV_SQLTYPE_VARCHAR('max'),
+                'SQLTYPE_NVARCHAR' => SQLSRV_SQLTYPE_NVARCHAR('max'),
+                'SQLTYPE_VARBINARY' => SQLSRV_SQLTYPE_VARBINARY('max'),
+                'SQLTYPE_TIME' => SQLSRV_SQLTYPE_TIME,
+                'SQLTYPE_DATE' => SQLSRV_SQLTYPE_DATE,
+                'SQLTYPE_DATETIME' => SQLSRV_SQLTYPE_DATETIME,
+                'SQLTYPE_DATETIME2' => SQLSRV_SQLTYPE_DATETIME2,
+                'SQLTYPE_UNIQUEIDENTIFIER' => SQLSRV_SQLTYPE_UNIQUEIDENTIFIER,
+            ];
+        }
+        return static::$nativeTypesSupported;
+    }
+
+    /**
+     * Get name of a native type, if supported.
+     *
+     * @param int $nativeType
+     *
+     * @return string
+     *      Empty if unsupported native type.
+     */
+    public function nativeTypeName(int $nativeType) : string
+    {
+        $types = $this->nativeTypes();
+        foreach ($types as $name => $number) {
+            if ($nativeType == $number) {
+                return $name;
+            }
+        }
+        return '';
+    }
+
+    /**
+     *
+     * Loose typings:
+     * - bit type allows boolean and stringed 0|1
+     * - integer types allow stringed integer
+     * - float, real and decimal types allow integer and stringed number
+     * - varchars allow \DateTime
+     * - varchars and binary allow scalar not boolean
+     * - date and datetimes allow \DateTime and string ISO-8601 date (YYYY-MM-DD)
+     *
+     * @param int $nativeType
+     * @param mixed $value
+     * @param int $index
+     *      Index in $arguments array.
+     *      Minus one: don't mention index in error message.
+     *
+     * @return bool|string
+     *      True on success.
+     *      String error details message on error.
+     *
+     * @throws \InvalidArgumentException
+     */
+    public function validateNativeTypeArgument(int $nativeType, $value, int $index = -1)
+    {
+        // @todo: implement $errOnFailure argument, because inspect->trace will then see arg $value.
+
+        $types = $this->nativeTypes();
+
+        if (!$this->validate) {
+            $this->validate = Validate::getInstance();
+        }
+
+        $em = '';
+        $type_supported = true;
+        switch ($nativeType) {
+            case $types['SQLTYPE_BIT']:
+                if (
+                    (!is_int($value) || ($value != 0 && $value != 1))
+                    && !is_bool($value)
+                    && (!is_string($value) || ($value !== '0' && $value !== '1'))
+                ) {
+                    $em = 'type[' . Utils::getType($value) . '] is neither integer 0|1 nor boolean nor string 0|1';
+                    break;
+                }
+                return true;
+            case $types['SQLTYPE_TINYINT']:
+            case $types['SQLTYPE_SMALLINT']:
+            case $types['SQLTYPE_INT']:
+            case $types['SQLTYPE_BIGINT']:
+                if (!is_int($value)) {
+                    if ($value === '') {
+                        $em = 'empty string is neither integer nor stringed integer';
+                        break;
+                    }
+                    if (!is_string($value) || $this->validate->numeric($value) !== 'integer') {
+                        $em = 'type[' . Utils::getType($value) . '] is neither integer nor stringed integer';
+                        break;
+                    }
+                }
+                if ($value >= 0 && $value <= 255) {
+                    return true;
+                }
+                if ($nativeType == $types['SQLTYPE_TINYINT']) {
+                    $em = 'value[' . $value . '] is ' . ($value < 0 ? 'less than zero' : 'more than 255');
+                    break;
+                }
+                if ($value >= -32768 && $value <= 32767) {
+                    return true;
+                }
+                if ($nativeType == $types['SQLTYPE_SMALLINT']) {
+                    $em = 'value[' . $value . '] is ' . ($value < 0 ? 'less than -32768' : 'more than 32767');
+                    break;
+                }
+                if ($value >= -2147483648 && $value <= 2147483647) {
+                    return true;
+                }
+                if ($nativeType == $types['SQLTYPE_INT']) {
+                    $em = 'value[' . $value . '] is ' . ($value < 0 ? 'less than -2147483648' : 'more than 2147483647');
+                    break;
+                }
+                return true;
+            case $types['SQLTYPE_FLOAT']:
+            case $types['SQLTYPE_REAL']:
+            case $types['SQLTYPE_DECIMAL']:
+                if (!is_float($value)) {
+                    if ($value === '') {
+                        $em = 'empty string is neither number nor stringed number';
+                        break;
+                    }
+                    // Allow stringed number.
+                    if (!is_string($value) || !$this->validate->numeric($value)) {
+                        $em = 'type[' . Utils::getType($value) . '] is neither number nor stringed number';
+                        break;
+                    }
+                }
+                return true;
+            case $types['SQLTYPE_VARCHAR']:
+            case $types['SQLTYPE_NVARCHAR']:
+                if (
+                    !is_string($value)
+                    && !($value instanceof \DateTime)
+                    && (!is_scalar($value) || is_bool($value))
+                ) {
+                    $em = 'type[' . Utils::getType($value) . '] is not string or scalar except boolean';
+                    break;
+                }
+                break;
+            case $types['SQLTYPE_VARBINARY']:
+                if (!is_string($value) && (!is_scalar($value) || is_bool($value))) {
+                    $em = 'type[' . Utils::getType($value) . '] is not string or scalar except boolean';
+                    break;
+                }
+                break;
+            case $types['SQLTYPE_TIME']:
+                // MsSql time requires seconds.
+                if (
+                    !is_string($value)
+                    || strlen($value) < 8 || $value{5} !== ':'
+                    || !$this->validate->timeISO8601($value)
+                ) {
+                    $em = 'type[' . Utils::getType($value) . '] is not string time IS0-8601';
+                    break;
+                }
+                return true;
+            case $types['SQLTYPE_DATE']:
+            case $types['SQLTYPE_DATETIME']:
+            case $types['SQLTYPE_DATETIME2']:
+                if (
+                    !($value instanceof \DateTime)
+                    && (!is_string($value) || !$this->validate->dateISO8601Local($value))
+                ) {
+                    $em = 'type[' . Utils::getType($value)
+                        . '] is neither \DateTime nor string date IS0-8601';
+                    break;
+                }
+                return true;
+            case $types['SQLTYPE_UNIQUEIDENTIFIER']:
+                if (!is_string($value) || !$this->validate->uuid($value)) {
+                    $em = 'type[' . Utils::getType($value) . '] is a UUID';
+                    break;
+                }
+                break;
+            default:
+                return ($index < 0 ? '' : 'index[' . $index . '] ')
+                    . 'type[' . Utils::getType($value) . '], native type int[' . $nativeType . '] is not supported';
+        }
+        if ($em) {
+            return ($index < 0 ? '' : 'index[' . $index . '] ')
+                . $em . ', native type ' . $this->nativeTypeName($nativeType);
+        }
+        return true;
     }
 
     /**
@@ -772,6 +1007,14 @@ class MsSqlQuery extends DbQuery
                     $all_args_typed = false;
                     break;
                 }
+                elseif (
+                    $count > 3 && $this->validateArguments > 1 && $arg[1] == SQLSRV_PARAM_IN && $arg[3]
+                    && ($valid = $this->validateNativeTypeArgument($arg[3], $arg[0], $i)) !== true
+                ) {
+                    throw new \InvalidArgumentException(
+                        $this->client->messagePrefix() . ' - arg $arguments ' . $valid . '.'
+                    );
+                }
             }
         }
 
@@ -783,6 +1026,14 @@ class MsSqlQuery extends DbQuery
                 $args = [];
                 $i = -1;
                 foreach ($arguments as &$arg) {
+                    if (
+                        $this->validateArguments > 1 && $arg[1] == SQLSRV_PARAM_IN && $arg[3]
+                        && ($valid = $this->validateNativeTypeArgument($arg[3], $arg[0], $i)) !== true
+                    ) {
+                        throw new \InvalidArgumentException(
+                            $this->client->messagePrefix() . ' - arg $arguments ' . $valid . '.'
+                        );
+                    }
                     $args[] = $arg;
                     $args[++$i][0] =& $arg[0];
                 }
@@ -810,13 +1061,17 @@ class MsSqlQuery extends DbQuery
                 . '] doesn\'t match sql\'s ?-parameters count[' . $n_params . '].'
             );
         }
+        /**
+         * Validate only $types, here;
+         * checks by validateNativeTypeArgument() later, if required.
+         * @see validateNativeTypeArgument()
+         */
         elseif (
             $this->validateArguments
-            // Validate only $types, here.
-            && ($invalid = $this->argumentsInvalid($types))
+            && ($valid = $this->validateArguments($types, $arguments, false)) !== true
         ) {
             throw new \InvalidArgumentException(
-                $this->client->messagePrefix() . ' - ' . $invalid . '.'
+                $this->client->messagePrefix() . ' - ' . $valid . '.'
             );
         }
 
@@ -846,6 +1101,14 @@ class MsSqlQuery extends DbQuery
                 // And don't check, too costly performance-wise.
                 $count = count($arg);
                 if ($count > 3) {
+                    if (
+                        $this->validateArguments > 1 && $arg[1] == SQLSRV_PARAM_IN && $arg[3]
+                        && ($valid = $this->validateNativeTypeArgument($arg[3], $arg[0], $i)) !== true
+                    ) {
+                        throw new \InvalidArgumentException(
+                            $this->client->messagePrefix() . ' - arg $arguments ' . $valid . '.'
+                        );
+                    }
                     $type_qualifieds[] = [
                         null,
                         $arg[1],

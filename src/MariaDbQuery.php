@@ -324,7 +324,7 @@ class MariaDbQuery extends DbQuery
      * Supports that arg $arguments is associative array.
      *
      * @param string $types
-     *      Empty: uses string for all.
+     *      Empty: uses $arguments' actual types.
      * @param array &$arguments
      *      By reference.
      *
@@ -391,10 +391,10 @@ class MariaDbQuery extends DbQuery
             }
             elseif (
                 $this->validateArguments
-                && ($invalid = $this->argumentsInvalid($types, $this->validateArguments < 2 ? null : $arguments))
+                && ($valid = $this->validateArguments($types, $arguments, $this->validateArguments > 1)) !== true
             ) {
                 throw new \InvalidArgumentException(
-                    $this->client->messagePrefix() . ' - ' . $invalid . '.'
+                    $this->client->messagePrefix() . ' - ' . $valid . '.'
                 );
             }
         }
@@ -464,7 +464,7 @@ class MariaDbQuery extends DbQuery
      * @see DbQuery::parameters()
      *
      * @param string $types
-     *      Empty: uses string for all.
+     *      Empty: uses $arguments' actual types.
      * @param array $arguments
      *      Values to substitute sql parameter markers with.
      *      Arguments are consumed once, not referred.
@@ -498,7 +498,7 @@ class MariaDbQuery extends DbQuery
      *
      * @param string $sql
      * @param string $types
-     *      Empty: uses string for all.
+     *      Empty: uses $arguments' actual types.
      * @param array $arguments
      *      Values to substitute sql parameter markers with.
      *      Arguments are consumed once, not referred.
@@ -578,7 +578,7 @@ class MariaDbQuery extends DbQuery
             if ($this->statementClosed) {
                 throw new \LogicException(
                     $this->client->messagePrefix()
-                    . ' - can\'t execute previously closed prepared statement.'
+                    . ' - can\'t do execution[' . $this->execution . '] on previously closed prepared statement.'
                 );
             }
             // Require unbroken connection.
@@ -591,7 +591,7 @@ class MariaDbQuery extends DbQuery
                 $cls_xcptn = $this->client->errorsToException($errors);
                 throw new $cls_xcptn(
                     $this->client->messagePrefix()
-                    . ' - can\'t execute prepared statement'
+                    . ' - can\'t do execution[' . $this->execution . '] of prepared statement'
                     . (isset($errors[2014]) ? ', forgot to exhaust/free result set(s) of another query?' :
                         ' when connection lost')
                     . ', error: ' . $this->client->errorsToString($errors) . '.'
@@ -609,7 +609,8 @@ class MariaDbQuery extends DbQuery
                     $this->log(__FUNCTION__);
                     $cls_xcptn = $this->client->errorsToException($errors);
                     throw new $cls_xcptn(
-                        $this->messagePrefix() . ' - failed to reset prepared statement, error: '
+                        $this->messagePrefix()
+                        . ' - failed to reset prepared statement for execution[' . $this->execution . '], error: '
                         . $this->client->errorsToString($errors) . '.'
                     );
                 }
@@ -622,7 +623,8 @@ class MariaDbQuery extends DbQuery
                 $this->closeAndLog(__FUNCTION__);
                 $cls_xcptn = $this->client->errorsToException($errors);
                 throw new $cls_xcptn(
-                    $this->messagePrefix() . ' - failed executing prepared statement, error: '
+                    $this->messagePrefix() . ' - failed execution[' . $this->execution
+                    . '] of prepared statement, error: '
                     . $this->client->errorsToString($errors) . '.'
                 );
             }
