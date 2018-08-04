@@ -23,7 +23,7 @@ Compact cross-engine relational database abstraction which handles common engine
 - all connection options supported
 
 ### Query ###
-- prepared statements
+- auto-detects parameter types when no type string (i|d|s|b) given
 - ?-parameter substitution in non-prepared statements
 
 ### Result ###
@@ -37,7 +37,7 @@ Compact cross-engine relational database abstraction which handles common engine
 - number of rows not supported for prepared statement (because _use_)
 
 ### MS SQL features ###
-- automated (array) arguments handling (SQLSRV_PARAM_IN etc.)
+- automated typed arguments handling (SQLSRV_PARAM_IN etc.)
 - automated insert ID retrieval
 - result mode (SQLSRV_CURSOR_FORWARD etc.) defense against wrong use
 
@@ -220,6 +220,7 @@ $everybody = $client->query('SELECT * FROM person')
 - PHP >=7.0
 - [PSR-3 Log](https://github.com/php-fig/log)
 - [SimpleComplex Utils](https://github.com/simplecomplex/php-utils)
+- [SimpleComplex Validate](https://github.com/simplecomplex/php-validate)
 
 MariaDB equires the [mysqlnd driver](https://dev.mysql.com/downloads/connector/php-mysqlnd) (PHP default since v. 5.4),
 or better.

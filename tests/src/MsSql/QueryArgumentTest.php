@@ -31,7 +31,7 @@ class QueryArgumentTest extends TestCase
     /**
      * @see \SimpleComplex\Database\DbQuery::VALIDATE_ARGUMENTS
      */
-    const DB_QUERY_VALIDATE_ARGUMENTS = 1;
+    const DB_QUERY_VALIDATE_ARGUMENTS = 3;
 
     /**
      * Arguments referred; old-school pattern.
@@ -505,6 +505,7 @@ class QueryArgumentTest extends TestCase
             '_3_varchar' => 'arguments types detected',
             '_4_blob' => [
                 sprintf("%08d", decbin(4)),
+                //new TestHelper(),
                 SQLSRV_PARAM_IN,
                 null,
                 SQLSRV_SQLTYPE_VARBINARY('max'),
@@ -520,7 +521,7 @@ class QueryArgumentTest extends TestCase
         ];
         $query->prepare($types, $args);
 
-        TestHelper::logVariable(__FUNCTION__ . ' query', $query);
+        //TestHelper::logVariable(__FUNCTION__ . ' query', $query);
 
         $result = $query->execute();
         $this->assertSame(1, $result->affectedRows());
@@ -626,13 +627,17 @@ class QueryArgumentTest extends TestCase
         $this->assertSame(1, $result->affectedRows());
 
         $args['_0_int'][0] = '1';
+        //$args['_0_int'][0] = 'hest';
         $args['_1_float'][0] = '1.1';
         $args['_2_decimal'][0] ='2.2';
-        $args['_3_varchar'][0] = $time;
+        $args['_3_varchar'][0] = 'type qualified strict updated';
         $args['_5_date'][0] = $time->getDateISOlocal();
+        //$args['_5_date'][0] = 'cykel';
         $args['_6_datetime'][0] = $time->getDateISOlocal();
         $args['_8_bit'][0] = true;
-        $result = $query->execute();
+        //$result = $query->execute();
+        $result = TestHelper::queryExecute($query);
+        $this->assertInstanceOf(MsSqlResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
     }
 }

@@ -9,6 +9,10 @@ declare(strict_types=1);
 
 namespace SimpleComplex\Tests\Database;
 
+use SimpleComplex\Database\Interfaces\DbQueryInterface;
+use SimpleComplex\Database\Interfaces\DbResultInterface;
+use SimpleComplex\Database\DbQuery;
+
 /**
  * phpunit test helper.
  *
@@ -22,4 +26,18 @@ class TestHelper extends \SimpleComplex\Tests\Utils\TestHelper
      * @var string
      */
     const PATH_TESTS = 'simplecomplex/database/tests/src';
+
+    /**
+     * @param DbQueryInterface|DbQuery $query
+     *
+     * @return DbResultInterface|null
+     */
+    public static function queryExecute(DbQuery $query)
+    {
+        try {
+            return $query->execute();
+        } catch (\Throwable $xcptn) {
+            static::logTrace('query execute', $xcptn);
+        }
+    }
 }

@@ -589,13 +589,13 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
                 // and not first prepared statement execution.
                 throw new \InvalidArgumentException(
                     $this->client->messagePrefix()
-                        . (!$this->execution ? ' - arg $arguments ' :
+                        . ($this->execution < 1 ? ' - arg $arguments ' :
                             ' - execution[' . $this->execution . '] argument '
                         )
-                        . join(', ', $invalids) . '.'
+                        . join(' | ', $invalids) . '.'
                 );
             }
-            return join(', ', $invalids);
+            return join(' | ', $invalids);
         }
 
         return true;

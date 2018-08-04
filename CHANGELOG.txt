@@ -4,6 +4,8 @@ SimpleComplex/Database 1.x, 2018-08-04
   prepared statement executions.
 - MariaDb query support arguments actual type checking, even for later
   prepared statement executions.
+- MsSql query shan't err on first typed argument failing type validation,
+  but continue until all args are validated.
 
 SimpleComplex/Database 1.x, 2018-08-03
 --------------------------------------
