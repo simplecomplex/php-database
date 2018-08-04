@@ -214,6 +214,11 @@ class MariaDbQuery extends DbQuery
     protected $sqlAppended = false;
 
     /**
+     * @var string
+     */
+    protected $parameterTypes;
+
+    /**
      * Create query.
      *
      * Option num_rows may override default result mode (not option result_mode)
@@ -389,14 +394,19 @@ class MariaDbQuery extends DbQuery
                     . '] doesn\'t match sql\'s ?-parameters count[' . $n_params . '].'
                 );
             }
-            elseif (
-                $this->validateArguments
-                && ($valid = $this->validateArguments($types, $arguments, $this->validateArguments > 1)) !== true
-            ) {
-                throw new \InvalidArgumentException(
-                    $this->client->messagePrefix() . ' - ' . $valid . '.'
-                );
+            else if ($this->validateArguments) {
+                if (($valid = $this->validateTypes($types)) !== true) {
+                    throw new \InvalidArgumentException(
+                        $this->client->messagePrefix() . ' - arg $types ' . $valid . '.'
+                    );
+                }
+                if ($this->validateArguments > 1) {
+                    // Throws exception on failure.
+                    $this->validateArguments($types, $arguments, true);
+                }
             }
+            // Record for execute(); validateArguments:3.
+            $this->parameterTypes = $tps;
         }
 
         // Allow re-connection.
@@ -574,6 +584,15 @@ class MariaDbQuery extends DbQuery
         ++$this->execution;
 
         if ($this->isPreparedStatement) {
+            // Validate arguments on later execution, if validateArguments:3.
+            if (
+                $this->execution && $this->validateArguments > 2
+                && $this->parameterTypes && !empty($this->arguments['prepared'])
+            ) {
+                // Throws exception on validation failure.
+                $this->validateArguments($this->parameterTypes, $this->arguments['prepared'], true);
+            }
+
             // (MySQLi) Only a prepared statement is a 'statement'.
             if ($this->statementClosed) {
                 throw new \LogicException(

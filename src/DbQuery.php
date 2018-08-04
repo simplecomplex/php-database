@@ -348,16 +348,6 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
             );
         }
 
-        if (
-            $this->validateArguments
-            && ($types || $arguments)
-            && ($valid = $this->validateArguments($types, $arguments, $this->validateArguments > 1)) !== true
-        ) {
-            throw new \InvalidArgumentException(
-                $this->client->messagePrefix() . ' - ' . $valid . '.'
-            );
-        }
-
         // Reset; secure base sql reusability; @todo: needed?.
         $this->sqlTampered = null;
 
@@ -486,7 +476,39 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
     }
 
     /**
-     * Validate type chars, optionally also that arguments match the types.
+     * Validate type chars.
+     *
+     * @param string $types
+     *
+     * @return bool|string
+     *      True on success.
+     *      String error details message on error.
+     */
+    public function validateTypes(string $types)
+    {
+        $n_types = strlen($types);
+        if ($n_types) {
+            // Probably faster than regular expression check.
+            $invalids = str_replace(
+                static::PARAMETER_TYPE_CHARS,
+                '',
+                $types
+            );
+            if ($invalids) {
+                $invalids = [];
+                for ($i = 0; $i < $n_types; ++$i) {
+                    if (!in_array($types{$i}, static::PARAMETER_TYPE_CHARS)) {
+                        $invalids[] = 'index[' . $i . '] char[' . $types{$i} . ']';
+                    }
+                }
+                return join(', ', $invalids);
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Validate that arguments matches types.
      *
      * Loose typings:
      * - 'i' integer allows stringed integer
@@ -494,96 +516,86 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
      * - 's' string and 'b' binary allow any scalar but boolean
      *
      * @see DbQuery::PARAMETER_TYPE_CHARS
+     * @see DbQuery::VALIDATE_ARGUMENTS
      *
      * @param string $types
      * @param array $arguments
-     * @param bool $actualTypes
-     *      True: validate $arguments' actual types againt $types.
+     * @param bool $errOnFailure
+     *      True: throw exception on validation failure.
      *
      * @return bool|string
      *      True on success.
      *      String error details message on error.
      */
-    public function validateArguments(string $types, array $arguments, bool $actualTypes = false)
+    public function validateArguments(string $types, array $arguments, bool $errOnFailure = false)
     {
-        $n_types = strlen($types);
-        if ($n_types != count($arguments)) {
-            return 'arg $types length[' . strlen($types) . '] doesn\'t match arg $arguments length['
-                . count($arguments) . ']';
+        if (strlen($types) != count($arguments)) {
+            return $this->client->messagePrefix() . ' - arg $types length[' . strlen($types)
+                . '] doesn\'t match arg $arguments length[' . count($arguments) . ']';
         }
-
-        // Probably faster than regular expression check.
-        $invalids = str_replace(
-            static::PARAMETER_TYPE_CHARS,
-            '',
-            $types
-        );
+        if (!$this->validate) {
+            $this->validate = Validate::getInstance();
+        }
+        $invalids = [];
+        $i = -1;
+        foreach ($arguments as $value) {
+            ++$i;
+            switch ($types{$i}) {
+                case 'i':
+                    if (!is_int($value)) {
+                        if ($value === '') {
+                            $invalids[] = 'index[' . $i . '] char[' . $types{$i}
+                                . '] empty string is neither integer nor stringed integer';
+                            break;
+                        }
+                        // Allow stringed integer.
+                        if (!is_string($value) || $this->validate->numeric($value) !== 'integer') {
+                            $invalids[] = 'index[' . $i . '] char[' . $types{$i}
+                                . '] type[' . Utils::getType($value) . '] is neither integer nor stringed integer';
+                        }
+                    }
+                    break;
+                case 'd':
+                    if (!is_float($value) && !is_int($value)) {
+                        if ($value === '') {
+                            $invalids[] = 'index[' . $i . '] char[' . $types{$i}
+                                . '] empty string is neither number nor stringed number';
+                            break;
+                        }
+                        // Allow stringed number.
+                        if (!is_string($value) || !$this->validate->numeric($value)) {
+                            $invalids[] = 'index[' . $i . '] char[' . $types{$i}
+                                . '] type[' . Utils::getType($value) . '] is neither number nor stringed number';
+                        }
+                    }
+                    break;
+                case 's':
+                case 'b':
+                    if (!is_string($value) && (!is_scalar($value) || is_bool($value))) {
+                        $invalids[] = 'index[' . $i . '] char[' . $types{$i} . '] type[' . Utils::getType($value)
+                            . '] is not string or scalar except boolean';
+                    }
+                    break;
+                default:
+                    throw new \InvalidArgumentException(
+                        $this->client->messagePrefix() . ' - arg $types index[' . $i . '] char[' . $types{$i}
+                        . '] is not ' . join('|', static::PARAMETER_TYPE_CHARS) . '.'
+                    );
+            }
+        }
         if ($invalids) {
-            $invalids = [];
-            for ($i = 0; $i < $n_types; ++$i) {
-                if (!in_array($types{$i}, static::PARAMETER_TYPE_CHARS)) {
-                    $invalids[] = 'index[' . $i . '] char[' . $types{$i} . ']';
-                }
+            if ($errOnFailure) {
+                // Custom message if validateArguments:3
+                // and not first prepared statement execution.
+                throw new \InvalidArgumentException(
+                    $this->client->messagePrefix()
+                        . (!$this->execution ? ' - arg $arguments ' :
+                            ' - execution[' . $this->execution . '] argument '
+                        )
+                        . join(', ', $invalids) . '.'
+                );
             }
-            return 'arg $types invalid ' . join(', ', $invalids);
-        }
-
-        // @todo: separate actual type checking (and with $errOnFailure arg) to support validateArguments:3 (prepared st.)
-
-        if ($actualTypes) {
-            if (!$this->validate) {
-                $this->validate = Validate::getInstance();
-            }
-            $invalids = [];
-            $i = -1;
-            foreach ($arguments as $value) {
-                ++$i;
-                switch ($types{$i}) {
-                    case 'i':
-                        if (!is_int($value)) {
-                            if ($value === '') {
-                                $invalids[] = 'index[' . $i . '] char[' . $types{$i}
-                                    . '] empty string is neither integer nor stringed integer';
-                                break;
-                            }
-                            // Allow stringed integer.
-                            if (!is_string($value) || $this->validate->numeric($value) !== 'integer') {
-                                $invalids[] = 'index[' . $i . '] char[' . $types{$i}
-                                    . '] type[' . Utils::getType($value) . '] is neither integer nor stringed integer';
-                            }
-                        }
-                        break;
-                    case 'd':
-                        if (!is_float($value)) {
-                            if ($value === '') {
-                                $invalids[] = 'index[' . $i . '] char[' . $types{$i}
-                                    . '] empty string is neither number nor stringed number';
-                                break;
-                            }
-                            // Allow stringed number.
-                            if (!is_string($value) || !$this->validate->numeric($value)) {
-                                $invalids[] = 'index[' . $i . '] char[' . $types{$i}
-                                    . '] type[' . Utils::getType($value) . '] is neither number nor stringed number';
-                            }
-                        }
-                        break;
-                    case 's':
-                    case 'b':
-                        if (!is_string($value) && (!is_scalar($value) || is_bool($value))) {
-                            $invalids[] = 'index[' . $i . '] char[' . $types{$i} . '] type[' . Utils::getType($value)
-                                . '] is not string or scalar except boolean';
-                        }
-                        break;
-                    default:
-                        throw new \InvalidArgumentException(
-                            $this->client->messagePrefix() . ' - arg $types index[' . $i . '] char[' . $types{$i}
-                            . '] is not ' . join('|', static::PARAMETER_TYPE_CHARS) . '.'
-                        );
-                }
-            }
-            if ($invalids) {
-                return 'args $types $arguments mismatch ' . join(', ', $invalids);
-            }
+            return join(', ', $invalids);
         }
 
         return true;
@@ -692,6 +704,23 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
                 $this->client->messagePrefix() . ' - arg $types length[' . strlen($types)
                 . '] doesn\'t match sql\'s ?-parameters count[' . $n_params . '].'
             );
+        }
+        elseif (count($arguments) != $n_params) {
+            throw new \InvalidArgumentException(
+                $this->client->messagePrefix() . ' - arg $arguments length[' . count($arguments)
+                . '] doesn\'t match sql\'s ?-parameters count[' . $n_params . '].'
+            );
+        }
+        else if ($this->validateArguments) {
+            if (($valid = $this->validateTypes($types)) !== true) {
+                throw new \InvalidArgumentException(
+                    $this->client->messagePrefix() . ' - arg $types ' . $valid . '.'
+                );
+            }
+            if ($this->validateArguments > 1) {
+                // Throws exception on validation failure.
+                $this->validateArguments($types, $arguments, true);
+            }
         }
 
         // Mend that arguments array may not be numerically indexed,

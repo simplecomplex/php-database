@@ -2,6 +2,8 @@ SimpleComplex/Database 1.x, 2018-08-04
 --------------------------------------
 - MsSql query support arguments actual type checking, even for later
   prepared statement executions.
+- MariaDb query support arguments actual type checking, even for later
+  prepared statement executions.
 
 SimpleComplex/Database 1.x, 2018-08-03
 --------------------------------------
