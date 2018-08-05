@@ -273,7 +273,7 @@ class MariaDbQuery extends DbQuery
         if (!empty($options['result_mode'])) {
             if (!in_array($options['result_mode'], static::RESULT_MODES, true)) {
                 throw new \InvalidArgumentException(
-                    $this->client->messagePrefix()
+                    $this->messagePrefix()
                     . ' query option \'result_mode\' value[' . $options['result_mode'] . '] is invalid.'
                 );
             }
@@ -372,7 +372,7 @@ class MariaDbQuery extends DbQuery
             // Unset prepared statement arguments reference.
             $this->unsetReferences();
             throw new \LogicException(
-                $this->client->messagePrefix() . ' - can\'t prepare statement more than once.'
+                $this->messagePrefix() . ' - can\'t prepare statement more than once.'
             );
         }
         $this->isPreparedStatement = true;
@@ -386,7 +386,7 @@ class MariaDbQuery extends DbQuery
             // Unset prepared statement arguments reference.
             $this->unsetReferences();
             throw new \LogicException(
-                $this->client->messagePrefix()
+                $this->messagePrefix()
                 . ' - result mode \'' . MariaDbQuery::CURSOR_STORE . '\' is illegal for prepared statement.'
             );
         }
@@ -410,14 +410,14 @@ class MariaDbQuery extends DbQuery
             elseif (strlen($types) != $n_params) {
                 $this->log(__FUNCTION__);
                 throw new DbQueryArgumentException(
-                    $this->client->messagePrefix() . ' - arg $types length[' . strlen($types)
+                    $this->messagePrefix() . ' - arg $types length[' . strlen($types)
                     . '] doesn\'t match sql\'s ?-parameters count[' . $n_params . '].'
                 );
             }
             else if ($this->validateArguments) {
                 if (($valid = $this->validateTypes($types)) !== true) {
                     throw new DbQueryArgumentException(
-                        $this->client->messagePrefix() . ' - arg $types ' . $valid . '.'
+                        $this->messagePrefix() . ' - arg $types ' . $valid . '.'
                     );
                 }
                 if ($this->validateArguments > 1) {
@@ -511,7 +511,7 @@ class MariaDbQuery extends DbQuery
     {
         if ($this->sqlAppended) {
             throw new \LogicException(
-                $this->client->messagePrefix()
+                $this->messagePrefix()
                 . ' - passing parameters to base sql is illegal after another sql string has been appended.'
             );
         }
@@ -547,14 +547,14 @@ class MariaDbQuery extends DbQuery
         $sql_appendix = trim($sql, static::SQL_TRIM);
         if ($sql_appendix) {
             throw new \InvalidArgumentException(
-                $this->client->messagePrefix() . ' - arg $sql length[' . strlen($sql) . '] is effectively empty.'
+                $this->messagePrefix() . ' - arg $sql length[' . strlen($sql) . '] is effectively empty.'
             );
         }
 
         if ($this->isPreparedStatement) {
             $this->unsetReferences();
             throw new \LogicException(
-                $this->client->messagePrefix() . ' - appending to prepared statement is illegal.'
+                $this->messagePrefix() . ' - appending to prepared statement is illegal.'
             );
         }
 
@@ -617,7 +617,7 @@ class MariaDbQuery extends DbQuery
             // (MySQLi) Only a prepared statement is a 'statement'.
             if ($this->statementClosed) {
                 throw new \LogicException(
-                    $this->client->messagePrefix()
+                    $this->messagePrefix()
                     . ' - can\'t do execution[' . $this->execution . '] on previously closed prepared statement.'
                 );
             }
@@ -630,7 +630,7 @@ class MariaDbQuery extends DbQuery
                 $this->closeAndLog(__FUNCTION__);
                 $cls_xcptn = $this->client->errorsToException($errors);
                 throw new $cls_xcptn(
-                    $this->client->messagePrefix()
+                    $this->messagePrefix()
                     . ' - can\'t do execution[' . $this->execution . '] of prepared statement'
                     . (isset($errors[2014]) ? ', forgot to exhaust/free result set(s) of another query?' :
                         ' when connection lost')
@@ -763,7 +763,7 @@ class MariaDbQuery extends DbQuery
             // Unset prepared statement arguments reference.
             $this->closeAndLog(__FUNCTION__);
             throw new DbConnectionException(
-                $this->client->messagePrefix() . ' - query can\'t escape string when connection lost, error: '
+                $this->messagePrefix() . ' - query can\'t escape string when connection lost, error: '
                 . $this->client->errorsToString($errors) . '.'
             );
         }

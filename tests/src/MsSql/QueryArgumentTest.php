@@ -182,7 +182,7 @@ class QueryArgumentTest extends TestCase
      *
      * @see ClientTest::testInstantiation()
      *
-     * @expectedException \SimpleComplex\Database\Exception\DbQueryArgumentException
+     * @expectedExceptionNot \SimpleComplex\Database\Exception\DbQueryArgumentException
      */
     public function testQueryArgumentsStringable()
     {

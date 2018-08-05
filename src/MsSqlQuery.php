@@ -294,7 +294,7 @@ class MsSqlQuery extends DbQuery
         if (!empty($options['result_mode'])) {
             if (!in_array($options['result_mode'], static::RESULT_MODES, true)) {
                 throw new \InvalidArgumentException(
-                    $this->client->messagePrefix()
+                    $this->messagePrefix()
                     . ' query option \'result_mode\' value[' . $options['result_mode'] . '] is invalid.'
                 );
             }
@@ -409,7 +409,7 @@ class MsSqlQuery extends DbQuery
             // Unset prepared statement arguments reference.
             $this->unsetReferences();
             throw new \LogicException(
-                $this->client->messagePrefix() . ' - can\'t prepare statement more than once.'
+                $this->messagePrefix() . ' - can\'t prepare statement more than once.'
             );
         }
         $this->isPreparedStatement = true;
@@ -444,8 +444,8 @@ class MsSqlQuery extends DbQuery
         if (!$statement) {
             $errors = $this->client->getErrors();
             // Unset prepared statement arguments reference.
-            $this->unsetReferences();
             $this->log(__FUNCTION__);
+            $this->unsetReferences();
             $cls_xcptn = $this->client->errorsToException($errors);
             throw new $cls_xcptn(
                 $this->messagePrefix() . ' - failed to prepare statement, error: '
@@ -497,7 +497,7 @@ class MsSqlQuery extends DbQuery
             // Unset prepared statement arguments reference.
             $this->unsetReferences();
             throw new \LogicException(
-                $this->client->messagePrefix()
+                $this->messagePrefix()
                 . ' - passing parameters to prepared statement is illegal except via call to prepare().'
             );
         }
@@ -533,7 +533,7 @@ class MsSqlQuery extends DbQuery
         // (Sqlsrv) Even a simple statement is a 'statement'.
         if ($this->statementClosed) {
             throw new \LogicException(
-                $this->client->messagePrefix()
+                $this->messagePrefix()
                 . ' - can\'t execute previously closed statement.'
             );
         }
@@ -549,8 +549,8 @@ class MsSqlQuery extends DbQuery
             if (!$this->client->isConnected()) {
                 $errors = $this->client->getErrors();
                 // Unset prepared statement arguments reference.
-                $this->unsetReferences();
                 $this->log(__FUNCTION__);
+                $this->unsetReferences();
                 $cls_xcptn = $this->client->errorsToException($errors);
                 throw new $cls_xcptn(
                     $this->messagePrefix() . ' - can\'t do execution[' . $this->execution
@@ -563,8 +563,8 @@ class MsSqlQuery extends DbQuery
             if (!@sqlsrv_execute($this->statement)) {
                 $errors = $this->client->getErrors();
                 // Unset prepared statement arguments reference.
-                $this->unsetReferences();
                 $this->log(__FUNCTION__);
+                $this->unsetReferences();
                 $cls_xcptn = $this->client->errorsToException($errors);
                 throw new $cls_xcptn(
                     $this->messagePrefix() . ' - failed execution[' . $this->execution
@@ -617,8 +617,8 @@ class MsSqlQuery extends DbQuery
             if ($error) {
                 $errors = $this->client->getErrors();
                 // Unset prepared statement arguments reference.
-                $this->unsetReferences();
                 $this->log(__FUNCTION__);
+                $this->unsetReferences();
                 $cls_xcptn = $this->client->errorsToException($errors);
                 throw new $cls_xcptn(
                     $this->messagePrefix() . ' - failed to complete sending data chunked, after chunk['
@@ -678,7 +678,7 @@ class MsSqlQuery extends DbQuery
     {
         if ($index >= strlen($types)) {
             throw new \OutOfRangeException(
-                $this->client->messagePrefix()
+                $this->messagePrefix()
                 . ' - arg $index[' . $index . '] is not within range of arg $types length[' . strlen($types) . '].'
             );
         }
@@ -702,7 +702,7 @@ class MsSqlQuery extends DbQuery
                 return SQLSRV_SQLTYPE_VARBINARY('max');
         }
         throw new DbQueryArgumentException(
-            $this->client->messagePrefix() . ' - arg $types index[' . $index . '] char[' . $types{$index}
+            $this->messagePrefix() . ' - arg $types index[' . $index . '] char[' . $types{$index}
                 . '] is not '. join('|', static::PARAMETER_TYPE_CHARS) . '.'
         );
     }
@@ -762,7 +762,7 @@ class MsSqlQuery extends DbQuery
                 // }
         }
         throw new DbQueryArgumentException(
-            $this->client->messagePrefix()
+            $this->messagePrefix()
                 . ' - arg $arguments value at index[' . $index . '] type[' . Utils::getType($value)
                 . '] is not integer|float|string or other resolvable and supported sql argument type.'
         );
@@ -885,7 +885,7 @@ class MsSqlQuery extends DbQuery
                                     . '] is neither integer 0|1 nor boolean nor string 0|1';
                                 break;
                             }
-                            continue 2;
+                            break;
                         case $native['SQLTYPE_TINYINT']:
                         case $native['SQLTYPE_SMALLINT']:
                         case $native['SQLTYPE_INT']:
@@ -902,7 +902,8 @@ class MsSqlQuery extends DbQuery
                                 }
                             }
                             if ($value >= 0 && $value <= 255) {
-                                continue 2;
+                                // Even SQLTYPE_TINYINT handles that.
+                                break;
                             }
                             if ($nativeType == $native['SQLTYPE_TINYINT']) {
                                 $em = 'value[' . $value . '] is '
@@ -910,7 +911,8 @@ class MsSqlQuery extends DbQuery
                                 break;
                             }
                             if ($value >= -32768 && $value <= 32767) {
-                                continue 2;
+                                // Even SQLTYPE_SMALLINT handles that.
+                                break;
                             }
                             if ($nativeType == $native['SQLTYPE_SMALLINT']) {
                                 $em = 'value[' . $value . '] is '
@@ -918,14 +920,15 @@ class MsSqlQuery extends DbQuery
                                 break;
                             }
                             if ($value >= -2147483648 && $value <= 2147483647) {
-                                continue 2;
+                                // Even SQLTYPE_INT handles that.
+                                break;
                             }
                             if ($nativeType == $native['SQLTYPE_INT']) {
                                 $em = 'value[' . $value . '] is '
                                     . ($value < 0 ? 'less than -2147483648' : 'more than 2147483647');
                                 break;
                             }
-                            continue 2;
+                            break;
                         case $native['SQLTYPE_FLOAT']:
                         case $native['SQLTYPE_REAL']:
                         case $native['SQLTYPE_DECIMAL']:
@@ -941,7 +944,7 @@ class MsSqlQuery extends DbQuery
                                     break;
                                 }
                             }
-                            continue 2;
+                            break;
                         case $native['SQLTYPE_VARCHAR']:
                         case $native['SQLTYPE_NVARCHAR']:
                         case $native['SQLTYPE_VARBINARY']:
@@ -989,7 +992,7 @@ class MsSqlQuery extends DbQuery
                                     . '] is not string time IS0-8601';
                                 break;
                             }
-                            continue 2;
+                            break;
                         case $native['SQLTYPE_DATE']:
                         case $native['SQLTYPE_DATETIME']:
                         case $native['SQLTYPE_DATETIME2']:
@@ -1001,7 +1004,7 @@ class MsSqlQuery extends DbQuery
                                     . '] is neither \DateTime nor string date IS0-8601 YYYY-MM-DD';
                                 break;
                             }
-                            continue 2;
+                            break;
                         case $native['SQLTYPE_UNIQUEIDENTIFIER']:
                             if (!is_string($value) || !$this->validate->uuid($value)) {
                                 $em = 'type[' . Utils::getType($value) . '] is a UUID';
@@ -1024,10 +1027,14 @@ class MsSqlQuery extends DbQuery
         }
         if ($invalids) {
             if ($errOnFailure) {
+                // Prepared statement, later execution.
+                if ($this->execution > 0) {
+                    $this->unsetReferences();
+                }
                 // Custom message if validateArguments:3
                 // and not first prepared statement execution.
                 throw new DbQueryArgumentException(
-                    $this->client->messagePrefix()
+                    $this->messagePrefix()
                     . ($this->execution < 1 ? ' - arg $arguments ' :
                         ' - execution[' . $this->execution . '] argument '
                     )
@@ -1087,7 +1094,7 @@ class MsSqlQuery extends DbQuery
                 $count = count($arg);
                 if (!$count) {
                     throw new DbQueryArgumentException(
-                        $this->client->messagePrefix() . ' - arg $arguments bucket ' . $i . ' is empty array.'
+                        $this->messagePrefix() . ' - arg $arguments bucket ' . $i . ' is empty array.'
                     );
                 }
                 // An 'in' parameter must have 4th bucket,
@@ -1137,7 +1144,7 @@ class MsSqlQuery extends DbQuery
         }
         elseif (strlen($types) != $n_params) {
             throw new DbQueryArgumentException(
-                $this->client->messagePrefix() . ' - arg $types length[' . strlen($types)
+                $this->messagePrefix() . ' - arg $types length[' . strlen($types)
                 . '] doesn\'t match sql\'s ?-parameters count[' . $n_params . '].'
             );
         }
@@ -1151,7 +1158,7 @@ class MsSqlQuery extends DbQuery
             && ($valid = $this->validateTypes($types)) !== true
         ) {
             throw new DbQueryArgumentException(
-                $this->client->messagePrefix() . ' - arg $types ' . $valid . '.'
+                $this->messagePrefix() . ' - arg $types ' . $valid . '.'
             );
         }
 
@@ -1217,9 +1224,9 @@ class MsSqlQuery extends DbQuery
         // Iteration ref.
         unset($arg);
 
-        if ($validate_indices) {
+        if ($this->validateArguments > 1) {
             // Throws exception on validation failure
-            $this->validateArgumentsNativeType($arguments, $validate_indices, true);
+            $this->validateArgumentsNativeType($type_qualifieds, $validate_indices, true);
         }
         
         if ($this->isPreparedStatement) {
