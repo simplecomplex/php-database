@@ -748,7 +748,7 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
             switch ($tps{$i}) {
                 case 's':
                 case 'b':
-                    $value = "'" . $this->escapeString($value) . "'";
+                    $value = "'" . $this->escapeString('' . $value) . "'";
                     break;
                 case 'i':
                 case 'd':
