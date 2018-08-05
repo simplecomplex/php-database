@@ -16,6 +16,7 @@ use SimpleComplex\Validate\Validate;
 
 use SimpleComplex\Database\Interfaces\DbClientInterface;
 use SimpleComplex\Database\Interfaces\DbQueryInterface;
+use SimpleComplex\Database\Exception\DbQueryArgumentException;
 
 /**
  * Database query.
@@ -63,6 +64,26 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
     const SQL_PARAMETER = '?';
 
     /**
+     * Whether the DBMS attempts to stringify objects, as query arguments.
+     *
+     * Values:
+     * - 0: makes no attempt to stringify object, even if __toString() method
+     * - 1: attempts to stringify without checking for __toString() method
+     * - 2: stringifies if the object has a __toString() method
+     *
+     * @var int
+     */
+    const AUTO_STRINGIFIES_OBJECT = 0;
+
+    /**
+     * List of class names of objects that automatically gets stringified,
+     * and accepted as strings, by the DBMS driver
+     *
+     * @var string[]
+     */
+    const AUTO_STRINGABLE_CLASSES = [];
+
+    /**
      * List of supported parameter type characters.
      *
      * Types:
@@ -82,14 +103,6 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
         's',
         'b',
     ];
-
-    /**
-     * List of class names of objects that automatically gets stringed,
-     * and accepted as strings, by the DBMS driver.
-     *
-     * @var string[]
-     */
-    const AUTO_STRINGABLE_CLASSES = [];
 
     /**
      * Remove trailing (and leading) semicolon,
@@ -333,7 +346,7 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
      *
      * @throws \LogicException
      *      Query is prepared statement.
-     * @throws \InvalidArgumentException
+     * @throws DbQueryArgumentException
      *      Propagated; parameters/arguments count mismatch.
      *      Arg $types contains illegal char(s).
      *      Arg $types length (unless empty) doesn't match number of parameters.
@@ -458,7 +471,7 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
      * @return array
      *      Empty: sql contains no parameter flags.
      *
-     * @throws \InvalidArgumentException
+     * @throws DbQueryArgumentException
      *      Arg $arguments length doesn't match number of parameters.
      */
     public function sqlFragments(string $sql, array $arguments) : array
@@ -467,7 +480,7 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
         $n_params = count($fragments) - 1;
         $n_args = count($arguments);
         if ($n_args != $n_params) {
-            throw new \InvalidArgumentException(
+            throw new DbQueryArgumentException(
                 $this->client->messagePrefix() . ' - arg $arguments length[' . $n_args
                 . '] doesn\'t match sql\'s ?-parameters count[' . $n_params . '].'
             );
@@ -526,6 +539,8 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
      * @return bool|string
      *      True on success.
      *      String error details message on error.
+     *
+     * @throws DbQueryArgumentException
      */
     public function validateArguments(string $types, array $arguments, bool $errOnFailure = false)
     {
@@ -571,13 +586,37 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
                     break;
                 case 's':
                 case 'b':
-                    if (!is_string($value) && (!is_scalar($value) || is_bool($value))) {
-                        $invalids[] = 'index[' . $i . '] char[' . $types{$i} . '] type[' . Utils::getType($value)
-                            . '] is not string or scalar except boolean';
+                    // Camnot discern binary from non-binary string.
+                    if (!is_string($value)) {
+                        $valid = false;
+                        switch (gettype($value)) {
+                            case 'integer':
+                            case 'double':
+                            case 'float':
+                                $valid = true;
+                                break;
+                            case 'object':
+                                if (static::AUTO_STRINGIFIES_OBJECT && method_exists($value, '__toString')) {
+                                    $valid = true;
+                                }
+                                elseif (static::AUTO_STRINGABLE_CLASSES) {
+                                    foreach (static::AUTO_STRINGABLE_CLASSES as $class_name) {
+                                        if (is_a($value, $class_name)) {
+                                            $valid = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                                break;
+                        }
+                        if (!$valid) {
+                            $invalids[] = 'index[' . $i . '] char[' . $types{$i} . '] type[' . Utils::getType($value)
+                                . '] is not string, integer, float or stringable object';
+                        }
                     }
                     break;
                 default:
-                    throw new \InvalidArgumentException(
+                    throw new DbQueryArgumentException(
                         $this->client->messagePrefix() . ' - arg $types index[' . $i . '] char[' . $types{$i}
                         . '] is not ' . join('|', static::PARAMETER_TYPE_CHARS) . '.'
                     );
@@ -587,7 +626,7 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
             if ($errOnFailure) {
                 // Custom message if validateArguments:3
                 // and not first prepared statement execution.
-                throw new \InvalidArgumentException(
+                throw new DbQueryArgumentException(
                     $this->client->messagePrefix()
                         . ($this->execution < 1 ? ' - arg $arguments ' :
                             ' - execution[' . $this->execution . '] argument '
@@ -612,6 +651,8 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
      *      as mock type char at those indexes in the output type string.
      *
      * @return string
+     *
+     * @throws DbQueryArgumentException
      */
     public function parameterTypesDetect(array $arguments, array $skipIndexes = []) : string
     {
@@ -638,17 +679,22 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
                         break;
                     default:
                         $auto_stringable_object = false;
-                        if ($type == 'object' && static::AUTO_STRINGABLE_CLASSES) {
-                            foreach (static::AUTO_STRINGABLE_CLASSES as $class_name) {
-                                if (is_a($value, $class_name)) {
-                                    $auto_stringable_object = true;
-                                    $types .= 's';
-                                    break;
+                        if ($type == 'object') {
+                            if (static::AUTO_STRINGIFIES_OBJECT && method_exists($value, '__toString')) {
+                                $auto_stringable_object = true;
+                            }
+                            elseif (static::AUTO_STRINGABLE_CLASSES) {
+                                foreach (static::AUTO_STRINGABLE_CLASSES as $class_name) {
+                                    if (is_a($value, $class_name)) {
+                                        $auto_stringable_object = true;
+                                        $types .= 's';
+                                        break;
+                                    }
                                 }
                             }
                         }
                         if (!$auto_stringable_object) {
-                            throw new \InvalidArgumentException(
+                            throw new DbQueryArgumentException(
                                 $this->client->messagePrefix()
                                 . ' - cannot detect parameter type char for arguments index[' . $index
                                 . '], type[' . Utils::getType($value) . '] not supported.'
@@ -680,8 +726,9 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
      *
      * @return string
      *
-     * @throws \InvalidArgumentException
+     * @throws DbQueryArgumentException
      *      Arg $types length (unless empty) doesn't match number of parameters.
+     *      On $types or $arguments validation failure
      * @throws \LogicException
      *      Method called when no parameters to substitute.
      */
@@ -700,20 +747,20 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
             $tps = $this->parameterTypesDetect($arguments);
         }
         elseif (strlen($types) != $n_params) {
-            throw new \InvalidArgumentException(
+            throw new DbQueryArgumentException(
                 $this->client->messagePrefix() . ' - arg $types length[' . strlen($types)
                 . '] doesn\'t match sql\'s ?-parameters count[' . $n_params . '].'
             );
         }
         elseif (count($arguments) != $n_params) {
-            throw new \InvalidArgumentException(
+            throw new DbQueryArgumentException(
                 $this->client->messagePrefix() . ' - arg $arguments length[' . count($arguments)
                 . '] doesn\'t match sql\'s ?-parameters count[' . $n_params . '].'
             );
         }
         else if ($this->validateArguments) {
             if (($valid = $this->validateTypes($types)) !== true) {
-                throw new \InvalidArgumentException(
+                throw new DbQueryArgumentException(
                     $this->client->messagePrefix() . ' - arg $types ' . $valid . '.'
                 );
             }
@@ -739,7 +786,7 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
              */
             if (!is_scalar($value) || is_bool($value)) {
                 // Unlikely when checked via validateArguments().
-                throw new \InvalidArgumentException(
+                throw new DbQueryArgumentException(
                     $this->client->messagePrefix() . ' - arg $arguments index[' . $i
                     . '] type[' . gettype($value) . '] is not integer|float|string|binary.'
                 );
@@ -756,7 +803,7 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
                 default:
                     if (in_array($tps{$i}, static::PARAMETER_TYPE_CHARS)) {
                         // Unlikely if previous validateArguments().
-                        throw new \InvalidArgumentException(
+                        throw new DbQueryArgumentException(
                             $this->client->messagePrefix()
                             . ' - arg $types[' . $types . '] index[' . $i . '] char[' . $tps{$i} . '] is not '
                             . join('|', static::PARAMETER_TYPE_CHARS) . '.'

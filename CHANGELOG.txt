@@ -1,3 +1,8 @@
+SimpleComplex/Database 1.x, 2018-08-05
+--------------------------------------
+- Query argument object stringification: MySQLi attempts to stringify even when
+  no __toString() method, whereas Sqlsrv only stringifies \DateTime.
+
 SimpleComplex/Database 1.x, 2018-08-04
 --------------------------------------
 - MsSql query support arguments actual type checking, even for later

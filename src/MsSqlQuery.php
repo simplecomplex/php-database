@@ -17,19 +17,29 @@ use SimpleComplex\Database\Interfaces\DbQueryInterface;
 use SimpleComplex\Database\Interfaces\DbResultInterface;
 
 use SimpleComplex\Database\Exception\DbRuntimeException;
+use SimpleComplex\Database\Exception\DbQueryArgumentException;
 use SimpleComplex\Database\Exception\DbConnectionException;
 use SimpleComplex\Database\Exception\DbQueryException;
 
 /**
  * MS SQL query.
  *
+ *
+ * Argument object stringification
+ * -------------------------------
  * Sqlsrv handles DateTimes vs. string transparently, interchangeably.
  * However SQLSRV_SQLTYPE_* date/datetimes only accept (\DateTime and)
  * string YYYY-MM-DD.
+ * Sqlsrv makes no attempt to stringify object as query argument, regardless
+ * of any __toString() method.
  *
+ *
+ * Multi-query only when stored procedure
+ * ------------------------------------
  * Multi-query producing more results sets is not supported by MS SQL,
  * except when calling stored procedure. For multi vs. batch query, see:
  * @see DbQueryInterface
+ *
  *
  * Inherited properties:
  * @property-read string $id
@@ -68,8 +78,18 @@ class MsSqlQuery extends DbQuery
     const CLASS_RESULT = MsSqlResult::class;
 
     /**
-     * List of class names of objects that automatically gets stringed,
-     * and accepted as strings, by the DBMS driver.
+     * Sqlsrv makes no attempt to stringify object,
+     * regardless of __toString() method.
+     *
+     * @see DbQuery::AUTO_STRINGIFIES_OBJECT
+     *
+     * @var int
+     */
+    const AUTO_STRINGIFIES_OBJECT = 0;
+
+    /**
+     * List of class names of objects that automatically gets stringified,
+     * and accepted as strings, by the DBMS driver
      *
      * @var string[]
      */
@@ -378,7 +398,7 @@ class MsSqlQuery extends DbQuery
      *      Propagated.
      * @throws \LogicException
      *      Method called more than once for this query.
-     * @throws \InvalidArgumentException
+     * @throws DbQueryArgumentException
      *      Propagated; parameters/arguments count mismatch.
      * @throws DbRuntimeException
      *      Failure to bind $arguments to native layer.
@@ -466,7 +486,7 @@ class MsSqlQuery extends DbQuery
      *
      * @throws \LogicException
      *      Query is prepared statement.
-     * @throws \InvalidArgumentException
+     * @throws DbQueryArgumentException
      *      Propagated; parameters/arguments count mismatch.
      *      Arg $types contains illegal char(s).
      *      Arg $types length (unless empty) doesn't match number of parameters.
@@ -650,6 +670,9 @@ class MsSqlQuery extends DbQuery
      *
      * @return int
      *      SQLSRV_SQLTYPE_* constant.
+     *
+     * @throws DbQueryArgumentException
+     *      Invalid type char.
      */
     public function nativeTypeFromTypeString($value, string $types, int $index)
     {
@@ -678,7 +701,7 @@ class MsSqlQuery extends DbQuery
             case 'b':
                 return SQLSRV_SQLTYPE_VARBINARY('max');
         }
-        throw new \InvalidArgumentException(
+        throw new DbQueryArgumentException(
             $this->client->messagePrefix() . ' - arg $types index[' . $index . '] char[' . $types{$index}
                 . '] is not '. join('|', static::PARAMETER_TYPE_CHARS) . '.'
         );
@@ -692,6 +715,9 @@ class MsSqlQuery extends DbQuery
      *
      * @return int
      *      SQLSRV_SQLTYPE_* constant.
+     *
+     * @throws DbQueryArgumentException
+     *      Arg $value not supported as actual type for translation.
      */
     public function nativeTypeFromActualType($value, int $index)
     {
@@ -715,11 +741,27 @@ class MsSqlQuery extends DbQuery
             case 'float':
                 return SQLSRV_SQLTYPE_FLOAT;
             default:
+                /**
+                 * @see MsSqlQuery::AUTO_STRINGABLE_CLASSES
+                 */
                 if ($value instanceof \DateTime) {
                     return SQLSRV_SQLTYPE_DATETIME2;
                 }
+                /**
+                 * Should do next check, but no purpose as long as \DateTime
+                 * is the only auto-stringable class.
+                 *
+                 * @see MsSqlQuery::AUTO_STRINGABLE_CLASSES
+                 */
+                // elseif (static::AUTO_STRINGABLE_CLASSES) {
+                //     foreach (static::AUTO_STRINGABLE_CLASSES as $class_name) {
+                //         if (is_a($value, $class_name)) {
+                //             return SQLSRV_SQLTYPE_VARCHAR('max');
+                //         }
+                //     }
+                // }
         }
-        throw new \InvalidArgumentException(
+        throw new DbQueryArgumentException(
             $this->client->messagePrefix()
                 . ' - arg $arguments value at index[' . $index . '] type[' . Utils::getType($value)
                 . '] is not integer|float|string or other resolvable and supported sql argument type.'
@@ -810,7 +852,7 @@ class MsSqlQuery extends DbQuery
      *      True on success.
      *      String error details message on error.
      *
-     * @throws \InvalidArgumentException
+     * @throws DbQueryArgumentException
      */
     public function validateArgumentsNativeType(array $arguments, array $indices = [], bool $errOnFailure = false) {
         $native = $this->nativeTypes();
@@ -902,21 +944,38 @@ class MsSqlQuery extends DbQuery
                             continue 2;
                         case $native['SQLTYPE_VARCHAR']:
                         case $native['SQLTYPE_NVARCHAR']:
-                            if (
-                                !is_string($value)
-                                && !($value instanceof \DateTime)
-                                && (!is_scalar($value) || is_bool($value))
-                            ) {
-                                $em = 'type[' . Utils::getType($value)
-                                    . '] is not string or scalar except boolean';
-                                break;
-                            }
-                            break;
                         case $native['SQLTYPE_VARBINARY']:
-                            if (!is_string($value) && (!is_scalar($value) || is_bool($value))) {
-                                $em = 'type[' . Utils::getType($value)
-                                    . '] is not string or scalar except boolean';
-                                break;
+                            // Camnot discern binary from non-binary string.
+                            if (!is_string($value)) {
+                                $valid = false;
+                                switch (gettype($value)) {
+                                    case 'integer':
+                                    case 'double':
+                                    case 'float':
+                                        $valid = true;
+                                        break;
+                                    case 'object':
+                                        /**
+                                         * No __toString() check, because Sqlsrv
+                                         * doesn't try to stringify objects;
+                                         * except for \DateTime.
+                                         *
+                                         * @see MsSqlQuery::AUTO_STRINGIFIES_OBJECT
+                                         */
+                                        if (static::AUTO_STRINGABLE_CLASSES) {
+                                            foreach (static::AUTO_STRINGABLE_CLASSES as $class_name) {
+                                                if (is_a($value, $class_name)) {
+                                                    $valid = true;
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                        break;
+                                }
+                                if (!$valid) {
+                                    $em = 'type[' . Utils::getType($value)
+                                        . '] is not string, integer, float or stringable object';
+                                }
                             }
                             break;
                         case $native['SQLTYPE_TIME']:
@@ -967,7 +1026,7 @@ class MsSqlQuery extends DbQuery
             if ($errOnFailure) {
                 // Custom message if validateArguments:3
                 // and not first prepared statement execution.
-                throw new \InvalidArgumentException(
+                throw new DbQueryArgumentException(
                     $this->client->messagePrefix()
                     . ($this->execution < 1 ? ' - arg $arguments ' :
                         ' - execution[' . $this->execution . '] argument '
@@ -991,8 +1050,7 @@ class MsSqlQuery extends DbQuery
      * @return void
      *      Number of parameters/arguments.
      *
-     * @throws \InvalidArgumentException
-     *      Propagated; parameters/arguments count mismatch.
+     * @throws DbQueryArgumentException
      */
     protected function adaptArguments(string $types, array &$arguments) /*: void*/
     {
@@ -1028,7 +1086,7 @@ class MsSqlQuery extends DbQuery
                 $type_detection_skip_indexes[] = $i;
                 $count = count($arg);
                 if (!$count) {
-                    throw new \InvalidArgumentException(
+                    throw new DbQueryArgumentException(
                         $this->client->messagePrefix() . ' - arg $arguments bucket ' . $i . ' is empty array.'
                     );
                 }
@@ -1078,7 +1136,7 @@ class MsSqlQuery extends DbQuery
             $tps = $this->parameterTypesDetect($arguments, $type_detection_skip_indexes);
         }
         elseif (strlen($types) != $n_params) {
-            throw new \InvalidArgumentException(
+            throw new DbQueryArgumentException(
                 $this->client->messagePrefix() . ' - arg $types length[' . strlen($types)
                 . '] doesn\'t match sql\'s ?-parameters count[' . $n_params . '].'
             );
@@ -1092,7 +1150,7 @@ class MsSqlQuery extends DbQuery
             $this->validateArguments
             && ($valid = $this->validateTypes($types)) !== true
         ) {
-            throw new \InvalidArgumentException(
+            throw new DbQueryArgumentException(
                 $this->client->messagePrefix() . ' - arg $types ' . $valid . '.'
             );
         }

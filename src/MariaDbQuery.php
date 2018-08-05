@@ -14,10 +14,18 @@ use SimpleComplex\Database\Interfaces\DbQueryInterface;
 use SimpleComplex\Database\Interfaces\DbResultInterface;
 
 use SimpleComplex\Database\Exception\DbRuntimeException;
+use SimpleComplex\Database\Exception\DbQueryArgumentException;
 use SimpleComplex\Database\Exception\DbConnectionException;
 
 /**
  * MariaDB query.
+ *
+ *
+ * Argument object stringification
+ * -------------------------------
+ * MySQLi attempts to stringify object as query argument, but doesn't check
+ * if any __toString() method.
+ *
  *
  * Prepared statement are 'use' and num-rows unavailable
  * -----------------------------------------------------
@@ -27,6 +35,7 @@ use SimpleComplex\Database\Exception\DbConnectionException;
  * @see \mysqli_stmt::get_result()
  * Getting number of rows isn't possible in result mode 'use', so you can't
  * get num rows for prepared statement.
+ *
  *
  * Multi-query
  * -----------
@@ -79,6 +88,16 @@ class MariaDbQuery extends DbQuery
      * @var string
      */
     const CLASS_RESULT = MariaDbResult::class;
+
+    /**
+     * MySQLi attempts to stringify object, and fails (fatally)
+     * if no __toString() method.
+     *
+     * @see DbQuery::AUTO_STRINGIFIES_OBJECT
+     *
+     * @var int
+     */
+    const AUTO_STRINGIFIES_OBJECT = 1;
 
     /**
      * @var string
@@ -338,9 +357,10 @@ class MariaDbQuery extends DbQuery
      * @throws \LogicException
      *      Method called more than once for this query.
      *      Result mode is 'store'; illegal for prepared statement.
-     * @throws \InvalidArgumentException
+     * @throws DbQueryArgumentException
      *      Propagated; parameters/arguments count mismatch.
      *      Arg $types contains illegal char(s).
+     *      On $types or $arguments validation failure.
      * @throws Exception\DbConnectionException
      *      Propagated.
      * @throws DbRuntimeException
@@ -389,14 +409,14 @@ class MariaDbQuery extends DbQuery
             }
             elseif (strlen($types) != $n_params) {
                 $this->log(__FUNCTION__);
-                throw new \InvalidArgumentException(
+                throw new DbQueryArgumentException(
                     $this->client->messagePrefix() . ' - arg $types length[' . strlen($types)
                     . '] doesn\'t match sql\'s ?-parameters count[' . $n_params . '].'
                 );
             }
             else if ($this->validateArguments) {
                 if (($valid = $this->validateTypes($types)) !== true) {
-                    throw new \InvalidArgumentException(
+                    throw new DbQueryArgumentException(
                         $this->client->messagePrefix() . ' - arg $types ' . $valid . '.'
                     );
                 }
@@ -484,7 +504,7 @@ class MariaDbQuery extends DbQuery
      * @throws \LogicException
      *      Another sql string has been appended to base sql.
      *      Propagated.
-     * @throws \InvalidArgumentException
+     * @throws DbQueryArgumentException
      *      Propagated.
      */
     public function parameters(string $types, array $arguments) : DbQueryInterface
@@ -519,6 +539,7 @@ class MariaDbQuery extends DbQuery
      *      Query is prepared statement.
      * @throws \InvalidArgumentException
      *      Arg $sql empty.
+     * @throws DbQueryArgumentException
      *      Propagated; parameters/arguments count mismatch.
      */
     public function append(string $sql, string $types, array $arguments) : DbQueryInterface

@@ -11,11 +11,13 @@ namespace SimpleComplex\Tests\Database\MariaDb;
 
 use PHPUnit\Framework\TestCase;
 use SimpleComplex\Tests\Database\TestHelper;
+use SimpleComplex\Tests\Database\Stringable;
+
+use SimpleComplex\Utils\Time;
 
 use SimpleComplex\Database\MariaDbClient;
 use SimpleComplex\Database\MariaDbQuery;
 use SimpleComplex\Database\MariaDbResult;
-use SimpleComplex\Utils\Time;
 
 /**
  * @code
@@ -168,6 +170,47 @@ class QueryArgumentTest extends TestCase
 
         $args['_1_float'] = 1.1;
         $args['_2_decimal'] = '2.2';
+        $result = $query->execute();
+        $this->assertSame(1, $result->affectedRows());
+    }
+
+    /**
+     * Does the DBMS stringify objects having __toString() method?
+     *
+     * @see ClientTest::testInstantiation()
+     */
+    public function testQueryArgumentsStringable()
+    {
+        $client = (new ClientTest())->testInstantiation();
+
+        $query = $client->query(
+            'INSERT INTO typish (_0_int, _1_float, _2_decimal, _3_varchar, _4_blob, _5_date, _6_datetime)
+            VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [
+                'validate_arguments' => static::DB_QUERY_VALIDATE_ARGUMENTS,
+                'sql_minify' => true,
+                'affected_rows' => true,
+            ]
+        );
+
+        $types = 'idssbss';
+
+        $time = new Time();
+        $args = [
+            '_0_int' => 0,
+            '_1_float' => 1.0,
+            '_2_decimal' => '2.0',
+            '_3_varchar' => 'arguments keyed',
+            '_4_blob' => sprintf("%08d", decbin(4)),
+            '_5_date' => $time->getDateISOlocal(),
+            '_6_datetime' => '' . $time,
+        ];
+        $query->prepare($types, $args);
+        $result = $query->execute();
+        $this->assertSame(1, $result->affectedRows());
+
+        $args['_3_varchar'] = new Stringable('stringable');
+        $args['_6_datetime'] = new Time('2000-01-01');
         $result = $query->execute();
         $this->assertSame(1, $result->affectedRows());
     }

@@ -11,6 +11,7 @@ namespace SimpleComplex\Tests\Database\MsSql;
 
 use PHPUnit\Framework\TestCase;
 use SimpleComplex\Tests\Database\TestHelper;
+use SimpleComplex\Tests\Database\Stringable;
 
 use SimpleComplex\Database\MsSqlClient;
 use SimpleComplex\Database\MsSqlQuery;
@@ -172,6 +173,60 @@ class QueryArgumentTest extends TestCase
 
         $args['_1_float'] = 1.1;
         $args['_2_decimal'] = 2.2;
+        $result = $query->execute();
+        $this->assertSame(1, $result->affectedRows());
+    }
+
+    /**
+     * Does the DBMS stringify objects having __toString() method?
+     *
+     * @see ClientTest::testInstantiation()
+     *
+     * @expectedException \SimpleComplex\Database\Exception\DbQueryArgumentException
+     */
+    public function testQueryArgumentsStringable()
+    {
+        $client = (new ClientTest())->testInstantiation();
+
+        $query = $client->query(
+            'INSERT INTO typish (_0_int, _1_float, _2_decimal, _3_varchar, _4_blob, _5_date, _6_datetime, _7_nvarchar)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            [
+                'validate_arguments' => static::DB_QUERY_VALIDATE_ARGUMENTS,
+                'sql_minify' => true,
+                'affected_rows' => true,
+            ]
+        );
+
+        $types = 'idssbsss';
+
+        $time = new Time();
+        $args = [
+            '_0_int' => 0,
+            '_1_float' => 1.0,
+            '_2_decimal' => '2.0',
+            '_3_varchar' => 'stringable',
+            '_4_blob' => sprintf("%08d", decbin(4)),
+            '_5_date' => $time->getDateISOlocal(),
+
+            // \DateTime gets successfully stringed.
+            '_6_datetime' => new \DateTime('2000-01-01'),
+
+            '_7_nvarchar' => 'n varchar',
+        ];
+        $query->prepare($types, $args);
+        $result = $query->execute();
+        $this->assertSame(1, $result->affectedRows());
+
+        /**
+         * Sqlsrv apparantly doesn't use an object's __toString() method.
+         * Sqlsrv \DateTime handling must be class specific;
+         * see \DateTime argument right above.
+         *
+         * @throws \SimpleComplex\Database\Exception\DbQueryArgumentException
+         */
+        $args['_3_varchar'] = new Stringable('stringable');
+
         $result = $query->execute();
         $this->assertSame(1, $result->affectedRows());
     }
@@ -502,7 +557,7 @@ class QueryArgumentTest extends TestCase
             '_0_int' => 0,
             '_1_float' => 1.0,
             '_2_decimal' => '2.0',
-            '_3_varchar' => 'arguments types detected',
+            '_3_varchar' => 'arguments type qualified partially',
             '_4_blob' => [
                 sprintf("%08d", decbin(4)),
                 //new TestHelper(),
