@@ -51,6 +51,7 @@ class QueryArgumentTest extends TestCase
             'INSERT INTO typish (_0_int, _1_float, _2_decimal, _3_varchar, _4_blob, _5_date, _6_datetime, _7_nvarchar)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
             [
+                'name' => __FUNCTION__,
                 'validate_arguments' => static::DB_QUERY_VALIDATE_ARGUMENTS,
                 'sql_minify' => true,
                 'affected_rows' => true,
@@ -81,7 +82,7 @@ class QueryArgumentTest extends TestCase
         ];
         $query->prepare($types, $args);
         /** @var MsSqlResult $result */
-        $result = $query->execute();
+        $result = TestHelper::queryExecute($query);
         $this->assertInstanceOf(MsSqlResult::class, $result);
         $affected_rows = $result->affectedRows();
         $this->assertInternalType('int', $affected_rows);
@@ -89,7 +90,8 @@ class QueryArgumentTest extends TestCase
 
         $_1_float = 1.1;
         $_2_decimal = '2.2';
-        $result = $query->execute();
+        $result = TestHelper::queryExecute($query);
+        $this->assertInstanceOf(MsSqlResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
     }
 
@@ -106,6 +108,7 @@ class QueryArgumentTest extends TestCase
             'INSERT INTO typish (_0_int, _1_float, _2_decimal, _3_varchar, _4_blob, _5_date, _6_datetime, _7_nvarchar)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
             [
+                'name' => __FUNCTION__,
                 'validate_arguments' => static::DB_QUERY_VALIDATE_ARGUMENTS,
                 'sql_minify' => true,
                 'affected_rows' => true,
@@ -126,12 +129,14 @@ class QueryArgumentTest extends TestCase
             'n varchar',
         ];
         $query->prepare($types, $args);
-        $result = $query->execute();
+        $result = TestHelper::queryExecute($query);
+        $this->assertInstanceOf(MsSqlResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
 
         $args[1] = 1.1;
         $args[2] = '2.2';
-        $result = $query->execute();
+        $result = TestHelper::queryExecute($query);
+        $this->assertInstanceOf(MsSqlResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
     }
 
@@ -148,6 +153,7 @@ class QueryArgumentTest extends TestCase
             'INSERT INTO typish (_0_int, _1_float, _2_decimal, _3_varchar, _4_blob, _5_date, _6_datetime, _7_nvarchar)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
             [
+                'name' => __FUNCTION__,
                 'validate_arguments' => static::DB_QUERY_VALIDATE_ARGUMENTS,
                 'sql_minify' => true,
                 'affected_rows' => true,
@@ -168,12 +174,14 @@ class QueryArgumentTest extends TestCase
             '_7_nvarchar' => 'n varchar',
         ];
         $query->prepare($types, $args);
-        $result = $query->execute();
+        $result = TestHelper::queryExecute($query);
+        $this->assertInstanceOf(MsSqlResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
 
         $args['_1_float'] = 1.1;
         $args['_2_decimal'] = 2.2;
-        $result = $query->execute();
+        $result = TestHelper::queryExecute($query);
+        $this->assertInstanceOf(MsSqlResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
     }
 
@@ -182,7 +190,7 @@ class QueryArgumentTest extends TestCase
      *
      * @see ClientTest::testInstantiation()
      *
-     * @expectedExceptionNot \SimpleComplex\Database\Exception\DbQueryArgumentException
+     * @expectedException \SimpleComplex\Database\Exception\DbQueryArgumentException
      */
     public function testQueryArgumentsStringable()
     {
@@ -192,6 +200,7 @@ class QueryArgumentTest extends TestCase
             'INSERT INTO typish (_0_int, _1_float, _2_decimal, _3_varchar, _4_blob, _5_date, _6_datetime, _7_nvarchar)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
             [
+                'name' => __FUNCTION__,
                 'validate_arguments' => static::DB_QUERY_VALIDATE_ARGUMENTS,
                 'sql_minify' => true,
                 'affected_rows' => true,
@@ -215,7 +224,8 @@ class QueryArgumentTest extends TestCase
             '_7_nvarchar' => 'n varchar',
         ];
         $query->prepare($types, $args);
-        $result = $query->execute();
+        $result = TestHelper::queryExecute($query);
+        $this->assertInstanceOf(MsSqlResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
 
         /**
@@ -227,7 +237,8 @@ class QueryArgumentTest extends TestCase
          */
         $args['_3_varchar'] = new Stringable('stringable');
 
-        $result = $query->execute();
+        $result = TestHelper::queryExecute($query);
+        $this->assertInstanceOf(MsSqlResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
     }
 
@@ -244,6 +255,7 @@ class QueryArgumentTest extends TestCase
             'INSERT INTO typish (_0_int, _1_float, _2_decimal, _3_varchar, _4_blob, _5_date, _6_datetime, _7_nvarchar)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
             [
+                'name' => __FUNCTION__,
                 'validate_arguments' => static::DB_QUERY_VALIDATE_ARGUMENTS,
                 'sql_minify' => true,
                 'affected_rows' => true,
@@ -314,12 +326,14 @@ class QueryArgumentTest extends TestCase
             ],
         ];
         $query->prepare($types, $args);
-        $result = $query->execute();
+        $result = TestHelper::queryExecute($query);
+        $this->assertInstanceOf(MsSqlResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
 
         $_1_float = 1.1;
         $_2_decimal = '2.2';
-        $result = $query->execute();
+        $result = TestHelper::queryExecute($query);
+        $this->assertInstanceOf(MsSqlResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
     }
 
@@ -336,6 +350,7 @@ class QueryArgumentTest extends TestCase
             'INSERT INTO typish (_0_int, _1_float, _2_decimal, _3_varchar, _4_blob, _5_date, _6_datetime, _7_nvarchar)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
             [
+                'name' => __FUNCTION__,
                 'validate_arguments' => static::DB_QUERY_VALIDATE_ARGUMENTS,
                 'sql_minify' => true,
                 'affected_rows' => true,
@@ -397,12 +412,14 @@ class QueryArgumentTest extends TestCase
             ],
         ];
         $query->prepare($types, $args);
-        $result = $query->execute();
+        $result = TestHelper::queryExecute($query);
+        $this->assertInstanceOf(MsSqlResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
 
         $args[1][0] = 1.1;
         $args[2][0] = '2.2';
-        $result = $query->execute();
+        $result = TestHelper::queryExecute($query);
+        $this->assertInstanceOf(MsSqlResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
     }
 
@@ -419,6 +436,7 @@ class QueryArgumentTest extends TestCase
             'INSERT INTO typish (_0_int, _1_float, _2_decimal, _3_varchar, _4_blob, _5_date, _6_datetime, _7_nvarchar)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
             [
+                'name' => __FUNCTION__,
                 'validate_arguments' => static::DB_QUERY_VALIDATE_ARGUMENTS,
                 'sql_minify' => true,
                 'affected_rows' => true,
@@ -480,12 +498,14 @@ class QueryArgumentTest extends TestCase
             ],
         ];
         $query->prepare($types, $args);
-        $result = $query->execute();
+        $result = TestHelper::queryExecute($query);
+        $this->assertInstanceOf(MsSqlResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
 
         $args['_1_float'][0] = 1.1;
         $args['_2_decimal'][0] ='2.2';
-        $result = $query->execute();
+        $result = TestHelper::queryExecute($query);
+        $this->assertInstanceOf(MsSqlResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
     }
 
@@ -502,6 +522,7 @@ class QueryArgumentTest extends TestCase
             'INSERT INTO typish (_0_int, _1_float, _2_decimal, _3_varchar, _4_blob, _5_date, _6_datetime, _7_nvarchar)
             VALUES (?, ?, ?, ?, null, ?, ?, ?)',
             [
+                'name' => __FUNCTION__,
                 'validate_arguments' => static::DB_QUERY_VALIDATE_ARGUMENTS,
                 'sql_minify' => true,
                 'affected_rows' => true,
@@ -527,7 +548,8 @@ class QueryArgumentTest extends TestCase
             '_7_nvarchar' => 'n varchar',
         ];
         $query->prepare($types, $args);
-        $result = $query->execute();
+        $result = TestHelper::queryExecute($query);
+        $this->assertInstanceOf(MsSqlResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
     }
 
@@ -544,6 +566,7 @@ class QueryArgumentTest extends TestCase
             'INSERT INTO typish (_0_int, _1_float, _2_decimal, _3_varchar, _4_blob, _5_date, _6_datetime, _7_nvarchar)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
             [
+                'name' => __FUNCTION__,
                 'validate_arguments' => static::DB_QUERY_VALIDATE_ARGUMENTS,
                 'sql_minify' => true,
                 'affected_rows' => true,
@@ -578,7 +601,8 @@ class QueryArgumentTest extends TestCase
 
         //TestHelper::logVariable(__FUNCTION__ . ' query', $query);
 
-        $result = $query->execute();
+        $result = TestHelper::queryExecute($query);
+        $this->assertInstanceOf(MsSqlResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
     }
 
@@ -598,6 +622,7 @@ class QueryArgumentTest extends TestCase
                 _8_bit, _9_time, _10_uuid)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [
+                'name' => __FUNCTION__,
                 'validate_arguments' => 3,
                 'sql_minify' => true,
                 'affected_rows' => true,
@@ -678,7 +703,8 @@ class QueryArgumentTest extends TestCase
             ],
         ];
         $query->prepare($types, $args);
-        $result = $query->execute();
+        $result = TestHelper::queryExecute($query);
+        $this->assertInstanceOf(MsSqlResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
 
         $args['_0_int'][0] = '1';
@@ -690,7 +716,6 @@ class QueryArgumentTest extends TestCase
         //$args['_5_date'][0] = 'cykel';
         $args['_6_datetime'][0] = $time->getDateISOlocal();
         $args['_8_bit'][0] = true;
-        //$result = $query->execute();
         $result = TestHelper::queryExecute($query);
         $this->assertInstanceOf(MsSqlResult::class, $result);
         $this->assertSame(1, $result->affectedRows());

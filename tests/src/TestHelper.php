@@ -28,9 +28,18 @@ class TestHelper extends \SimpleComplex\Tests\Utils\TestHelper
     const PATH_TESTS = 'simplecomplex/database/tests/src';
 
     /**
+     * A means of accessing exceptions, circumventing phpunits'
+     * propensity to consume exceptions.
+     *
+     * Logs trace on exception, and re-throws to accommodate
+     * (at)expectedException annotation.
+     *
      * @param DbQueryInterface|DbQuery $query
      *
      * @return DbResultInterface|null
+     *
+     * @throws \Throwable
+     *      Re-throws query execution failure.
      */
     public static function queryExecute(DbQuery $query)
     {
@@ -38,6 +47,7 @@ class TestHelper extends \SimpleComplex\Tests\Utils\TestHelper
             return $query->execute();
         } catch (\Throwable $xcptn) {
             static::logTrace('query execute', $xcptn);
+            throw $xcptn;
         }
     }
 }

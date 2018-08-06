@@ -656,7 +656,10 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
     /**
      * Create arguments type string based on arguments' actual types.
      *
-     * Only supports string, integer, float.
+     * Only supports string, integer, float, and stringable classes.
+     *
+     * @see DbQuery::AUTO_STRINGIFIES_OBJECT
+     * @see DbQuery::AUTO_STRINGABLE_CLASSES
      *
      * @param array $arguments
      * @param array $skipIndexes
