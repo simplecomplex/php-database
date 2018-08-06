@@ -677,6 +677,7 @@ class MsSqlQuery extends DbQuery
      *
      * @throws DbQueryArgumentException
      *      Invalid type char.
+     *      Integer too large/small for SQL Server bigint.
      */
     public function nativeTypeFromTypeString(string $direction, $value, string $types, int $index)
     {
@@ -689,7 +690,8 @@ class MsSqlQuery extends DbQuery
         if ($index >= strlen($types)) {
             throw new \OutOfRangeException(
                 $this->messagePrefix()
-                . ' - arg $index[' . $index . '] is not within range of arg $types length[' . strlen($types) . '].'
+                . ' - arg $index[' . $index . '] ' . $direction . '-param is not within range of arg $types length['
+                . strlen($types) . '].'
             );
         }
         switch ($types{$index}) {
@@ -704,7 +706,15 @@ class MsSqlQuery extends DbQuery
                     if ($value >= -2147483648 && $value <= 2147483647) {
                         return SQLSRV_SQLTYPE_INT;
                     }
-                    return SQLSRV_SQLTYPE_BIGINT;
+                    if ($value >= -pow(2, 63) && $value <= pow(2, 63) - 1) {
+                        return SQLSRV_SQLTYPE_BIGINT;
+                    }
+                    throw new DbQueryArgumentException(
+                        $this->messagePrefix()
+                            . ' - arg $argument index[' . $index . '] ' . $direction . '-param char[i] value['
+                            . $value . '] is ' . ($value < 0 ? 'too small (< -2^63)' : 'too large (> 2^63-1)')
+                            . ' for SQL Server bigint.'
+                    );
                 }
                 return SQLSRV_PHPTYPE_INT;
             case 'd':
@@ -722,7 +732,7 @@ class MsSqlQuery extends DbQuery
         }
         throw new DbQueryArgumentException(
             $this->messagePrefix() . ' - arg $types index[' . $index . '] char[' . $types{$index}
-                . '] direction[' . $direction . '] is not '. join('|', static::PARAMETER_TYPE_CHARS) . '.'
+                . '] direction[' . $direction . '] is not ' . join('|', static::PARAMETER_TYPE_CHARS) . '.'
         );
     }
 
@@ -742,6 +752,7 @@ class MsSqlQuery extends DbQuery
      *      Arg $direction not in|out.
      * @throws DbQueryArgumentException
      *      Arg $value not supported as actual type for translation.
+     *      Integer too large/small for SQL Server bigint.
      */
     public function nativeTypeFromActualType(string $direction, $value, int $index)
     {
@@ -764,7 +775,15 @@ class MsSqlQuery extends DbQuery
                     if ($value >= -2147483648 && $value <= 2147483647) {
                         return SQLSRV_SQLTYPE_INT;
                     }
-                    return SQLSRV_SQLTYPE_BIGINT;
+                    if ($value >= -pow(2, 63) && $value <= pow(2, 63) - 1) {
+                        return SQLSRV_SQLTYPE_BIGINT;
+                    }
+                    throw new DbQueryArgumentException(
+                        $this->messagePrefix()
+                            . ' - arg $argument index[' . $index . '] ' . $direction . '-param value[' . $value
+                            . '] is ' . ($value < 0 ? 'too small (< -2^63)' : 'too large (> 2^63-1)')
+                            . ' for SQL Server bigint.'
+                    );
                 }
                 return SQLSRV_PHPTYPE_INT;
             case 'double':
@@ -964,32 +983,31 @@ class MsSqlQuery extends DbQuery
                                     break;
                                 }
                             }
-                            if ($value >= 0 && $value <= 255) {
-                                // Even SQLTYPE_TINYINT handles that.
-                                break;
-                            }
-                            if ($declared_type == $native['SQLTYPE_TINYINT']) {
-                                $em = 'value[' . $value . '] is '
-                                    . ($value < 0 ? 'less than zero' : 'more than 255');
-                                break;
-                            }
-                            if ($value >= -32768 && $value <= 32767) {
-                                // Even SQLTYPE_SMALLINT handles that.
-                                break;
-                            }
-                            if ($declared_type == $native['SQLTYPE_SMALLINT']) {
-                                $em = 'value[' . $value . '] is '
-                                    . ($value < 0 ? 'less than -32768' : 'more than 32767');
-                                break;
-                            }
-                            if ($value >= -2147483648 && $value <= 2147483647) {
-                                // Even SQLTYPE_INT handles that.
-                                break;
-                            }
-                            if ($declared_type == $native['SQLTYPE_INT']) {
-                                $em = 'value[' . $value . '] is '
-                                    . ($value < 0 ? 'less than -2147483648' : 'more than 2147483647');
-                                break;
+                            switch ($declared_type) {
+                                case $native['SQLTYPE_TINYINT']:
+                                    if ($value < 0 || $value > 255) {
+                                        $em = 'value[' . $value . '] is '
+                                            . ($value < 0 ? 'less than zero' : 'more than 255');
+                                    }
+                                    break;
+                                case $native['SQLTYPE_SMALLINT']:
+                                    if ($value < -32768 || $value > 32767) {
+                                        $em = 'value[' . $value . '] is '
+                                            . ($value < 0 ? 'less than -32768' : 'more than 32767');
+                                    }
+                                    break;
+                                case $native['SQLTYPE_INT']:
+                                    if ($value < -2147483648 || $value > 2147483647) {
+                                        $em = 'value[' . $value . '] is '
+                                            . ($value < 0 ? 'less than -2147483648' : 'more than 2147483647');
+                                    }
+                                    break;
+                                case $native['SQLTYPE_BIGINT']:
+                                    if ($value < -pow(2, 63) || $value > pow(2, 63) - 1) {
+                                        $em = 'value[' . $value . '] is '
+                                            . ($value < 0 ? 'less than -2^63' : 'more than 2^31-1');
+                                    }
+                                    break;
                             }
                             break;
                         case $native['SQLTYPE_FLOAT']:
@@ -1081,7 +1099,8 @@ class MsSqlQuery extends DbQuery
                     }
                     if ($em) {
                         if ($type_supported) {
-                            $em = 'index[' . $index . '] in-param[' . $this->nativeTypeName($declared_type) . '] ' . $em;
+                            $em = 'index[' . $index . '] in-param[' . $this->nativeTypeName($declared_type) . '] '
+                                . $em;
                         }
                         $invalids[] = $em;
                     }

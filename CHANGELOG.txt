@@ -1,3 +1,8 @@
+SimpleComplex/Database 1.x, 2018-08-06
+--------------------------------------
+- MsSql query validate native out-parameters.
+- MsSql query parameter validation check for int out of bigint range.
+
 SimpleComplex/Database 1.x, 2018-08-05
 --------------------------------------
 - Query argument object stringification: MySQLi attempts to stringify even when
