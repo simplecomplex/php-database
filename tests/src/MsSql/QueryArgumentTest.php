@@ -30,7 +30,7 @@ class QueryArgumentTest extends TestCase
 {
 
     /**
-     * @see \SimpleComplex\Database\DbQuery::VALIDATE_ARGUMENTS
+     * @see \SimpleComplex\Database\DbQuery::VALIDATE_PARAMS
      */
     const DB_QUERY_VALIDATE_ARGUMENTS = 3;
 
@@ -52,7 +52,7 @@ class QueryArgumentTest extends TestCase
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
             [
                 'name' => __FUNCTION__,
-                'validate_arguments' => static::DB_QUERY_VALIDATE_ARGUMENTS,
+                'validate_params' => static::DB_QUERY_VALIDATE_ARGUMENTS,
                 'sql_minify' => true,
                 'affected_rows' => true,
             ]
@@ -109,7 +109,7 @@ class QueryArgumentTest extends TestCase
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
             [
                 'name' => __FUNCTION__,
-                'validate_arguments' => static::DB_QUERY_VALIDATE_ARGUMENTS,
+                'validate_params' => static::DB_QUERY_VALIDATE_ARGUMENTS,
                 'sql_minify' => true,
                 'affected_rows' => true,
             ]
@@ -154,7 +154,7 @@ class QueryArgumentTest extends TestCase
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
             [
                 'name' => __FUNCTION__,
-                'validate_arguments' => static::DB_QUERY_VALIDATE_ARGUMENTS,
+                'validate_params' => static::DB_QUERY_VALIDATE_ARGUMENTS,
                 'sql_minify' => true,
                 'affected_rows' => true,
             ]
@@ -201,7 +201,7 @@ class QueryArgumentTest extends TestCase
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
             [
                 'name' => __FUNCTION__,
-                'validate_arguments' => static::DB_QUERY_VALIDATE_ARGUMENTS,
+                'validate_params' => static::DB_QUERY_VALIDATE_ARGUMENTS,
                 'sql_minify' => true,
                 'affected_rows' => true,
             ]
@@ -214,7 +214,7 @@ class QueryArgumentTest extends TestCase
             '_0_int' => 0,
             '_1_float' => 1.0,
             '_2_decimal' => '2.0',
-            '_3_varchar' => 'stringable',
+            '_3_varchar' => 'stringable', //new Stringable('stringable'),
             '_4_blob' => sprintf("%08d", decbin(4)),
             '_5_date' => $time->getDateISOlocal(),
 
@@ -223,7 +223,7 @@ class QueryArgumentTest extends TestCase
 
             '_7_nvarchar' => 'n varchar',
         ];
-        $query->prepare($types, $args);
+        TestHelper::queryPrepare($query, $types, $args);
         $result = TestHelper::queryExecute($query);
         $this->assertInstanceOf(MsSqlResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
@@ -256,7 +256,7 @@ class QueryArgumentTest extends TestCase
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
             [
                 'name' => __FUNCTION__,
-                'validate_arguments' => static::DB_QUERY_VALIDATE_ARGUMENTS,
+                'validate_params' => static::DB_QUERY_VALIDATE_ARGUMENTS,
                 'sql_minify' => true,
                 'affected_rows' => true,
             ]
@@ -351,7 +351,7 @@ class QueryArgumentTest extends TestCase
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
             [
                 'name' => __FUNCTION__,
-                'validate_arguments' => static::DB_QUERY_VALIDATE_ARGUMENTS,
+                'validate_params' => static::DB_QUERY_VALIDATE_ARGUMENTS,
                 'sql_minify' => true,
                 'affected_rows' => true,
             ]
@@ -437,7 +437,7 @@ class QueryArgumentTest extends TestCase
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
             [
                 'name' => __FUNCTION__,
-                'validate_arguments' => static::DB_QUERY_VALIDATE_ARGUMENTS,
+                'validate_params' => static::DB_QUERY_VALIDATE_ARGUMENTS,
                 'sql_minify' => true,
                 'affected_rows' => true,
             ]
@@ -523,7 +523,7 @@ class QueryArgumentTest extends TestCase
             VALUES (?, ?, ?, ?, null, ?, ?, ?)',
             [
                 'name' => __FUNCTION__,
-                'validate_arguments' => static::DB_QUERY_VALIDATE_ARGUMENTS,
+                'validate_params' => static::DB_QUERY_VALIDATE_ARGUMENTS,
                 'sql_minify' => true,
                 'affected_rows' => true,
             ]
@@ -567,7 +567,7 @@ class QueryArgumentTest extends TestCase
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
             [
                 'name' => __FUNCTION__,
-                'validate_arguments' => static::DB_QUERY_VALIDATE_ARGUMENTS,
+                'validate_params' => static::DB_QUERY_VALIDATE_ARGUMENTS,
                 'sql_minify' => true,
                 'affected_rows' => true,
             ]
@@ -623,7 +623,7 @@ class QueryArgumentTest extends TestCase
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [
                 'name' => __FUNCTION__,
-                'validate_arguments' => 3,
+                'validate_params' => 3,
                 'sql_minify' => true,
                 'affected_rows' => true,
             ]

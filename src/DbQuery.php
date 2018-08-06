@@ -48,7 +48,7 @@ use SimpleComplex\Database\Exception\DbQueryArgumentException;
  * @property-read array $arguments
  * @property-read bool|null $statementClosed
  * @property-read bool $transactionStarted  Value of client ditto.
- * @property-read int $validateArguments
+ * @property-read int $validateParams
  *
  * @package SimpleComplex\Database
  */
@@ -71,6 +71,13 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
      * - 0: makes no attempt to stringify object, even if __toString() method
      * - 1: attempts to stringify without checking for __toString() method
      * - 2: stringifies if the object has a __toString() method
+     *
+     * @developer
+     * Do NOT make a means for stringifying objects having __toString().
+     * Because it would only work for truly simple queries, using parameter
+     * substitution.
+     * Would not work for prepared statements, because one can't tamper with
+     * theirs arguments, since they are referred.
      *
      * @var int
      */
@@ -133,15 +140,19 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
      *
      * Values:
      * - 0: no check
-     * - 1: validate prepare()/parameters() methods' $types
-     * - 2: validate prepare()/parameters() methods' $arguments against $types
-     * - 3: validate prepared statement arguments at every execute()
+     * - 1: validate query parameters on query failure (only)
+     * - 2: validate prepare()/parameters() methods' $types and $arguments
+     * - 3: validate $types and $arguments even at later prepared statement
+     *      execution
      *
-     * Option (int) validate_arguments overrules.
+     * Recommended production value:
+     * - 1: the smartest, and performance-wise far the lightest
+     *
+     * Option (int) validate_params overrules.
      *
      * @see DbQuery::validateArguments()
      */
-    const VALIDATE_ARGUMENTS = 1;
+    const VALIDATE_PARAMS = 1;
 
     /**
      * Truncate sql to that length when logging.
@@ -161,7 +172,7 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
     const OPTIONS_GENERIC = [
         'name',
         'sql_minify',
-        'validate_arguments',
+        'validate_params',
         'result_mode',
         'affected_rows',
         'insert_id',
@@ -243,6 +254,15 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
     protected $statement;
 
     /**
+     * Record of prepare()/parameters() $types, or likewise created
+     * via type detection.
+     * MsSql doesn't use this property at all, due to native typing regime.
+     *
+     * @var string
+     */
+    protected $parameterTypes;
+
+    /**
      * Will only have a single bucket, 'prepared' or 'simple'.
      * Array because that allows unsetting.
      *
@@ -266,7 +286,7 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
     /**
      * @var int
      */
-    protected $validateArguments;
+    protected $validateParams;
 
     /**
      * @var Validate
@@ -311,8 +331,8 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
             $this->sql = $this->sqlMinify($sql);
         }
 
-        $this->validateArguments = isset($options['validate_arguments']) ? (int) $options['validate_arguments'] :
-            static::VALIDATE_ARGUMENTS;
+        $this->validateParams = isset($options['validate_params']) ? (int) $options['validate_params'] :
+            static::VALIDATE_PARAMS;
 
         if ($options) {
             $specifics = array_diff(array_keys($options), static::OPTIONS_GENERIC);
@@ -542,7 +562,7 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
      * - 's' string and 'b' binary allow any scalar but boolean
      *
      * @see DbQuery::PARAMETER_TYPE_CHARS
-     * @see DbQuery::VALIDATE_ARGUMENTS
+     * @see DbQuery::VALIDATE_PARAMS
      *
      * @param string $types
      * @param array $arguments
@@ -637,12 +657,12 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
         }
         if ($invalids) {
             if ($errOnFailure) {
-                // Custom message if validateArguments:3
+                // Custom message if validateParams:3
                 // and not first prepared statement execution.
                 throw new DbQueryArgumentException(
                     $this->messagePrefix()
                         . ($this->execution < 1 ? ' - arg $arguments ' :
-                            ' - execution[' . $this->execution . '] argument '
+                            ' - aborted prepared statement execution[' . $this->execution . '], argument '
                         )
                         . join(' | ', $invalids) . '.'
                 );
@@ -774,16 +794,14 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
                 . '] doesn\'t match sql\'s ?-parameters count[' . $n_params . '].'
             );
         }
-        else if ($this->validateArguments) {
+        else if ($this->validateParams > 1) {
             if (($valid = $this->validateTypes($types)) !== true) {
                 throw new DbQueryArgumentException(
                     $this->messagePrefix() . ' - arg $types ' . $valid . '.'
                 );
             }
-            if ($this->validateArguments > 1) {
-                // Throws exception on validation failure.
-                $this->validateArguments($types, $arguments, true);
-            }
+            // Throws exception on validation failure.
+            $this->validateArguments($types, $arguments, true);
         }
 
         // Mend that arguments array may not be numerically indexed,
@@ -827,6 +845,12 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
                     }
             }
             $sql_with_args .= $sqlFragments[$i] . $value;
+        }
+
+        // Record types and arguments if validate on query execution failure.
+        if ($this->validateParams == 1) {
+            $this->parameterTypes = $tps;
+            $this->arguments['simple'] =& $args;
         }
 
         return $sql_with_args . $sqlFragments[$i];
@@ -933,7 +957,7 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
         'statementClosed',
         // Value of client ditto.
         'transactionStarted',
-        'validateArguments',
+        'validateParams',
     ];
 
     /**

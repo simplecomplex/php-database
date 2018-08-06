@@ -233,11 +233,6 @@ class MariaDbQuery extends DbQuery
     protected $sqlAppended = false;
 
     /**
-     * @var string
-     */
-    protected $parameterTypes;
-
-    /**
      * Create query.
      *
      * Option num_rows may override default result mode (not option result_mode)
@@ -414,18 +409,16 @@ class MariaDbQuery extends DbQuery
                     . '] doesn\'t match sql\'s ?-parameters count[' . $n_params . '].'
                 );
             }
-            else if ($this->validateArguments) {
+            else if ($this->validateParams > 1) {
                 if (($valid = $this->validateTypes($types)) !== true) {
                     throw new DbQueryArgumentException(
                         $this->messagePrefix() . ' - arg $types ' . $valid . '.'
                     );
                 }
-                if ($this->validateArguments > 1) {
-                    // Throws exception on failure.
-                    $this->validateArguments($types, $arguments, true);
-                }
+                // Throws exception on failure.
+                $this->validateArguments($types, $arguments, true);
             }
-            // Record for execute(); validateArguments:3.
+            // Record for execute(); validateParams: 1|3.
             $this->parameterTypes = $tps;
         }
 
@@ -607,7 +600,7 @@ class MariaDbQuery extends DbQuery
         if ($this->isPreparedStatement) {
             // Validate arguments on later execution, if validateArguments:3.
             if (
-                $this->execution && $this->validateArguments > 2
+                $this->execution && $this->validateParams > 2
                 && $this->parameterTypes && !empty($this->arguments['prepared'])
             ) {
                 // Throws exception on validation failure.
@@ -662,10 +655,25 @@ class MariaDbQuery extends DbQuery
                 // Unset prepared statement arguments reference.
                 $this->closeAndLog(__FUNCTION__);
                 $cls_xcptn = $this->client->errorsToException($errors);
+                // Validate parameters on query failure.
+                if (
+                    $this->validateParams == 1 && !empty($this->arguments['prepared'])
+                    && $cls_xcptn != DbConnectionException::class
+                ) {
+                    $msg = $this->validateArguments($this->parameterTypes, $this->arguments['prepared']);
+                    if (!$msg) {
+                        $msg = 'no parameter error observed, DBMS error: ';
+                    } else {
+                        $msg = 'parameter error: ' . $msg . '. DBMS error: ';
+                    }
+                } else {
+                    $msg = 'error: ';
+                }
+                // Unset prepared statement arguments reference.
+                $this->unsetReferences();
                 throw new $cls_xcptn(
-                    $this->messagePrefix() . ' - failed execution[' . $this->execution
-                    . '] of prepared statement, error: '
-                    . $this->client->errorsToString($errors) . '.'
+                    $this->messagePrefix() . ' - failed execution[' . $this->execution . '] of prepared statement, '
+                    . $msg . $this->client->errorsToString($errors) . '.'
                 );
             }
         }
@@ -683,9 +691,23 @@ class MariaDbQuery extends DbQuery
                 $errors = $this->client->getErrors();
                 $this->log(__FUNCTION__);
                 $cls_xcptn = $this->client->errorsToException($errors);
+                // Validate parameters on query failure.
+                if (
+                    $this->validateParams == 1 && !empty($this->arguments['simple'])
+                    && $cls_xcptn != DbConnectionException::class
+                ) {
+                    $msg = $this->validateArguments($this->parameterTypes, $this->arguments['simple']);
+                    if (!$msg) {
+                        $msg = 'no parameter error observed, DBMS error: ';
+                    } else {
+                        $msg = 'parameter error: ' . $msg . '. DBMS error: ';
+                    }
+                } else {
+                    $msg = 'error: ';
+                }
                 throw new $cls_xcptn(
-                    $this->messagePrefix() . ' - failed executing multi-query, error: '
-                    . $this->client->errorsToString($errors) . '.'
+                    $this->messagePrefix() . ' - failed executing multi-query, '
+                        . $msg . $this->client->errorsToString($errors) . '.'
                 );
             }
         }
@@ -702,9 +724,23 @@ class MariaDbQuery extends DbQuery
                 $errors = $this->client->getErrors();
                 $this->log(__FUNCTION__);
                 $cls_xcptn = $this->client->errorsToException($errors);
+                // Validate parameters on query failure.
+                if (
+                    $this->validateParams == 1 && !empty($this->arguments['simple'])
+                    && $cls_xcptn != DbConnectionException::class
+                ) {
+                    $msg = $this->validateArguments($this->parameterTypes, $this->arguments['simple']);
+                    if (!$msg) {
+                        $msg = 'no parameter error observed, DBMS error: ';
+                    } else {
+                        $msg = 'parameter error: ' . $msg . '. DBMS error: ';
+                    }
+                } else {
+                    $msg = 'error: ';
+                }
                 throw new $cls_xcptn(
-                    $this->messagePrefix() . ' - failed executing simple query, error: '
-                    . $this->client->errorsToString($errors) . '.'
+                    $this->messagePrefix() . ' - failed executing simple query, '
+                    . $msg . $this->client->errorsToString($errors) . '.'
                 );
             }
         }

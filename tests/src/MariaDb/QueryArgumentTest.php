@@ -31,7 +31,7 @@ class QueryArgumentTest extends TestCase
 {
 
     /**
-     * @see \SimpleComplex\Database\DbQuery::VALIDATE_ARGUMENTS
+     * @see \SimpleComplex\Database\DbQuery::VALIDATE_PARAMS
      */
     const DB_QUERY_VALIDATE_ARGUMENTS = 2;
 
@@ -52,7 +52,7 @@ class QueryArgumentTest extends TestCase
             'INSERT INTO typish (_0_int, _1_float, _2_decimal, _3_varchar, _4_blob, _5_date, _6_datetime)
             VALUES (?, ?, ?, ?, ?, ?, ?)',
             [
-                'validate_arguments' => static::DB_QUERY_VALIDATE_ARGUMENTS,
+                'validate_params' => static::DB_QUERY_VALIDATE_ARGUMENTS,
                 'sql_minify' => true,
                 'affected_rows' => true,
             ]
@@ -105,7 +105,7 @@ class QueryArgumentTest extends TestCase
             'INSERT INTO typish (_0_int, _1_float, _2_decimal, _3_varchar, _4_blob, _5_date, _6_datetime)
             VALUES (?, ?, ?, ?, ?, ?, ?)',
             [
-                'validate_arguments' => static::DB_QUERY_VALIDATE_ARGUMENTS,
+                'validate_params' => static::DB_QUERY_VALIDATE_ARGUMENTS,
                 'sql_minify' => true,
                 'affected_rows' => true,
             ]
@@ -146,7 +146,7 @@ class QueryArgumentTest extends TestCase
             'INSERT INTO typish (_0_int, _1_float, _2_decimal, _3_varchar, _4_blob, _5_date, _6_datetime)
             VALUES (?, ?, ?, ?, ?, ?, ?)',
             [
-                'validate_arguments' => static::DB_QUERY_VALIDATE_ARGUMENTS,
+                'validate_params' => static::DB_QUERY_VALIDATE_ARGUMENTS,
                 'sql_minify' => true,
                 'affected_rows' => true,
             ]
@@ -187,7 +187,7 @@ class QueryArgumentTest extends TestCase
             'INSERT INTO typish (_0_int, _1_float, _2_decimal, _3_varchar, _4_blob, _5_date, _6_datetime)
             VALUES (?, ?, ?, ?, ?, ?, ?)',
             [
-                'validate_arguments' => static::DB_QUERY_VALIDATE_ARGUMENTS,
+                'validate_params' => static::DB_QUERY_VALIDATE_ARGUMENTS,
                 'sql_minify' => true,
                 'affected_rows' => true,
             ]
@@ -228,7 +228,7 @@ class QueryArgumentTest extends TestCase
             'INSERT INTO typish (_0_int, _1_float, _2_decimal, _3_varchar, _4_blob, _5_date, _6_datetime)
             VALUES (?, ?, ?, ?, null, ?, ?)',
             [
-                'validate_arguments' => static::DB_QUERY_VALIDATE_ARGUMENTS,
+                'validate_params' => static::DB_QUERY_VALIDATE_ARGUMENTS,
                 'sql_minify' => true,
                 'affected_rows' => true,
             ]

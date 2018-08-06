@@ -444,8 +444,8 @@ class MsSqlQuery extends DbQuery
         }
         if (!$statement) {
             $errors = $this->client->getErrors();
-            // Unset prepared statement arguments reference.
             $this->log(__FUNCTION__);
+            // Unset prepared statement arguments reference.
             $this->unsetReferences();
             $cls_xcptn = $this->client->errorsToException($errors);
             throw new $cls_xcptn(
@@ -540,8 +540,8 @@ class MsSqlQuery extends DbQuery
         }
 
         if ($this->isPreparedStatement) {
-            // Validate arguments on later execution, if validateArguments:3.
-            if ($this->execution && $this->validateArguments > 2 && !empty($this->arguments['prepared'])) {
+            // Validate arguments on later execution, if validateParams:3.
+            if ($this->execution && $this->validateParams > 2 && !empty($this->arguments['prepared'])) {
                 // Throws exception on validation failure
                 $this->validateArgumentsNativeType($this->arguments['prepared'], [], true);
             }
@@ -549,8 +549,8 @@ class MsSqlQuery extends DbQuery
             // Require unbroken connection.
             if (!$this->client->isConnected()) {
                 $errors = $this->client->getErrors();
-                // Unset prepared statement arguments reference.
                 $this->log(__FUNCTION__);
+                // Unset prepared statement arguments reference.
                 $this->unsetReferences();
                 $cls_xcptn = $this->client->errorsToException($errors);
                 throw new $cls_xcptn(
@@ -563,14 +563,27 @@ class MsSqlQuery extends DbQuery
             // bool.
             if (!@sqlsrv_execute($this->statement)) {
                 $errors = $this->client->getErrors();
-                // Unset prepared statement arguments reference.
                 $this->log(__FUNCTION__);
-                $this->unsetReferences();
                 $cls_xcptn = $this->client->errorsToException($errors);
+                // Validate parameters on query failure.
+                if (
+                    $this->validateParams == 1 && !empty($this->arguments['prepared'])
+                    && $cls_xcptn != DbConnectionException::class
+                ) {
+                    $msg = $this->validateArgumentsNativeType($this->arguments['prepared']);
+                    if (!$msg) {
+                        $msg = 'no parameter error observed, DBMS error: ';
+                    } else {
+                        $msg = 'parameter error: ' . $msg . '. DBMS error: ';
+                    }
+                } else {
+                    $msg = 'error: ';
+                }
+                // Unset prepared statement arguments reference.
+                $this->unsetReferences();
                 throw new $cls_xcptn(
-                    $this->messagePrefix() . ' - failed execution[' . $this->execution
-                    . '] of prepared statement, error: '
-                    . $this->client->errorsToString($errors) . '.'
+                    $this->messagePrefix() . ' - failed execution[' . $this->execution . '] of prepared statement, '
+                        . $msg . $this->client->errorsToString($errors) . '.'
                 );
             }
         }
@@ -597,9 +610,23 @@ class MsSqlQuery extends DbQuery
                 $errors = $this->client->getErrors();
                 $this->log(__FUNCTION__);
                 $cls_xcptn = $this->client->errorsToException($errors);
+                // Validate parameters on query failure.
+                if (
+                    $this->validateParams == 1 && !empty($this->arguments['simple'])
+                    && $cls_xcptn != DbConnectionException::class
+                ) {
+                    $msg = $this->validateArgumentsNativeType($this->arguments['simple']);
+                    if (!$msg) {
+                        $msg = 'no parameter error observed, DBMS error: ';
+                    } else {
+                        $msg = 'parameter error: ' . $msg . '. DBMS error: ';
+                    }
+                } else {
+                    $msg = 'error: ';
+                }
                 throw new $cls_xcptn(
-                    $this->messagePrefix() . ' - failed executing simple query, error: '
-                    . $this->client->errorsToString($errors) . '.'
+                    $this->messagePrefix() . ' - failed executing simple query, '
+                        . $msg . $this->client->errorsToString($errors) . '.'
                 );
             }
             $this->statementClosed = false;
@@ -617,8 +644,8 @@ class MsSqlQuery extends DbQuery
             $error = $this->client->getErrors(Database::ERRORS_STRING_EMPTY_NONE);
             if ($error) {
                 $errors = $this->client->getErrors();
-                // Unset prepared statement arguments reference.
                 $this->log(__FUNCTION__);
+                // Unset prepared statement arguments reference.
                 $this->unsetReferences();
                 $cls_xcptn = $this->client->errorsToException($errors);
                 throw new $cls_xcptn(
@@ -1211,14 +1238,15 @@ class MsSqlQuery extends DbQuery
             if ($errOnFailure) {
                 // Prepared statement, later execution.
                 if ($this->execution > 0) {
+                    // Unset prepared statement arguments reference.
                     $this->unsetReferences();
                 }
-                // Custom message if validateArguments:3
+                // Custom message if validateParams:3
                 // and not first prepared statement execution.
                 throw new DbQueryArgumentException(
                     $this->messagePrefix()
                     . ($this->execution < 1 ? ' - arg $arguments ' :
-                        ' - execution[' . $this->execution . '] argument '
+                        ' - aborted prepared statement execution[' . $this->execution . '], argument '
                     )
                     . join(' | ', $invalids) . '.'
                 );
@@ -1339,7 +1367,7 @@ class MsSqlQuery extends DbQuery
 
         // All arguments are fully type qualified - stop here.------------------
         if ($all_fully_typed) {
-            if ($this->validateArguments > 1) {
+            if ($this->validateParams > 1) {
                 // Throws exception on validation failure
                 $this->validateArgumentsNativeType($arguments, [], true);
             }
@@ -1384,7 +1412,7 @@ class MsSqlQuery extends DbQuery
          * @see MsSqlQuery::validateArgumentsNativeType()
          */
         elseif (
-            $this->validateArguments
+            $this->validateParams > 1
             && ($valid = $this->validateTypes($types)) !== true
         ) {
             throw new DbQueryArgumentException(
@@ -1408,8 +1436,6 @@ class MsSqlQuery extends DbQuery
                     null,
                     $this->nativeTypeFromTypeString('in', $arg, $tps, $i),
                 ];
-                // Don't validate when type established from actual type.
-                $validation_skip_indexes[] = $i;
                 // Pass.
                 if ($is_prep_stat) {
                     $typed_args[$i][0] = &$arg;
@@ -1490,7 +1516,7 @@ class MsSqlQuery extends DbQuery
         // Iteration ref.
         unset($arg);
 
-        if ($this->validateArguments > 1) {
+        if ($this->validateParams > 1 && (count($validation_skip_indexes) < $n_params)) {
             // Throws exception on validation failure
             $this->validateArgumentsNativeType($typed_args, $validation_skip_indexes, true);
         }

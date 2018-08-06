@@ -2,6 +2,8 @@ SimpleComplex/Database 1.x, 2018-08-06
 --------------------------------------
 - MsSql query validate native out-parameters.
 - MsSql query parameter validation check for int out of bigint range.
+- Query option validate_params renamed; from validate_arguments.
+- Query validate parameters on query execution failure; validate_params:1.
 
 SimpleComplex/Database 1.x, 2018-08-05
 --------------------------------------

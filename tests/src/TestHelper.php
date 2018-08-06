@@ -35,6 +35,30 @@ class TestHelper extends \SimpleComplex\Tests\Utils\TestHelper
      * (at)expectedException annotation.
      *
      * @param DbQueryInterface|DbQuery $query
+     * @param string $types
+     * @param array $arguments
+     *
+     * @throws \Throwable
+     *      Re-throws query execution failure.
+     */
+    public static function queryPrepare(DbQuery $query, string $types, array &$arguments)
+    {
+        try {
+            $query->prepare($types, $arguments);
+        } catch (\Throwable $xcptn) {
+            static::logTrace('query prepare', $xcptn);
+            throw $xcptn;
+        }
+    }
+
+    /**
+     * A means of accessing exceptions, circumventing phpunits'
+     * propensity to consume exceptions.
+     *
+     * Logs trace on exception, and re-throws to accommodate
+     * (at)expectedException annotation.
+     *
+     * @param DbQueryInterface|DbQuery $query
      *
      * @return DbResultInterface|null
      *
