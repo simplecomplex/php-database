@@ -65,33 +65,6 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
     const SQL_PARAMETER = '?';
 
     /**
-     * Whether the DBMS attempts to stringify objects, as query arguments.
-     *
-     * Values:
-     * - 0: makes no attempt to stringify object, even if __toString() method
-     * - 1: attempts to stringify without checking for __toString() method
-     * - 2: stringifies if the object has a __toString() method
-     *
-     * @developer
-     * Do NOT make a means for stringifying objects having __toString().
-     * Because it would only work for truly simple queries, using parameter
-     * substitution.
-     * Would not work for prepared statements, because one can't tamper with
-     * theirs arguments, since they are referred.
-     *
-     * @var int
-     */
-    const AUTO_STRINGIFIES_OBJECT = 0;
-
-    /**
-     * List of class names of objects that automatically gets stringified,
-     * and accepted as strings, by the DBMS driver
-     *
-     * @var string[]
-     */
-    const AUTO_STRINGABLE_CLASSES = [];
-
-    /**
      * List of supported parameter type characters.
      *
      * Types:
@@ -123,61 +96,42 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
     const SQL_TRIM = " \t\n\r\0\x0B;";
 
     /**
-     * Whether to minify the base sql string.
-     *
-     * Option (bool) sql_minify overrules.
-     *
-     * Defaults to false because costly; uses regular expressions.
-     *
-     * @see DbQuery::sqlMinify()
-     *
-     * @var bool
-     */
-    const SQL_MINIFY = false;
-
-    /**
-     * Whether to validate query parameters.
-     *
-     * Values:
-     * - 0: no validation at all
-     * - 1: validate on query failure (only)
-     * - 2: validate on creation, before execution and on query failure
-     *
-     * Option (int) validate_params overrules.
-     *
-     * Recommended value by environment
-     * --------------------------------
-     * Production: 1 (VALIDATE_PARAMS_FAILURE)
-     * Development/test: 2 (VALIDATE_PARAMS_ALWAYS) because great for debugging,
-     * however horrible performance-wise.
-     *
-     * @see DbQuery::validateArguments()
-     */
-    const VALIDATE_PARAMS = 1;
-
-    /**
-     * Validate query parameters on query failure (only).
-     *
-     * @see DbQuery::VALIDATE_PARAMS
-     */
-    const VALIDATE_PARAMS_FAILURE = 1;
-
-    /**
-     * Validate query parameters:
-     * - on creation
-     * - before execution
-     * - on query failure
-     *
-     * @see DbQuery::VALIDATE_PARAMS
-     */
-    const VALIDATE_PARAMS_ALWAYS = 2;
-
-    /**
      * Truncate sql to that length when logging.
      *
      * @int
      */
     const LOG_SQL_TRUNCATE = 8192;
+
+    /**
+     * Whether the DBMS attempts to stringify objects, as query arguments.
+     *
+     * Values:
+     * - 0: makes no attempt to stringify object, even if __toString() method
+     * - 1: attempts to stringify without checking for __toString() method
+     * - 2: stringifies if the object has a __toString() method
+     *
+     * Examples:
+     * - MariaDb: 1, attempts to stringify recklessly
+     * - MsSql: 0, doesn't attempt stringifying (except \DateTime to varchar)
+     *
+     * @developer
+     * Do NOT make a means for stringifying objects having __toString().
+     * Because it would only work for truly simple queries, using parameter
+     * substitution.
+     * Would not work for prepared statements, because one can't tamper with
+     * theirs arguments, since they are referred.
+     *
+     * @var int
+     */
+    const AUTO_STRINGIFIES_OBJECT = 0;
+
+    /**
+     * List of class names of objects that automatically gets stringified,
+     * and accepted as strings, by the DBMS driver
+     *
+     * @var string[]
+     */
+    const AUTO_STRINGABLE_CLASSES = [];
 
     /**
      * Query options allowed by any implementation.
@@ -204,6 +158,90 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
      * @var string[]
      */
     const OPTIONS_SPECIFIC = [];
+
+    /**
+     * Whether to minify the base sql string.
+     *
+     * Option (bool) sql_minify overrules.
+     *
+     * Defaults to false because costly; uses regular expressions.
+     *
+     * @see DbQuery::sqlMinify()
+     *
+     * @var bool
+     */
+    const SQL_MINIFY = false;
+
+    /**
+     * Whether, how and when to validate query parameters.
+     *
+     * Option (int) validate_params overrules.
+     *
+     * Recommended value by environment
+     * --------------------------------
+     * Production: 1 (VALIDATE_PARAMS_FAILURE)
+     * Development/test: 2 (VALIDATE_PARAMS_ALWAYS) because great for debugging,
+     * however horrible performance-wise.
+     *
+     * Gets evaluated as bitmask.
+     *
+     * @see DbQuery::validateArguments()
+     */
+    const VALIDATE_PARAMS = 1;
+
+    /**
+     * Validate query parameters on query failure (only).
+     *
+     * Bitmask value.
+     */
+    const VALIDATE_FAILURE = 1;
+
+    /**
+     * Validate query parameters during preparation.
+     *
+     * Bitmask value.
+     */
+    const VALIDATE_PREPARE = 2;
+
+    /**
+     * Validate query parameters before execution.
+     *
+     * Bitmask value.
+     */
+    const VALIDATE_EXECUTE = 4;
+
+    /**
+     * Check for parameter values that are non-stringable object,
+     * before execution.
+     *
+     * AUTO_STRINGIFIES_OBJECT:1
+     * If the DBMS attempts stringification without __toString() method check
+     * (like MariaDb), this validation will fail when no __toString().
+     *
+     * AUTO_STRINGIFIES_OBJECT:0
+     * If the DBMS doesn't attempt stringification at all, this validation
+     * will fail when object (regardless of __toString()).
+     *
+     * Bitmask value.
+     *
+     * @see DbQuery::AUTO_STRINGIFIES_OBJECT
+     */
+    const VALIDATE_STRINGABLE_EXEC = 64;
+
+    /**
+     * Validate query parameters all-sorts:
+     * - on creation
+     * - before execution
+     * - on query failure
+     *
+     * And do all other checks (like VALIDATE_PARAMS_STRINGABLE_EXEC)
+     * if relevant and applicable for the DBMS context.
+     *
+     * Bitmask value.
+     *
+     * @see DbQuery::VALIDATE_PARAMS
+     */
+    const VALIDATE_ALWAYS = 127;
 
     /**
      * Ought to be protected, but too costly since result instance
@@ -586,7 +624,7 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
      * @param array $arguments
      * @param string $errorContext
      *      Non-empty: throw exception on validation failure.
-     *      Values: creation|execution|on_failure
+     *      Values: prepare|execute|failure
      *
      * @return bool|string
      *      True on success.
@@ -680,10 +718,88 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
         if ($invalids) {
             if ($errorContext) {
                 switch ($errorContext) {
-                    case 'creation':
+                    case 'prepare':
                         $msg = ' - arg $arguments ';
                         break;
-                    case 'execution':
+                    case 'execute':
+                        $msg = $this->isPreparedStatement ?
+                            (' - aborted prepared statement execution[' . $this->execution . '], argument ') :
+                            ' - aborted simple query execution, argument ';
+                        break;
+                    default:
+                        $msg = ' - argument ';
+                }
+                throw new DbQueryArgumentException(
+                    $this->messagePrefix() . $msg . join(' | ', $invalids) . '.'
+                );
+            }
+            return join(' | ', $invalids);
+        }
+
+        return true;
+    }
+
+    /**
+     * Validate that string|binary arguments aren't non-stringable object.
+     *
+     * @see DbQuery::VALIDATE_PARAMS
+     *
+     * @param string $types
+     * @param array $arguments
+     * @param string $errorContext
+     *      Non-empty: throw exception on validation failure.
+     *      Values: prepare|execute|failure
+     *
+     * @return bool|string
+     *      True on success.
+     *      String error details message on error.
+     *
+     * @throws DbQueryArgumentException
+     *      If validation failure and non-empty arg $errorContext.
+     *      Unconditionally if $types and $arguments differ in length.
+     */
+    public function validateArgumentsStringable(string $types, array $arguments, string $errorContext = '')
+    {
+        if (strlen($types) != count($arguments)) {
+            return $this->messagePrefix() . ' - arg $types length[' . strlen($types)
+                . '] doesn\'t match arg $arguments length[' . count($arguments) . ']';
+        }
+        if (!$this->validate) {
+            $this->validate = Validate::getInstance();
+        }
+        $invalids = [];
+        $i = -1;
+        foreach ($arguments as $value) {
+            ++$i;
+            // Camnot discern binary from non-binary string.
+            if ($types{$i} == 's' || $types{$i} == 'b') {
+                if (is_object($value)) {
+                    $valid = false;
+                    if (static::AUTO_STRINGIFIES_OBJECT && method_exists($value, '__toString')) {
+                        $valid = true;
+                    }
+                    elseif (static::AUTO_STRINGABLE_CLASSES) {
+                        foreach (static::AUTO_STRINGABLE_CLASSES as $class_name) {
+                            if (is_a($value, $class_name)) {
+                                $valid = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (!$valid) {
+                        $invalids[] = 'index[' . $i . '] char[' . $types{$i} . '] type[' . Utils::getType($value)
+                            . '] is not stringable object';
+                    }
+                }
+            }
+        }
+        if ($invalids) {
+            if ($errorContext) {
+                switch ($errorContext) {
+                    case 'prepare':
+                        $msg = ' - arg $arguments ';
+                        break;
+                    case 'execute':
                         $msg = $this->isPreparedStatement ?
                             (' - aborted prepared statement execution[' . $this->execution . '], argument ') :
                             ' - aborted simple query execution, argument ';
@@ -822,14 +938,14 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
                 . '] doesn\'t match sql\'s ?-parameters count[' . $n_params . '].'
             );
         }
-        else if ($this->validateParams == DbQuery::VALIDATE_PARAMS_ALWAYS) {
+        else if (($this->validateParams & DbQuery::VALIDATE_PREPARE)) {
             if (($valid = $this->validateTypes($types)) !== true) {
                 throw new DbQueryArgumentException(
                     $this->messagePrefix() . ' - arg $types ' . $valid . '.'
                 );
             }
             // Throws exception on validation failure.
-            $this->validateArguments($types, $arguments, 'creation');
+            $this->validateArguments($types, $arguments, 'prepare');
         }
 
         // Mend that arguments array may not be numerically indexed,

@@ -100,6 +100,23 @@ class MariaDbQuery extends DbQuery
     const AUTO_STRINGIFIES_OBJECT = 1;
 
     /**
+     * Validate on failure + check for non-stringables before execution.
+     *
+     * Option (int) validate_params overrules.
+     *
+     * Doing check for non-stringable object is highly recommended
+     * because MySQLi prepared statement execute exits when stumbling upon
+     * a non-stringable object.
+     * It doesn't event throw an E_* error; simply stops script execution.
+     * Observed with stdClass and \DateTime.
+     *
+     * @see mysqli_stmt::execute()
+     * @see DbQuery::AUTO_STRINGIFIES_OBJECT
+     * @see DbQuery::VALIDATE_STRINGABLE_EXEC
+     */
+    const VALIDATE_PARAMS = DbQuery::VALIDATE_FAILURE | DbQuery::VALIDATE_STRINGABLE_EXEC;
+
+    /**
      * @var string
      */
     const CURSOR_USE = 'use';
@@ -409,14 +426,14 @@ class MariaDbQuery extends DbQuery
                     . '] doesn\'t match sql\'s ?-parameters count[' . $n_params . '].'
                 );
             }
-            else if ($this->validateParams == DbQuery::VALIDATE_PARAMS_ALWAYS) {
+            else if (($this->validateParams & DbQuery::VALIDATE_PREPARE)) {
                 if (($valid = $this->validateTypes($types)) !== true) {
                     throw new DbQueryArgumentException(
                         $this->messagePrefix() . ' - arg $types ' . $valid . '.'
                     );
                 }
                 // Throws exception on failure.
-                $this->validateArguments($types, $arguments, 'creation');
+                $this->validateArguments($types, $arguments, 'prepare');
             }
             // Record for execute(); validateParams: 1|3.
             $this->parameterTypes = $tps;
@@ -599,12 +616,17 @@ class MariaDbQuery extends DbQuery
 
         if ($this->isPreparedStatement) {
             // Validate arguments before execution?.
-            if (
-                $this->validateParams == DbQuery::VALIDATE_PARAMS_ALWAYS
-                && $this->parameterTypes && !empty($this->arguments['prepared'])
-            ) {
-                // Throws exception on validation failure.
-                $this->validateArguments($this->parameterTypes, $this->arguments['prepared'], 'execution');
+            if ($this->validateParams && $this->parameterTypes && !empty($this->arguments['prepared'])) {
+                if (($this->validateParams & DbQuery::VALIDATE_EXECUTE)) {
+                    // Throws exception on validation failure.
+                    $this->validateArguments($this->parameterTypes, $this->arguments['prepared'], 'execute');
+                }
+                elseif (($this->validateParams & DbQuery::VALIDATE_STRINGABLE_EXEC)) {
+                    // Throws exception on validation failure.
+                    $this->validateArgumentsStringable(
+                        $this->parameterTypes, $this->arguments['prepared'], 'execute'
+                    );
+                }
             }
 
             // (MySQLi) Only a prepared statement is a 'statement'.
@@ -657,8 +679,8 @@ class MariaDbQuery extends DbQuery
                 $cls_xcptn = $this->client->errorsToException($errors);
                 // Validate parameters on query failure.
                 if (
-                    $this->validateParams && !empty($this->arguments['prepared'])
-                    && $cls_xcptn != DbConnectionException::class
+                    ($this->validateParams & DbQuery::VALIDATE_FAILURE)
+                    && !empty($this->arguments['prepared']) && $cls_xcptn != DbConnectionException::class
                 ) {
                     $msg = $this->validateArguments($this->parameterTypes, $this->arguments['prepared']);
                     if (!$msg) {
@@ -679,12 +701,15 @@ class MariaDbQuery extends DbQuery
         }
         else {
             // Validate arguments before execution?.
-            if (
-                $this->validateParams == DbQuery::VALIDATE_PARAMS_ALWAYS
-                && $this->parameterTypes && !empty($this->arguments['simple'])
-            ) {
-                // Throws exception on validation failure.
-                $this->validateArguments($this->parameterTypes, $this->arguments['simple'], 'execution');
+            if ($this->validateParams && $this->parameterTypes && !empty($this->arguments['simple'])) {
+                if (($this->validateParams & DbQuery::VALIDATE_EXECUTE)) {
+                    // Throws exception on validation failure.
+                    $this->validateArguments($this->parameterTypes, $this->arguments['simple'], 'execute');
+                }
+                elseif (($this->validateParams & DbQuery::VALIDATE_STRINGABLE_EXEC)) {
+                    // Throws exception on validation failure.
+                    $this->validateArguments($this->parameterTypes, $this->arguments['simple'], 'execute');
+                }
             }
 
             if ($this->multiQuery >= 4) {
@@ -703,7 +728,8 @@ class MariaDbQuery extends DbQuery
                     $cls_xcptn = $this->client->errorsToException($errors);
                     // Validate parameters on query failure.
                     if (
-                        $this->validateParams && $this->parameterTypes && !empty($this->arguments['simple'])
+                        ($this->validateParams & DbQuery::VALIDATE_FAILURE)
+                        && $this->parameterTypes && !empty($this->arguments['simple'])
                         && $cls_xcptn != DbConnectionException::class
                     ) {
                         $msg = $this->validateArguments($this->parameterTypes, $this->arguments['simple']);
@@ -736,7 +762,8 @@ class MariaDbQuery extends DbQuery
                     $cls_xcptn = $this->client->errorsToException($errors);
                     // Validate parameters on query failure.
                     if (
-                        $this->validateParams && $this->parameterTypes && !empty($this->arguments['simple'])
+                        ($this->validateParams & DbQuery::VALIDATE_FAILURE)
+                        && $this->parameterTypes && !empty($this->arguments['simple'])
                         && $cls_xcptn != DbConnectionException::class
                     ) {
                         $msg = $this->validateArguments($this->parameterTypes, $this->arguments['simple']);

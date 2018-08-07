@@ -13,6 +13,8 @@ use PHPUnit\Framework\TestCase;
 use SimpleComplex\Tests\Database\TestHelper;
 use SimpleComplex\Tests\Database\Stringable;
 
+use SimpleComplex\Utils\Bootstrap;
+use SimpleComplex\Utils\Dependency;
 use SimpleComplex\Utils\Time;
 
 use SimpleComplex\Database\MariaDbClient;
@@ -34,7 +36,7 @@ class QueryArgumentTest extends TestCase
     /**
      * @see \SimpleComplex\Database\DbQuery::VALIDATE_PARAMS
      */
-    const DB_QUERY_VALIDATE_ARGUMENTS = DbQuery::VALIDATE_PARAMS_FAILURE;
+    const VALIDATE_PARAMS = DbQuery::VALIDATE_FAILURE | DbQuery::VALIDATE_STRINGABLE_EXEC;
 
     /**
      * Arguments referred; old-school pattern.
@@ -53,7 +55,7 @@ class QueryArgumentTest extends TestCase
             'INSERT INTO typish (_0_int, _1_float, _2_decimal, _3_varchar, _4_blob, _5_date, _6_datetime)
             VALUES (?, ?, ?, ?, ?, ?, ?)',
             [
-                'validate_params' => static::DB_QUERY_VALIDATE_ARGUMENTS,
+                'validate_params' => static::VALIDATE_PARAMS,
                 'sql_minify' => true,
                 'affected_rows' => true,
             ]
@@ -107,7 +109,7 @@ class QueryArgumentTest extends TestCase
             'INSERT INTO typish (_0_int, _1_float, _2_decimal, _3_varchar, _4_blob, _5_date, _6_datetime)
             VALUES (?, ?, ?, ?, ?, ?, ?)',
             [
-                'validate_params' => static::DB_QUERY_VALIDATE_ARGUMENTS,
+                'validate_params' => static::VALIDATE_PARAMS,
                 'sql_minify' => true,
                 'affected_rows' => true,
             ]
@@ -150,7 +152,7 @@ class QueryArgumentTest extends TestCase
             'INSERT INTO typish (_0_int, _1_float, _2_decimal, _3_varchar, _4_blob, _5_date, _6_datetime)
             VALUES (?, ?, ?, ?, ?, ?, ?)',
             [
-                'validate_params' => static::DB_QUERY_VALIDATE_ARGUMENTS,
+                'validate_params' => static::VALIDATE_PARAMS,
                 'sql_minify' => true,
                 'affected_rows' => true,
             ]
@@ -195,7 +197,7 @@ class QueryArgumentTest extends TestCase
             'INSERT INTO typish (_0_int, _1_float, _2_decimal, _3_varchar, _4_blob, _5_date, _6_datetime)
             VALUES (?, ?, ?, ?, ?, ?, ?)',
             [
-                'validate_params' => static::DB_QUERY_VALIDATE_ARGUMENTS,
+                'validate_params' => static::VALIDATE_PARAMS,
                 'sql_minify' => true,
                 'affected_rows' => true,
             ]
@@ -208,7 +210,7 @@ class QueryArgumentTest extends TestCase
             '_0_int' => 0,
             '_1_float' => 1.0,
             '_2_decimal' => '2.0',
-            '_3_varchar' => 'arguments keyed',
+            '_3_varchar' => 'stringable',
             '_4_blob' => sprintf("%08d", decbin(4)),
             '_5_date' => $time->getDateISOlocal(),
             '_6_datetime' => '' . $time,
@@ -226,7 +228,7 @@ class QueryArgumentTest extends TestCase
          * If
          * @see DbQuery::VALIDATE_PARAMS
          * is
-         * @see DbQuery::VALIDATE_PARAMS_ALWAYS
+         * @see DbQuery::VALIDATE_ALWAYS
          * @throws \SimpleComplex\Database\Exception\DbQueryArgumentException
          *
          * Else
@@ -254,7 +256,7 @@ class QueryArgumentTest extends TestCase
             'INSERT INTO typish (_0_int, _1_float, _2_decimal, _3_varchar, _4_blob, _5_date, _6_datetime)
             VALUES (?, ?, ?, ?, null, ?, ?)',
             [
-                'validate_params' => static::DB_QUERY_VALIDATE_ARGUMENTS,
+                'validate_params' => static::VALIDATE_PARAMS,
                 'sql_minify' => true,
                 'affected_rows' => true,
             ]
