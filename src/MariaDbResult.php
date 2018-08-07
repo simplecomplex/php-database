@@ -199,7 +199,7 @@ class MariaDbResult extends DbResult
      * Go for design patterns that don't require numRows().
      * @code
      * // Alternatives - only needing row count:
-     * $num_rows = count($result->fetchAll(Database::FETCH_NUMERIC));
+     * $num_rows = count($result->fetchAll(DbResult::FETCH_NUMERIC));
      * // Alternatives - do-if:
      * $num_rows = 0;
      * while (($row = $result->fetchArray())) {
@@ -370,14 +370,14 @@ class MariaDbResult extends DbResult
      *
      * @param int $as
      *      Default: ~associative.
-     *      Database::FETCH_ASSOC|Database::FETCH_NUMERIC
+     *      DbResult::FETCH_ASSOC|DbResult::FETCH_NUMERIC
      *
      * @return array|null
      *      Null: No more rows.
      *
      * @throws DbRuntimeException
      */
-    public function fetchArray(int $as = Database::FETCH_ASSOC)
+    public function fetchArray(int $as = DbResult::FETCH_ASSOC)
     {
         ++$this->rowIndex;
         if (!$this->result && !($load = $this->loadResult())) {
@@ -394,7 +394,7 @@ class MariaDbResult extends DbResult
                 $this->query->messagePrefix() . ' - failed fetching row as array, no result set' . $msg . '.'
             );
         }
-        $row = $as == Database::FETCH_ASSOC ? @$this->result->fetch_assoc() : @$this->result->fetch_array(MYSQLI_NUM);
+        $row = $as == DbResult::FETCH_ASSOC ? @$this->result->fetch_assoc() : @$this->result->fetch_array(MYSQLI_NUM);
         if ($row || $row === null) {
             return $row;
         }
@@ -458,7 +458,7 @@ class MariaDbResult extends DbResult
      *
      * @param int $as
      *      Default: ~associalive.
-     *      Database::FETCH_ASSOC|Database::FETCH_NUMERIC|Database::FETCH_OBJECT
+     *      DbResult::FETCH_ASSOC|DbResult::FETCH_NUMERIC|DbResult::FETCH_OBJECT
      * @param array $options {
      *      @var string $list_by_column  Key list by that column's values.
      *      @var string $class  Object class name.
@@ -473,7 +473,7 @@ class MariaDbResult extends DbResult
      *      Providing 'list_by_column' option and no such column in result row.
      * @throws DbRuntimeException
      */
-    public function fetchAll(int $as = Database::FETCH_ASSOC, array $options = []) : array
+    public function fetchAll(int $as = DbResult::FETCH_ASSOC, array $options = []) : array
     {
         if (!$this->result && !($load = $this->loadResult())) {
             if ($load === null) {
@@ -491,7 +491,7 @@ class MariaDbResult extends DbResult
         }
         $column_keyed = !empty($options['list_by_column']);
         switch ($as) {
-            case Database::FETCH_NUMERIC:
+            case DbResult::FETCH_NUMERIC:
                 if ($column_keyed) {
                     $this->closeAndLog(__FUNCTION__);
                     throw new \LogicException(
@@ -511,7 +511,7 @@ class MariaDbResult extends DbResult
                 }
                 $this->rowIndex += count($list);
                 return $list;
-            case Database::FETCH_OBJECT:
+            case DbResult::FETCH_OBJECT:
                 $key_column = !$column_keyed ? null : $options['list_by_column'];
                 $list = [];
                 $first = true;
@@ -581,7 +581,7 @@ class MariaDbResult extends DbResult
             $cls_xcptn = $this->query->client->errorsToException($errors, DbResultException::class);
             throw new $cls_xcptn(
                 $this->query->messagePrefix()
-                . ' - failed fetching all rows as ' . ($as == Database::FETCH_OBJECT ? 'object' : 'assoc array')
+                . ' - failed fetching all rows as ' . ($as == DbResult::FETCH_OBJECT ? 'object' : 'assoc array')
                 . $this->query->client->errorsToString($errors) . '.'
             );
         }
@@ -640,7 +640,7 @@ class MariaDbResult extends DbResult
     public function nextRow() : bool
     {
         if (!$this->result && !($load = $this->loadResult())) {
-            $msg = $load === null ? '': (', error: ' . $this->query->getErrors(Database::ERRORS_STRING));
+            $msg = $load === null ? '': (', error: ' . $this->query->getErrors(DbError::AS_STRING));
             $this->closeAndLog(__FUNCTION__);
             throw new DbResultException(
                 $this->query->messagePrefix() . ' - failed going to next row, no result set' . $msg . '.'

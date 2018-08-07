@@ -27,6 +27,21 @@ use SimpleComplex\Database\Interfaces\DbResultInterface;
 abstract class DbResult extends Explorable implements DbResultInterface
 {
     /**
+     * @var int
+     */
+    const FETCH_ASSOC = 2;
+
+    /**
+     * @var int
+     */
+    const FETCH_NUMERIC = 3;
+
+    /**
+     * @var int
+     */
+    const FETCH_OBJECT = 5;
+
+    /**
      * @var MsSqlQuery
      */
     protected $query;

@@ -851,6 +851,6 @@ class MariaDbQuery extends DbQuery
             }
         }
         return !$toString ? $list :
-            $this->client->errorsToString($list, $toString == Database::ERRORS_STRING_EMPTY_NONE);
+            $this->client->errorsToString($list, $toString == DbError::AS_STRING_EMPTY_ON_NONE);
     }
 }

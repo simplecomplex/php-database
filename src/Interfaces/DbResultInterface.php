@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace SimpleComplex\Database\Interfaces;
 
-use SimpleComplex\Database\Database;
+use SimpleComplex\Database\DbResult;
 
 /**
  * Database query interface.
@@ -70,7 +70,7 @@ interface DbResultInterface
      *      No more rows.
      *      Throws throwable on failure.
      */
-    public function fetchArray(int $as = Database::FETCH_ASSOC);
+    public function fetchArray(int $as = DbResult::FETCH_ASSOC);
 
     /**
      * Column-keyed object.
@@ -103,7 +103,7 @@ interface DbResultInterface
      * @return array
      *      Throws throwable on failure.
      */
-    public function fetchAll(int $as = Database::FETCH_ASSOC, array $options = []) : array;
+    public function fetchAll(int $as = DbResult::FETCH_ASSOC, array $options = []) : array;
 
     /**
      * Move cursor to next result set.

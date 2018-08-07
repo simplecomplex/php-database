@@ -306,7 +306,7 @@ class MsSqlClient extends DbClient
      * @see DbClient::formatNativeErrors()
      *
      * @param int $toString
-     *      1: on no error returns message indication just that.
+     *      1: on no error returns message indicating no error.
      *      2: on no error return empty string.
      *
      * @return array|string

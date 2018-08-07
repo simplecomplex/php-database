@@ -492,7 +492,7 @@ abstract class DbClient extends Explorable implements DbClientInterface
                     '(' . $code . ')[' . $error['sqlstate'] . '] ' . $error['msg'];
             }
         }
-        return !$toString ? $list : $this->errorsToString($list, $toString == Database::ERRORS_STRING_EMPTY_NONE);
+        return !$toString ? $list : $this->errorsToString($list, $toString == DbError::AS_STRING_EMPTY_ON_NONE);
     }
 
     /**

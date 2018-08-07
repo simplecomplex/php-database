@@ -641,7 +641,7 @@ class MsSqlQuery extends DbQuery
             ) {
                 ++$chunks;
             }
-            $error = $this->client->getErrors(Database::ERRORS_STRING_EMPTY_NONE);
+            $error = $this->client->getErrors(DbError::AS_STRING_EMPTY_ON_NONE);
             if ($error) {
                 $errors = $this->client->getErrors();
                 $this->log(__FUNCTION__);

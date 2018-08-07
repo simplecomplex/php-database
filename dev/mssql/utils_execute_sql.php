@@ -148,7 +148,7 @@ $id_last = 4;
 
 //$query->parameters('ii', [$id_first, $id_last]);
 $result = $query->execute();
-$variable = $result->fetchAll(Database::FETCH_ASSOC, [
+$variable = $result->fetchAll(DbResult::FETCH_ASSOC, [
     'list_by_column' => 'MedarbejderNR',
 ]);
 $logger->debug('' . "\n" . $inspect->variable($variable));

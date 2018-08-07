@@ -53,7 +53,7 @@ class MsSqlResult extends DbResult
     {
         $this->query = $query;
         if (!$statement) {
-            $error = $this->query->client->getErrors(Database::ERRORS_STRING);
+            $error = $this->query->client->getErrors(DbError::AS_STRING);
             $this->closeAndLog(__FUNCTION__);
             throw new DbRuntimeException(
                 $this->query->client->messagePrefix()
@@ -238,7 +238,7 @@ class MsSqlResult extends DbResult
      * Go for design patterns that don't require numRows().
      * @code
      * // Alternatives - only needing row count:
-     * $num_rows = count($result->fetchAll(Database::FETCH_NUMERIC));
+     * $num_rows = count($result->fetchAll(DbResult::FETCH_NUMERIC));
      * // Alternatives - only needing row count, and giant amounts of data:
      * $num_rows = 0;
      * while (($result->nextRow())) {
@@ -366,7 +366,7 @@ class MsSqlResult extends DbResult
             }
             // Try to detect out-of-range;
             // falsy sqlsrv_get_field() and no native error
-            if (!$this->query->client->getErrors(Database::ERRORS_STRING_EMPTY_NONE)) {
+            if (!$this->query->client->getErrors(DbError::AS_STRING_EMPTY_ON_NONE)) {
                 $this->closeAndLog(__FUNCTION__);
                 throw new \OutOfRangeException(
                     $this->query->messagePrefix() . ' - failed fetching field by $index[' . $index
@@ -412,18 +412,18 @@ class MsSqlResult extends DbResult
      *
      * @param int $as
      *      Default: ~associative.
-     *      Database::FETCH_ASSOC|Database::FETCH_NUMERIC
+     *      DbResult::FETCH_ASSOC|DbResult::FETCH_NUMERIC
      *
      * @return array|null
      *      Null: No more rows.
      *
      * @throws DbRuntimeException
      */
-    public function fetchArray(int $as = Database::FETCH_ASSOC)
+    public function fetchArray(int $as = DbResult::FETCH_ASSOC)
     {
         $row = @sqlsrv_fetch_array(
             $this->statement,
-            $as == Database::FETCH_ASSOC ? SQLSRV_FETCH_ASSOC : SQLSRV_FETCH_NUMERIC
+            $as == DbResult::FETCH_ASSOC ? SQLSRV_FETCH_ASSOC : SQLSRV_FETCH_NUMERIC
         );
         // sqlsrv_fetch_array() implicitly moves to first set.
         if ($this->setIndex < 0) {
@@ -438,7 +438,7 @@ class MsSqlResult extends DbResult
         $cls_xcptn = $this->query->client->errorsToException($errors, DbResultException::class);
         throw new $cls_xcptn(
             $this->query->messagePrefix() . ' - failed fetching row as '
-            . ($as == Database::FETCH_ASSOC ? 'assoc' : 'numeric') . ' array, error: '
+            . ($as == DbResult::FETCH_ASSOC ? 'assoc' : 'numeric') . ' array, error: '
             . $this->query->client->errorsToString($errors) . '.'
         );
     }
@@ -484,7 +484,7 @@ class MsSqlResult extends DbResult
      *
      * @param int $as
      *      Default: ~associative.
-     *      Database::FETCH_ASSOC|Database::FETCH_NUMERIC|Database::FETCH_OBJECT
+     *      DbResult::FETCH_ASSOC|DbResult::FETCH_NUMERIC|DbResult::FETCH_OBJECT
      * @param array $options {
      *      @var string $list_by_column  Key list by that column's values.
      *      @var string $class  Object class name.
@@ -499,12 +499,12 @@ class MsSqlResult extends DbResult
      *      Providing 'list_by_column' option and no such column in result row.
      * @throws DbRuntimeException
      */
-    public function fetchAll(int $as = Database::FETCH_ASSOC, array $options = []) : array
+    public function fetchAll(int $as = DbResult::FETCH_ASSOC, array $options = []) : array
     {
         $column_keyed = !empty($options['list_by_column']);
         $list = [];
         switch ($as) {
-            case Database::FETCH_NUMERIC:
+            case DbResult::FETCH_NUMERIC:
                 if ($column_keyed) {
                     $this->closeAndLog(__FUNCTION__);
                     throw new \LogicException(
@@ -525,7 +525,7 @@ class MsSqlResult extends DbResult
                 }
                 ++$this->rowIndex;
                 break;
-            case Database::FETCH_OBJECT:
+            case DbResult::FETCH_OBJECT:
                 $key_column = !$column_keyed ? null : $options['list_by_column'];
                 $first = true;
                 while (
@@ -594,10 +594,10 @@ class MsSqlResult extends DbResult
         // Last fetched row must be null; no more rows.
         if ($row !== null) {
             switch ($as) {
-                case Database::FETCH_NUMERIC:
+                case DbResult::FETCH_NUMERIC:
                     $em = 'numeric array';
                     break;
-                case Database::FETCH_OBJECT:
+                case DbResult::FETCH_OBJECT:
                     $em = 'object';
                     break;
                 default:

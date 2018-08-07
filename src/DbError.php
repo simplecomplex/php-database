@@ -41,4 +41,18 @@ abstract class DbError
      * @var array
      */
     const RESULT = [];
+
+    /**
+     * @see \SimpleComplex\Database\Interfaces\DbClientInterface::getErrors()
+     *
+     * @var int
+     */
+    const AS_STRING = 1;
+
+    /**
+     * @see \SimpleComplex\Database\Interfaces\DbClientInterface::getErrors()
+     *
+     * @var int
+     */
+    const AS_STRING_EMPTY_ON_NONE = 2;
 }

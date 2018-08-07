@@ -11,9 +11,9 @@ namespace SimpleComplex\Tests\Database\MariaDb;
 
 use PHPUnit\Framework\TestCase;
 
-use SimpleComplex\Database\Database;
 use SimpleComplex\Database\MariaDbClient;
 use SimpleComplex\Database\MariaDbQuery;
+use SimpleComplex\Database\DbResult;
 use SimpleComplex\Database\MariaDbResult;
 
 /**
@@ -40,7 +40,7 @@ class RubbishTest extends TestCase
         $result = $query->execute();
         $this->assertInstanceOf(MariaDbResult::class, $result);
 
-        $num_rows = count($result->fetchAll(Database::FETCH_NUMERIC));
+        $num_rows = count($result->fetchAll(DbResult::FETCH_NUMERIC));
 
         $num_rows = 0;
         while (($result->nextRow())) {

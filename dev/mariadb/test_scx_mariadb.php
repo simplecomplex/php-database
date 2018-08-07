@@ -80,7 +80,7 @@ $query = $client->query('SELECT * FROM parent');
 $result = $query->execute();
 //$logger->debug('result' . "\n" . $inspect->variable($result));
 
-$logger->debug('all rows' . "\n" . $inspect->variable($result->fetchAll(Database::FETCH_ASSOC, ['list_by_column' => 'id'])));
+$logger->debug('all rows' . "\n" . $inspect->variable($result->fetchAll(DbResult::FETCH_ASSOC, ['list_by_column' => 'id'])));
 
 return;
 
@@ -169,7 +169,7 @@ $id_last = 4;
 
 //$query->parameters('ii', [$id_first, $id_last]);
 $result = $query->execute();
-$variable = $result->fetchAll(Database::FETCH_ASSOC, [
+$variable = $result->fetchAll(DbResult::FETCH_ASSOC, [
     'list_by_column' => 'MedarbejderNR',
 ]);
 $logger->debug('' . "\n" . $inspect->variable($variable));

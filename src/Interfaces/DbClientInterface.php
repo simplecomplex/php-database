@@ -96,7 +96,7 @@ interface DbClientInterface
      * concatenated string or empty string.
      *
      * @param int $stringed
-     *      1: on no error returns message indication just that.
+     *      1: on no error returns message indicating no error.
      *      2: on no error return empty string.
      *
      * @return array|string
