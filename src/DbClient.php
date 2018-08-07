@@ -471,6 +471,8 @@ abstract class DbClient extends Explorable implements DbClientInterface
      * @see MariaDbClient::getErrors()
      * @see MariaDbQuery:getErrors()
      * @see MsSqlClient::getErrors()
+     * @see DbError::AS_STRING
+     * @see DbError::AS_STRING_EMPTY_ON_NONE
      *
      * @param array[] $nativeErrors
      * @param int $toString

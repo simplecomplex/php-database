@@ -390,6 +390,8 @@ class MariaDbClient extends DbClient
      * concatenated string or empty string.
      *
      * @see DbClient::formatNativeErrors()
+     * @see DbError::AS_STRING
+     * @see DbError::AS_STRING_EMPTY_ON_NONE
      *
      * @param int $toString
      *      1: on no error returns message indicating no error.

@@ -540,10 +540,10 @@ class MsSqlQuery extends DbQuery
         }
 
         if ($this->isPreparedStatement) {
-            // Validate arguments on later execution, if validateParams:3.
-            if ($this->execution && $this->validateParams > 2 && !empty($this->arguments['prepared'])) {
+            // Validate arguments before execution?
+            if ($this->validateParams == DbQuery::VALIDATE_PARAMS_ALWAYS && !empty($this->arguments['prepared'])) {
                 // Throws exception on validation failure
-                $this->validateArgumentsNativeType($this->arguments['prepared'], [], true);
+                $this->validateArgumentsNativeType($this->arguments['prepared'], [], 'execution');
             }
 
             // Require unbroken connection.
@@ -567,7 +567,7 @@ class MsSqlQuery extends DbQuery
                 $cls_xcptn = $this->client->errorsToException($errors);
                 // Validate parameters on query failure.
                 if (
-                    $this->validateParams == 1 && !empty($this->arguments['prepared'])
+                    $this->validateParams && !empty($this->arguments['prepared'])
                     && $cls_xcptn != DbConnectionException::class
                 ) {
                     $msg = $this->validateArgumentsNativeType($this->arguments['prepared']);
@@ -588,6 +588,12 @@ class MsSqlQuery extends DbQuery
             }
         }
         else {
+            // Validate arguments before execution?
+            if ($this->validateParams == DbQuery::VALIDATE_PARAMS_ALWAYS && !empty($this->arguments['simple'])) {
+                // Throws exception on validation failure
+                $this->validateArgumentsNativeType($this->arguments['prepared'], [], 'execution');
+            }
+
             $options = [
                 'Scrollable' => $this->resultMode,
                 'SendStreamParamsAtExec' => !$this->sendDataChunked,
@@ -612,7 +618,7 @@ class MsSqlQuery extends DbQuery
                 $cls_xcptn = $this->client->errorsToException($errors);
                 // Validate parameters on query failure.
                 if (
-                    $this->validateParams == 1 && !empty($this->arguments['simple'])
+                    $this->validateParams && !empty($this->arguments['simple'])
                     && $cls_xcptn != DbConnectionException::class
                 ) {
                     $msg = $this->validateArgumentsNativeType($this->arguments['simple']);
@@ -935,15 +941,18 @@ class MsSqlQuery extends DbQuery
      * @param array $arguments
      * @param array $skipIndices
      *      Skip validating buckets at these indices.
-     * @param bool $errOnFailure
+     * @param string $errorContext
+     *      Non-empty: throw exception on validation failure.
+     *      Values: creation|execution|on_failure
      *
      * @return bool|string
      *      True on success.
      *      String error details message on error.
      *
      * @throws DbQueryArgumentException
+     *      If validation failure and non-empty arg $errorContext.
      */
-    public function validateArgumentsNativeType(array $arguments, array $skipIndices = [], bool $errOnFailure = false) {
+    public function validateArgumentsNativeType(array $arguments, array $skipIndices = [], string $errorContext = '') {
         $native = $this->nativeTypes();
 
         if (!$this->validate) {
@@ -1227,7 +1236,8 @@ class MsSqlQuery extends DbQuery
                     }
                     if ($em) {
                         if ($type_supported) {
-                            $em = 'index[' . $index . '] out-param[' . $this->nativeTypeName($declared_type) . '] ' . $em;
+                            $em = 'index[' . $index . '] out-param[' . $this->nativeTypeName($declared_type) . '] '
+                                . $em;
                         }
                         $invalids[] = $em;
                     }
@@ -1235,20 +1245,26 @@ class MsSqlQuery extends DbQuery
             }
         }
         if ($invalids) {
-            if ($errOnFailure) {
+            if ($errorContext) {
                 // Prepared statement, later execution.
                 if ($this->execution > 0) {
                     // Unset prepared statement arguments reference.
                     $this->unsetReferences();
                 }
-                // Custom message if validateParams:3
-                // and not first prepared statement execution.
+                switch ($errorContext) {
+                    case 'creation':
+                        $msg = ' - arg $arguments ';
+                        break;
+                    case 'execution':
+                        $msg = $this->isPreparedStatement ?
+                            (' - aborted prepared statement execution[' . $this->execution . '], argument ') :
+                            ' - aborted simple query execution, argument ';
+                        break;
+                    default:
+                        $msg = ' - argument ';
+                }
                 throw new DbQueryArgumentException(
-                    $this->messagePrefix()
-                    . ($this->execution < 1 ? ' - arg $arguments ' :
-                        ' - aborted prepared statement execution[' . $this->execution . '], argument '
-                    )
-                    . join(' | ', $invalids) . '.'
+                    $this->messagePrefix() . $msg . join(' | ', $invalids) . '.'
                 );
             }
             return join(' | ', $invalids);
@@ -1367,9 +1383,9 @@ class MsSqlQuery extends DbQuery
 
         // All arguments are fully type qualified - stop here.------------------
         if ($all_fully_typed) {
-            if ($this->validateParams > 1) {
+            if ($this->validateParams == DbQuery::VALIDATE_PARAMS_ALWAYS) {
                 // Throws exception on validation failure
-                $this->validateArgumentsNativeType($arguments, [], true);
+                $this->validateArgumentsNativeType($arguments, [], 'creation');
             }
             if ($this->isPreparedStatement) {
                 // Support assoc array; sqlsrv_prepare() doesn't.
@@ -1412,7 +1428,7 @@ class MsSqlQuery extends DbQuery
          * @see MsSqlQuery::validateArgumentsNativeType()
          */
         elseif (
-            $this->validateParams > 1
+            $this->validateParams == DbQuery::VALIDATE_PARAMS_ALWAYS
             && ($valid = $this->validateTypes($types)) !== true
         ) {
             throw new DbQueryArgumentException(
@@ -1516,9 +1532,9 @@ class MsSqlQuery extends DbQuery
         // Iteration ref.
         unset($arg);
 
-        if ($this->validateParams > 1 && (count($validation_skip_indexes) < $n_params)) {
+        if ($this->validateParams == DbQuery::VALIDATE_PARAMS_ALWAYS && (count($validation_skip_indexes) < $n_params)) {
             // Throws exception on validation failure
-            $this->validateArgumentsNativeType($typed_args, $validation_skip_indexes, true);
+            $this->validateArgumentsNativeType($typed_args, $validation_skip_indexes, 'creation');
         }
         
         if ($this->isPreparedStatement) {

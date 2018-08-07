@@ -3,6 +3,7 @@ SimpleComplex/Database 1.x, 2018-08-07
 - Moved FETCH_* constants to DbResult, from class Database.
 - Moved error-as-string constants to DbError, from class Database.
 - Removed obsolete class Database.
+- Query validate_params simplified to ~(on)failure or ~always.
 
 SimpleComplex/Database 1.x, 2018-08-06
 --------------------------------------

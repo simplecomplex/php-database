@@ -409,14 +409,14 @@ class MariaDbQuery extends DbQuery
                     . '] doesn\'t match sql\'s ?-parameters count[' . $n_params . '].'
                 );
             }
-            else if ($this->validateParams > 1) {
+            else if ($this->validateParams == DbQuery::VALIDATE_PARAMS_ALWAYS) {
                 if (($valid = $this->validateTypes($types)) !== true) {
                     throw new DbQueryArgumentException(
                         $this->messagePrefix() . ' - arg $types ' . $valid . '.'
                     );
                 }
                 // Throws exception on failure.
-                $this->validateArguments($types, $arguments, true);
+                $this->validateArguments($types, $arguments, 'creation');
             }
             // Record for execute(); validateParams: 1|3.
             $this->parameterTypes = $tps;
@@ -598,13 +598,13 @@ class MariaDbQuery extends DbQuery
         ++$this->execution;
 
         if ($this->isPreparedStatement) {
-            // Validate arguments on later execution, if validateArguments:3.
+            // Validate arguments before execution?.
             if (
-                $this->execution && $this->validateParams > 2
+                $this->validateParams == DbQuery::VALIDATE_PARAMS_ALWAYS
                 && $this->parameterTypes && !empty($this->arguments['prepared'])
             ) {
                 // Throws exception on validation failure.
-                $this->validateArguments($this->parameterTypes, $this->arguments['prepared'], true);
+                $this->validateArguments($this->parameterTypes, $this->arguments['prepared'], 'execution');
             }
 
             // (MySQLi) Only a prepared statement is a 'statement'.
@@ -657,7 +657,7 @@ class MariaDbQuery extends DbQuery
                 $cls_xcptn = $this->client->errorsToException($errors);
                 // Validate parameters on query failure.
                 if (
-                    $this->validateParams == 1 && !empty($this->arguments['prepared'])
+                    $this->validateParams && !empty($this->arguments['prepared'])
                     && $cls_xcptn != DbConnectionException::class
                 ) {
                     $msg = $this->validateArguments($this->parameterTypes, $this->arguments['prepared']);
@@ -677,71 +677,82 @@ class MariaDbQuery extends DbQuery
                 );
             }
         }
-        elseif ($this->multiQuery >= 4) {
-            // Allow re-connection.
-            /** @var \MySQLi $mysqli */
-            $mysqli = $this->client->getConnection(true);
-            if (
-                !$mysqli
-                // bool.
-                || !@$mysqli->multi_query($this->sqlTampered ?? $this->sql)
-                || @$mysqli->errno
-            ) {
-                // Use MariaDb::getErrors() because not statement.
-                $errors = $this->client->getErrors();
-                $this->log(__FUNCTION__);
-                $cls_xcptn = $this->client->errorsToException($errors);
-                // Validate parameters on query failure.
-                if (
-                    $this->validateParams == 1 && !empty($this->arguments['simple'])
-                    && $cls_xcptn != DbConnectionException::class
-                ) {
-                    $msg = $this->validateArguments($this->parameterTypes, $this->arguments['simple']);
-                    if (!$msg) {
-                        $msg = 'no parameter error observed, DBMS error: ';
-                    } else {
-                        $msg = 'parameter error: ' . $msg . '. DBMS error: ';
-                    }
-                } else {
-                    $msg = 'error: ';
-                }
-                throw new $cls_xcptn(
-                    $this->messagePrefix() . ' - failed executing multi-query, '
-                        . $msg . $this->client->errorsToString($errors) . '.'
-                );
-            }
-        }
         else {
-            // Allow re-connection.
-            /** @var \MySQLi $mysqli */
-            $mysqli = $this->client->getConnection(true);
+            // Validate arguments before execution?.
             if (
-                !$mysqli
-                // bool.
-                || !@$mysqli->real_query($this->sqlTampered ?? $this->sql)
+                $this->validateParams == DbQuery::VALIDATE_PARAMS_ALWAYS
+                && $this->parameterTypes && !empty($this->arguments['simple'])
             ) {
-                // Use MariaDb::getErrors() because not statement.
-                $errors = $this->client->getErrors();
-                $this->log(__FUNCTION__);
-                $cls_xcptn = $this->client->errorsToException($errors);
-                // Validate parameters on query failure.
+                // Throws exception on validation failure.
+                $this->validateArguments($this->parameterTypes, $this->arguments['simple'], 'execution');
+            }
+
+            if ($this->multiQuery >= 4) {
+                // Allow re-connection.
+                /** @var \MySQLi $mysqli */
+                $mysqli = $this->client->getConnection(true);
                 if (
-                    $this->validateParams == 1 && !empty($this->arguments['simple'])
-                    && $cls_xcptn != DbConnectionException::class
+                    !$mysqli
+                    // bool.
+                    || !@$mysqli->multi_query($this->sqlTampered ?? $this->sql)
+                    || @$mysqli->errno
                 ) {
-                    $msg = $this->validateArguments($this->parameterTypes, $this->arguments['simple']);
-                    if (!$msg) {
-                        $msg = 'no parameter error observed, DBMS error: ';
+                    // Use MariaDb::getErrors() because not statement.
+                    $errors = $this->client->getErrors();
+                    $this->log(__FUNCTION__);
+                    $cls_xcptn = $this->client->errorsToException($errors);
+                    // Validate parameters on query failure.
+                    if (
+                        $this->validateParams && $this->parameterTypes && !empty($this->arguments['simple'])
+                        && $cls_xcptn != DbConnectionException::class
+                    ) {
+                        $msg = $this->validateArguments($this->parameterTypes, $this->arguments['simple']);
+                        if (!$msg) {
+                            $msg = 'no parameter error observed, DBMS error: ';
+                        } else {
+                            $msg = 'parameter error: ' . $msg . '. DBMS error: ';
+                        }
                     } else {
-                        $msg = 'parameter error: ' . $msg . '. DBMS error: ';
+                        $msg = 'error: ';
                     }
-                } else {
-                    $msg = 'error: ';
+                    throw new $cls_xcptn(
+                        $this->messagePrefix() . ' - failed executing multi-query, '
+                        . $msg . $this->client->errorsToString($errors) . '.'
+                    );
                 }
-                throw new $cls_xcptn(
-                    $this->messagePrefix() . ' - failed executing simple query, '
-                    . $msg . $this->client->errorsToString($errors) . '.'
-                );
+            }
+            else {
+                // Allow re-connection.
+                /** @var \MySQLi $mysqli */
+                $mysqli = $this->client->getConnection(true);
+                if (
+                    !$mysqli
+                    // bool.
+                    || !@$mysqli->real_query($this->sqlTampered ?? $this->sql)
+                ) {
+                    // Use MariaDb::getErrors() because not statement.
+                    $errors = $this->client->getErrors();
+                    $this->log(__FUNCTION__);
+                    $cls_xcptn = $this->client->errorsToException($errors);
+                    // Validate parameters on query failure.
+                    if (
+                        $this->validateParams && $this->parameterTypes && !empty($this->arguments['simple'])
+                        && $cls_xcptn != DbConnectionException::class
+                    ) {
+                        $msg = $this->validateArguments($this->parameterTypes, $this->arguments['simple']);
+                        if (!$msg) {
+                            $msg = 'no parameter error observed, DBMS error: ';
+                        } else {
+                            $msg = 'parameter error: ' . $msg . '. DBMS error: ';
+                        }
+                    } else {
+                        $msg = 'error: ';
+                    }
+                    throw new $cls_xcptn(
+                        $this->messagePrefix() . ' - failed executing simple query, '
+                        . $msg . $this->client->errorsToString($errors) . '.'
+                    );
+                }
             }
         }
 
@@ -818,6 +829,8 @@ class MariaDbQuery extends DbQuery
      *
      * @see MariaDbClient::getErrors()
      * @see DbClient::formatNativeErrors()
+     * @see DbError::AS_STRING
+     * @see DbError::AS_STRING_EMPTY_ON_NONE
      *
      * @param int $toString
      *      1: on no error returns message indication just that.

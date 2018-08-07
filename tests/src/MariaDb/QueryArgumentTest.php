@@ -16,6 +16,7 @@ use SimpleComplex\Tests\Database\Stringable;
 use SimpleComplex\Utils\Time;
 
 use SimpleComplex\Database\MariaDbClient;
+use SimpleComplex\Database\DbQuery;
 use SimpleComplex\Database\MariaDbQuery;
 use SimpleComplex\Database\MariaDbResult;
 
@@ -33,7 +34,7 @@ class QueryArgumentTest extends TestCase
     /**
      * @see \SimpleComplex\Database\DbQuery::VALIDATE_PARAMS
      */
-    const DB_QUERY_VALIDATE_ARGUMENTS = 2;
+    const DB_QUERY_VALIDATE_ARGUMENTS = DbQuery::VALIDATE_PARAMS_FAILURE;
 
     /**
      * Arguments referred; old-school pattern.
@@ -78,9 +79,9 @@ class QueryArgumentTest extends TestCase
             &$_5_date,
             &$_6_datetime,
         ];
-        $query->prepare($types, $args);
+        TestHelper::queryPrepare($query, $types, $args);
         /** @var MariaDbResult $result */
-        $result = $query->execute();
+        $result = TestHelper::queryExecute($query);
         $this->assertInstanceOf(MariaDbResult::class, $result);
         $affected_rows = $result->affectedRows();
         $this->assertInternalType('int', $affected_rows);
@@ -88,7 +89,8 @@ class QueryArgumentTest extends TestCase
 
         $_1_float = 1.1;
         $_2_decimal = '2.2';
-        $result = $query->execute();
+        $result = TestHelper::queryExecute($query);
+        $this->assertInstanceOf(MariaDbResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
     }
 
@@ -123,13 +125,15 @@ class QueryArgumentTest extends TestCase
             $time->getDateISOlocal(),
             '' . $time,
         ];
-        $query->prepare($types, $args);
-        $result = $query->execute();
+        TestHelper::queryPrepare($query, $types, $args);
+        $result = TestHelper::queryExecute($query);
+        $this->assertInstanceOf(MariaDbResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
 
         $args[1] = 1.1;
         $args[2] = '2.2';
-        $result = $query->execute();
+        $result = TestHelper::queryExecute($query);
+        $this->assertInstanceOf(MariaDbResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
     }
 
@@ -164,13 +168,15 @@ class QueryArgumentTest extends TestCase
             '_5_date' => $time->getDateISOlocal(),
             '_6_datetime' => '' . $time,
         ];
-        $query->prepare($types, $args);
-        $result = $query->execute();
+        TestHelper::queryPrepare($query, $types, $args);
+        $result = TestHelper::queryExecute($query);
+        $this->assertInstanceOf(MariaDbResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
 
         $args['_1_float'] = 1.1;
         $args['_2_decimal'] = '2.2';
-        $result = $query->execute();
+        $result = TestHelper::queryExecute($query);
+        $this->assertInstanceOf(MariaDbResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
     }
 
@@ -178,6 +184,8 @@ class QueryArgumentTest extends TestCase
      * Does the DBMS stringify objects having __toString() method?
      *
      * @see ClientTest::testInstantiation()
+     *
+     * @expectedException \SimpleComplex\Database\Exception\DbRuntimeException
      */
     public function testQueryArgumentsStringable()
     {
@@ -205,13 +213,31 @@ class QueryArgumentTest extends TestCase
             '_5_date' => $time->getDateISOlocal(),
             '_6_datetime' => '' . $time,
         ];
-        $query->prepare($types, $args);
-        $result = $query->execute();
+        TestHelper::queryPrepare($query, $types, $args);
+        $result = TestHelper::queryExecute($query);
+        $this->assertInstanceOf(MariaDbResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
 
+        // Yes, MySQLi attempts to stringify object.
         $args['_3_varchar'] = new Stringable('stringable');
-        $args['_6_datetime'] = new Time('2000-01-01');
-        $result = $query->execute();
+        /**
+         * But MySQLi doesn't check if object has __toString() method.
+         *
+         * If
+         * @see DbQuery::VALIDATE_PARAMS
+         * is
+         * @see DbQuery::VALIDATE_PARAMS_ALWAYS
+         * @throws \SimpleComplex\Database\Exception\DbQueryArgumentException
+         *
+         * Else
+         * throws fatal error :-(
+         *
+         * @throws \SimpleComplex\Database\Exception\DbRuntimeException
+         */
+        $args['_6_datetime'] = new \DateTime('2000-01-01');
+
+        $result = TestHelper::queryExecute($query);
+        $this->assertInstanceOf(MariaDbResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
     }
 
@@ -246,8 +272,9 @@ class QueryArgumentTest extends TestCase
             '_5_date' => $time->getDateISOlocal(),
             '_6_datetime' => '' . $time,
         ];
-        $query->prepare($types, $args);
-        $result = $query->execute();
+        TestHelper::queryPrepare($query, $types, $args);
+        $result = TestHelper::queryExecute($query);
+        $this->assertInstanceOf(MariaDbResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
     }
 }

@@ -14,6 +14,7 @@ use SimpleComplex\Tests\Database\TestHelper;
 use SimpleComplex\Tests\Database\Stringable;
 
 use SimpleComplex\Database\MsSqlClient;
+use SimpleComplex\Database\DbQuery;
 use SimpleComplex\Database\MsSqlQuery;
 use SimpleComplex\Database\MsSqlResult;
 use SimpleComplex\Utils\Time;
@@ -32,7 +33,7 @@ class QueryArgumentTest extends TestCase
     /**
      * @see \SimpleComplex\Database\DbQuery::VALIDATE_PARAMS
      */
-    const DB_QUERY_VALIDATE_ARGUMENTS = 3;
+    const DB_QUERY_VALIDATE_ARGUMENTS = DbQuery::VALIDATE_PARAMS_ALWAYS;
 
     /**
      * Arguments referred; old-school pattern.
@@ -80,7 +81,7 @@ class QueryArgumentTest extends TestCase
             &$_6_datetime,
             &$_7_nvarchar,
         ];
-        $query->prepare($types, $args);
+        TestHelper::queryPrepare($query, $types, $args);
         /** @var MsSqlResult $result */
         $result = TestHelper::queryExecute($query);
         $this->assertInstanceOf(MsSqlResult::class, $result);
@@ -128,7 +129,7 @@ class QueryArgumentTest extends TestCase
             '' . $time,
             'n varchar',
         ];
-        $query->prepare($types, $args);
+        TestHelper::queryPrepare($query, $types, $args);
         $result = TestHelper::queryExecute($query);
         $this->assertInstanceOf(MsSqlResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
@@ -173,7 +174,7 @@ class QueryArgumentTest extends TestCase
             '_6_datetime' => '' . $time,
             '_7_nvarchar' => 'n varchar',
         ];
-        $query->prepare($types, $args);
+        TestHelper::queryPrepare($query, $types, $args);
         $result = TestHelper::queryExecute($query);
         $this->assertInstanceOf(MsSqlResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
@@ -190,7 +191,7 @@ class QueryArgumentTest extends TestCase
      *
      * @see ClientTest::testInstantiation()
      *
-     * @expectedException \SimpleComplex\Database\Exception\DbQueryArgumentException
+     * @expectedException \SimpleComplex\Database\Exception\DbRuntimeException
      */
     public function testQueryArgumentsStringable()
     {
@@ -233,7 +234,14 @@ class QueryArgumentTest extends TestCase
          * Sqlsrv \DateTime handling must be class specific;
          * see \DateTime argument right above.
          *
+         * If
+         * @see DbQuery::VALIDATE_PARAMS
+         * is
+         * @see DbQuery::VALIDATE_PARAMS_ALWAYS
          * @throws \SimpleComplex\Database\Exception\DbQueryArgumentException
+         *
+         * Else
+         * @throws \SimpleComplex\Database\Exception\DbRuntimeException
          */
         $args['_3_varchar'] = new Stringable('stringable');
 
@@ -325,7 +333,7 @@ class QueryArgumentTest extends TestCase
                 SQLSRV_SQLTYPE_NVARCHAR('max'),
             ],
         ];
-        $query->prepare($types, $args);
+        TestHelper::queryPrepare($query, $types, $args);
         $result = TestHelper::queryExecute($query);
         $this->assertInstanceOf(MsSqlResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
@@ -411,7 +419,7 @@ class QueryArgumentTest extends TestCase
                 SQLSRV_SQLTYPE_NVARCHAR('max'),
             ],
         ];
-        $query->prepare($types, $args);
+        TestHelper::queryPrepare($query, $types, $args);
         $result = TestHelper::queryExecute($query);
         $this->assertInstanceOf(MsSqlResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
@@ -497,7 +505,7 @@ class QueryArgumentTest extends TestCase
                 SQLSRV_SQLTYPE_NVARCHAR('max'),
             ],
         ];
-        $query->prepare($types, $args);
+        TestHelper::queryPrepare($query, $types, $args);
         $result = TestHelper::queryExecute($query);
         $this->assertInstanceOf(MsSqlResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
@@ -547,7 +555,7 @@ class QueryArgumentTest extends TestCase
             '_6_datetime' => $time,
             '_7_nvarchar' => 'n varchar',
         ];
-        $query->prepare($types, $args);
+        TestHelper::queryPrepare($query, $types, $args);
         $result = TestHelper::queryExecute($query);
         $this->assertInstanceOf(MsSqlResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
@@ -597,7 +605,7 @@ class QueryArgumentTest extends TestCase
             ],
             '_7_nvarchar' => 'n varchar',
         ];
-        $query->prepare($types, $args);
+        TestHelper::queryPrepare($query, $types, $args);
 
         //TestHelper::logVariable(__FUNCTION__ . ' query', $query);
 
@@ -702,7 +710,7 @@ class QueryArgumentTest extends TestCase
                 SQLSRV_SQLTYPE_UNIQUEIDENTIFIER,
             ],
         ];
-        $query->prepare($types, $args);
+        TestHelper::queryPrepare($query, $types, $args);
         $result = TestHelper::queryExecute($query);
         $this->assertInstanceOf(MsSqlResult::class, $result);
         $this->assertSame(1, $result->affectedRows());

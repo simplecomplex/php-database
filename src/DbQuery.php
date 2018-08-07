@@ -136,23 +136,41 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
     const SQL_MINIFY = false;
 
     /**
-     * Whether to validate query arguments.
+     * Whether to validate query parameters.
      *
      * Values:
-     * - 0: no check
-     * - 1: validate query parameters on query failure (only)
-     * - 2: validate prepare()/parameters() methods' $types and $arguments
-     * - 3: validate $types and $arguments even at later prepared statement
-     *      execution
-     *
-     * Recommended production value:
-     * - 1: the smartest, and performance-wise far the lightest
+     * - 0: no validation at all
+     * - 1: validate on query failure (only)
+     * - 2: validate on creation, before execution and on query failure
      *
      * Option (int) validate_params overrules.
+     *
+     * Recommended value by environment
+     * --------------------------------
+     * Production: 1 (VALIDATE_PARAMS_FAILURE)
+     * Development/test: 2 (VALIDATE_PARAMS_ALWAYS) because great for debugging,
+     * however horrible performance-wise.
      *
      * @see DbQuery::validateArguments()
      */
     const VALIDATE_PARAMS = 1;
+
+    /**
+     * Validate query parameters on query failure (only).
+     *
+     * @see DbQuery::VALIDATE_PARAMS
+     */
+    const VALIDATE_PARAMS_FAILURE = 1;
+
+    /**
+     * Validate query parameters:
+     * - on creation
+     * - before execution
+     * - on query failure
+     *
+     * @see DbQuery::VALIDATE_PARAMS
+     */
+    const VALIDATE_PARAMS_ALWAYS = 2;
 
     /**
      * Truncate sql to that length when logging.
@@ -566,16 +584,20 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
      *
      * @param string $types
      * @param array $arguments
-     * @param bool $errOnFailure
-     *      True: throw exception on validation failure.
+     * @param string $errorContext
+     *      Non-empty: throw exception on validation failure.
+     *      Values: creation|execution|on_failure
      *
      * @return bool|string
      *      True on success.
      *      String error details message on error.
      *
      * @throws DbQueryArgumentException
+     *      If validation failure and non-empty arg $errorContext.
+     *      Unconditionally if $types and $arguments differ in length.
+     *      Unconditionally if a $types char is unsupported.
      */
-    public function validateArguments(string $types, array $arguments, bool $errOnFailure = false)
+    public function validateArguments(string $types, array $arguments, string $errorContext = '')
     {
         if (strlen($types) != count($arguments)) {
             return $this->messagePrefix() . ' - arg $types length[' . strlen($types)
@@ -656,15 +678,21 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
             }
         }
         if ($invalids) {
-            if ($errOnFailure) {
-                // Custom message if validateParams:3
-                // and not first prepared statement execution.
+            if ($errorContext) {
+                switch ($errorContext) {
+                    case 'creation':
+                        $msg = ' - arg $arguments ';
+                        break;
+                    case 'execution':
+                        $msg = $this->isPreparedStatement ?
+                            (' - aborted prepared statement execution[' . $this->execution . '], argument ') :
+                            ' - aborted simple query execution, argument ';
+                        break;
+                    default:
+                        $msg = ' - argument ';
+                }
                 throw new DbQueryArgumentException(
-                    $this->messagePrefix()
-                        . ($this->execution < 1 ? ' - arg $arguments ' :
-                            ' - aborted prepared statement execution[' . $this->execution . '], argument '
-                        )
-                        . join(' | ', $invalids) . '.'
+                    $this->messagePrefix() . $msg . join(' | ', $invalids) . '.'
                 );
             }
             return join(' | ', $invalids);
@@ -794,14 +822,14 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
                 . '] doesn\'t match sql\'s ?-parameters count[' . $n_params . '].'
             );
         }
-        else if ($this->validateParams > 1) {
+        else if ($this->validateParams == DbQuery::VALIDATE_PARAMS_ALWAYS) {
             if (($valid = $this->validateTypes($types)) !== true) {
                 throw new DbQueryArgumentException(
                     $this->messagePrefix() . ' - arg $types ' . $valid . '.'
                 );
             }
             // Throws exception on validation failure.
-            $this->validateArguments($types, $arguments, true);
+            $this->validateArguments($types, $arguments, 'creation');
         }
 
         // Mend that arguments array may not be numerically indexed,
@@ -847,8 +875,9 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
             $sql_with_args .= $sqlFragments[$i] . $value;
         }
 
-        // Record types and arguments if validate on query execution failure.
-        if ($this->validateParams == 1) {
+        // Record types and arguments for parameter validation before execution
+        // and/or on query failure.
+        if ($this->validateParams) {
             $this->parameterTypes = $tps;
             $this->arguments['simple'] =& $args;
         }
