@@ -215,14 +215,14 @@ class QueryArgumentTest extends TestCase
             '_0_int' => 0,
             '_1_float' => 1.0,
             '_2_decimal' => '2.0',
-            '_3_varchar' => new \DateTime('2000-01-01'), //'stringable', //new Stringable('stringable'),
+            '_3_varchar' => 'stringable',
             '_4_blob' => sprintf("%08d", decbin(4)),
             '_5_date' => $time->getDateISOlocal(),
 
             // \DateTime gets successfully stringed.
             '_6_datetime' => new \DateTime('2000-01-01'),
 
-            '_7_nvarchar' => 'n varchar',
+            '_7_nvarchar' => new \DateTime('2000-01-01'), //'stringable', //new Stringable('stringable'),
         ];
         TestHelper::queryPrepare($query, $types, $args);
         $result = TestHelper::queryExecute($query);
@@ -243,7 +243,7 @@ class QueryArgumentTest extends TestCase
          * Else
          * @throws \SimpleComplex\Database\Exception\DbRuntimeException
          */
-        $args['_3_varchar'] = new Stringable('stringable');
+        $args['_7_nvarchar'] = new Stringable('stringable');
 
         $result = TestHelper::queryExecute($query);
         $this->assertInstanceOf(MsSqlResult::class, $result);
@@ -724,6 +724,63 @@ class QueryArgumentTest extends TestCase
         //$args['_5_date'][0] = 'cykel';
         $args['_6_datetime'][0] = $time->getDateISOlocal();
         $args['_8_bit'][0] = true;
+        $result = TestHelper::queryExecute($query);
+        $this->assertInstanceOf(MsSqlResult::class, $result);
+        $this->assertSame(1, $result->affectedRows());
+    }
+
+    /**
+     * Does the DBMS stringify objects having __toString() method?
+     *
+     * @see ClientTest::testInstantiation()
+     *
+     * @expectedException \SimpleComplex\Database\Exception\DbRuntimeException
+     */
+    public function testSimpleQueryArgumentsStringable()
+    {
+        $client = (new ClientTest())->testInstantiation();
+
+        $query = $client->query(
+            'INSERT INTO typish (_0_int, _1_float, _2_decimal, _3_varchar, _4_blob, _5_date, _6_datetime, _7_nvarchar)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            [
+                'name' => __FUNCTION__,
+                'validate_params' => static::VALIDATE_PARAMS,
+                'sql_minify' => true,
+                'affected_rows' => true,
+            ]
+        );
+
+        $types = 'idssbsss';
+
+        $time = new Time();
+        $args = [
+            '_0_int' => 0,
+            '_1_float' => 1.0,
+            '_2_decimal' => '2.0',
+            '_3_varchar' => 'simple stringable',
+            '_4_blob' => sprintf("%08d", decbin(4)),
+            '_5_date' => $time->getDateISOlocal(),
+
+            // \DateTime gets successfully stringed.
+            '_6_datetime' => new \DateTime('2000-01-01'),
+            /**
+             * Sqlsrv apparantly doesn't use an object's __toString() method.
+             * Sqlsrv \DateTime handling must be class specific;
+             * see \DateTime argument right above.
+             *
+             * If
+             * @see DbQuery::VALIDATE_PARAMS
+             * is
+             * @see DbQuery::VALIDATE_ALWAYS
+             * @throws \SimpleComplex\Database\Exception\DbQueryArgumentException
+             *
+             * Else
+             * @throws \SimpleComplex\Database\Exception\DbRuntimeException
+             */
+            '_7_nvarchar' => new Stringable('simple stringable'),
+        ];
+        TestHelper::queryParameters($query, $types, $args);
         $result = TestHelper::queryExecute($query);
         $this->assertInstanceOf(MsSqlResult::class, $result);
         $this->assertSame(1, $result->affectedRows());

@@ -11,6 +11,7 @@ namespace SimpleComplex\Database;
 
 use SimpleComplex\Utils\Explorable;
 use SimpleComplex\Utils\Dependency;
+use SimpleComplex\Utils\Utils;
 
 use SimpleComplex\Database\Interfaces\DbClientInterface;
 use SimpleComplex\Database\Interfaces\DbQueryInterface;
@@ -258,7 +259,7 @@ abstract class DbClient extends Explorable implements DbClientInterface
                 if ($required && !$databaseInfo[$key]) {
                     throw new \LogicException(
                         'Database arg databaseInfo key[' . $key
-                        . '] type[' . gettype($databaseInfo[$key]) . '] is empty'
+                        . '] type[' . Utils::getType($databaseInfo[$key]) . '] is empty'
                         . '. Saw keys ' . (!$databaseInfo ? '- none -' : join(', ', array_keys($databaseInfo))) . '.'
                     );
                 }

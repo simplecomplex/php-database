@@ -114,6 +114,9 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
      * - MariaDb: 1, attempts to stringify recklessly
      * - MsSql: 0, doesn't attempt stringifying (except \DateTime to varchar)
      *
+     * Prepared statement only; simple query (using parameter substitution)
+     * only cares about/accepts object having toString() method.
+     *
      * @developer
      * Do NOT make a means for stringifying objects having __toString().
      * Because it would only work for truly simple queries, using parameter
@@ -128,6 +131,9 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
     /**
      * List of class names of objects that automatically gets stringified,
      * and accepted as strings, by the DBMS driver
+     *
+     * Prepared statement only; simple query (using parameter substitution)
+     * only cares about/accepts object having toString() method.
      *
      * @var string[]
      */
@@ -221,6 +227,9 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
      * AUTO_STRINGIFIES_OBJECT:0
      * If the DBMS doesn't attempt stringification at all, this validation
      * will fail when object (regardless of __toString()).
+     *
+     * Prepared statement only; simple query (using parameter substitution)
+     * always checks if object has toString() method.
      *
      * Bitmask value.
      *
@@ -689,14 +698,23 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
                                 $valid = true;
                                 break;
                             case 'object':
-                                if (static::AUTO_STRINGIFIES_OBJECT && method_exists($value, '__toString')) {
-                                    $valid = true;
+                                if (!$this->isPreparedStatement) {
+                                    // Parameter substition only cares about
+                                    // __toString().
+                                    if (method_exists($value, '__toString')) {
+                                        $valid = true;
+                                    };
                                 }
-                                elseif (static::AUTO_STRINGABLE_CLASSES) {
-                                    foreach (static::AUTO_STRINGABLE_CLASSES as $class_name) {
-                                        if (is_a($value, $class_name)) {
-                                            $valid = true;
-                                            break;
+                                else {
+                                    if (static::AUTO_STRINGIFIES_OBJECT && method_exists($value, '__toString')) {
+                                        $valid = true;
+                                    }
+                                    elseif (static::AUTO_STRINGABLE_CLASSES) {
+                                        foreach (static::AUTO_STRINGABLE_CLASSES as $class_name) {
+                                            if (is_a($value, $class_name)) {
+                                                $valid = true;
+                                                break;
+                                            }
                                         }
                                     }
                                 }
@@ -955,21 +973,15 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
         $sql_with_args = '';
         for ($i = 0; $i < $n_params; ++$i) {
             $value = $args[$i];
-
-            /**
-             * Reject attempt to use array value.
-             * No compatibility with Sqlsrv type qualifying array,
-             * nor with non-scalar like DateTime.
-             * @see MsSqlQuery::prepare()
-             */
+            // Validate always; could be hazardous on invalid value.
             if (!is_scalar($value) || is_bool($value)) {
-                // Unlikely when checked via validateArguments().
-                throw new DbQueryArgumentException(
-                    $this->messagePrefix() . ' - arg $arguments index[' . $i
-                    . '] type[' . gettype($value) . '] is not integer|float|string|binary.'
-                );
+                if (!is_object($value) || !method_exists($value, '__toString')) {
+                    throw new DbQueryArgumentException(
+                        $this->messagePrefix() . ' - arg $arguments index[' . $i . '] type[' . Utils::getType($value)
+                        . '] is not integer, float, string or object having __toString() method.'
+                    );
+                }
             }
-
             switch ($tps{$i}) {
                 case 's':
                 case 'b':

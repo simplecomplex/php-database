@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace SimpleComplex\Database;
 
+use SimpleComplex\Utils\Utils;
+
 use SimpleComplex\Database\Interfaces\DbQueryInterface;
 
 use SimpleComplex\Database\Exception\DbRuntimeException;
@@ -203,7 +205,7 @@ class MsSqlResult extends DbResult
                 $this->closeAndLog(__FUNCTION__);
                 throw new \TypeError(
                     $this->query->messagePrefix()
-                    . ' - arg $getAsType type[' . gettype($getAsType) . '] isn\'t integer|string|null.'
+                    . ' - arg $getAsType type[' . Utils::getType($getAsType) . '] isn\'t integer|string|null.'
                 );
             }
             $id = @sqlsrv_get_field($this->statement, 0, $type);

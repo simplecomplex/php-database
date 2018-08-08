@@ -39,51 +39,31 @@ use SimpleComplex\Tests\Database\Stringable;
     ]);
 
     $query = $client->query(
-        'INSERT INTO typish (_0_int, _1_float, _2_decimal, _3_varchar, _4_blob, _5_date, _6_datetime)
-            VALUES (?, ?, ?, ?, ?, ?, ?)',
+        'INSERT INTO typish (_0_int, _1_float, _2_decimal, _3_varchar, _4_blob, _5_date, _6_datetime, _7_text)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
         [
-            'validate_params' => DbQuery::VALIDATE_FAILURE,
+            //'validate_params' => DbQuery::VALIDATE_FAILURE,
             'sql_minify' => true,
             'affected_rows' => true,
         ]
     );
 
-    $types = 'idssbss';
+    $types = 'idssbsss';
 
     $time = new Time();
     $args = [
         '_0_int' => 0,
         '_1_float' => 1.0,
         '_2_decimal' => '2.0',
-        '_3_varchar' => new stdClass(), //'stringable from execute',
+        // Yes, MySQLi attempts to stringify object.
+        '_3_varchar' => new Stringable('stringable from execute'),
         '_4_blob' => sprintf("%08d", decbin(4)),
         '_5_date' => $time->getDateISOlocal(),
         '_6_datetime' => '' . $time->getDateISOlocal(),
+        // But MySQLi doesn't check if object has __toString() method.
+        '_7_text' => new stdClass(),
     ];
     $query->prepare($types, $args);
-    echo "prepared\n";
-    $query->execute();
-    echo "executed\n";
-
-
-    // Yes, MySQLi attempts to stringify object.
-    $args['_3_varchar'] = new stdClass();
-    /**
-     * But MySQLi doesn't check if object has __toString() method.
-     *
-     * If
-     * @see DbQuery::VALIDATE_PARAMS
-     * is
-     * @see DbQuery::VALIDATE_ALWAYS
-     * @throws \SimpleComplex\Database\Exception\DbQueryArgumentException
-     *
-     * Else
-     * throws fatal error :-(
-     *
-     * @throws \SimpleComplex\Database\Exception\DbRuntimeException
-     */
-    //$args['_6_datetime'] = new \DateTime('2000-01-01');
-
     $query->execute();
 
 })();

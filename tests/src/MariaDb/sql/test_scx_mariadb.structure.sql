@@ -65,6 +65,7 @@ CREATE TABLE typish (
     _4_blob BLOB,
     _5_date DATE NOT NULL,
     _6_datetime DATETIME NOT NULL,
+    _7_text TEXT,
     PRIMARY KEY (id)
 ) ENGINE=InnoDB;
 

@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace SimpleComplex\Database;
 
+use SimpleComplex\Utils\Utils;
+
 use SimpleComplex\Database\Interfaces\DbQueryInterface;
 
 use SimpleComplex\Database\Exception\DbRuntimeException;
@@ -158,7 +160,7 @@ class MariaDbResult extends DbResult
                     $this->closeAndLog(__FUNCTION__);
                     throw new \TypeError(
                         $this->query->messagePrefix()
-                        . ' - arg $getAsType type[' . gettype($getAsType) . '] isn\'t string|null.'
+                        . ' - arg $getAsType type[' . Utils::getType($getAsType) . '] isn\'t string|null.'
                     );
                 }
             }
