@@ -58,8 +58,8 @@ CREATE TABLE child (
 DROP TABLE IF EXISTS typish;
 CREATE TABLE typish (
     id int(11) NOT NULL AUTO_INCREMENT,
-    _0_int INT,
-    _1_float FLOAT(24),
+    _0_int INT NOT NULL,
+    _1_float FLOAT(24) NOT NULL,
     _2_decimal DECIMAL(14,2) NOT NULL,
     _3_varchar VARCHAR(255) NOT NULL,
     _4_blob BLOB,

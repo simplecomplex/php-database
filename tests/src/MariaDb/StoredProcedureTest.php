@@ -13,6 +13,8 @@ use PHPUnit\Framework\TestCase;
 use SimpleComplex\Tests\Database\TestHelper;
 use SimpleComplex\Tests\Database\Stringable;
 
+use SimpleComplex\Utils\Bootstrap;
+use SimpleComplex\Utils\Dependency;
 use SimpleComplex\Utils\Time;
 
 use SimpleComplex\Database\MariaDbClient;
@@ -23,12 +25,12 @@ use SimpleComplex\Database\MariaDbResult;
 /**
  * @code
  * // CLI, in document root:
- * backend/vendor/bin/phpunit backend/vendor/simplecomplex/database/tests/src/MariaDb/QueryArgumentTest.php
+ * backend/vendor/bin/phpunit backend/vendor/simplecomplex/database/tests/src/MariaDb/StoredProcedureTest.php
  * @endcode
  *
  * @package SimpleComplex\Tests\Database
  */
-class QueryArgumentTest extends TestCase
+class StoredProcedureTest extends TestCase
 {
 
     /**
