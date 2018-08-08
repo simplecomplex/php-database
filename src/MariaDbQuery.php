@@ -609,10 +609,12 @@ class MariaDbQuery extends DbQuery
      * @throws DbConnectionException
      *      Is prepared statement and connection lost.
      * @throws DbRuntimeException
+     * @throws \BadMethodCallException
+     *      Repeated execution of simple query.
      */
     public function execute(): DbResultInterface
     {
-        ++$this->execution;
+        ++$this->nExecution;
 
         if ($this->isPreparedStatement) {
             // Validate arguments before execution?.
@@ -633,7 +635,7 @@ class MariaDbQuery extends DbQuery
             if ($this->statementClosed) {
                 throw new \LogicException(
                     $this->messagePrefix()
-                    . ' - can\'t do execution[' . $this->execution . '] on previously closed prepared statement.'
+                    . ' - can\'t do execution[' . $this->nExecution . '] on previously closed prepared statement.'
                 );
             }
             // Require unbroken connection.
@@ -646,7 +648,7 @@ class MariaDbQuery extends DbQuery
                 $cls_xcptn = $this->client->errorsToException($errors);
                 throw new $cls_xcptn(
                     $this->messagePrefix()
-                    . ' - can\'t do execution[' . $this->execution . '] of prepared statement'
+                    . ' - can\'t do execution[' . $this->nExecution . '] of prepared statement'
                     . (isset($errors[2014]) ? ', forgot to exhaust/free result set(s) of another query?' :
                         ' when connection lost')
                     . ', error: ' . $this->client->errorsToString($errors) . '.'
@@ -657,7 +659,7 @@ class MariaDbQuery extends DbQuery
              * Reset to state after prepare, if CURSOR_TYPE_READ_ONLY.
              * @see https://dev.mysql.com/doc/refman/8.0/en/mysql-stmt-attr-set.html
              */
-            if ($this->execution && $this->resultMode == MariaDbQuery::CURSOR_READ_ONLY) {
+            if ($this->nExecution > 1 && $this->resultMode == MariaDbQuery::CURSOR_READ_ONLY) {
                 $this->statement->reset();
                 $errors = $this->getErrors();
                 if ($errors) {
@@ -665,7 +667,7 @@ class MariaDbQuery extends DbQuery
                     $cls_xcptn = $this->client->errorsToException($errors);
                     throw new $cls_xcptn(
                         $this->messagePrefix()
-                        . ' - failed to reset prepared statement for execution[' . $this->execution . '], error: '
+                        . ' - failed to reset prepared statement for execution[' . $this->nExecution . '], error: '
                         . $this->client->errorsToString($errors) . '.'
                     );
                 }
@@ -694,12 +696,20 @@ class MariaDbQuery extends DbQuery
                 // Unset prepared statement arguments reference.
                 $this->unsetReferences();
                 throw new $cls_xcptn(
-                    $this->messagePrefix() . ' - failed execution[' . $this->execution . '] of prepared statement, '
+                    $this->messagePrefix() . ' - failed execution[' . $this->nExecution . '] of prepared statement, '
                     . $msg . $this->client->errorsToString($errors) . '.'
                 );
             }
         }
         else {
+            // Safeguard against unintended simple query repeated execute().
+            if ($this->nExecution > 1) {
+                throw new \BadMethodCallException(
+                    $this->messagePrefix() . ' - simple query is not reusable, use prepared statement instead,'
+                        . ' if in doubt whether executed do ask !$query->nExecution'
+                );
+            }
+
             // Validate arguments before execution?.
             if ($this->validateParams && $this->parameterTypes && !empty($this->arguments['simple'])) {
                 if (($this->validateParams & DbQuery::VALIDATE_EXECUTE)) {

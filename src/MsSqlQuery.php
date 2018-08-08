@@ -542,10 +542,12 @@ class MsSqlQuery extends DbQuery
      * @throws DbQueryException
      * @throws DbRuntimeException
      *      Failing to complete sending data as chunks.
+     * @throws \BadMethodCallException
+     *      Repeated execution of simple query.
      */
     public function execute(): DbResultInterface
     {
-        ++$this->execution;
+        ++$this->nExecution;
 
         // (Sqlsrv) Even a simple statement is a 'statement'.
         if ($this->statementClosed) {
@@ -570,7 +572,7 @@ class MsSqlQuery extends DbQuery
                 $this->unsetReferences();
                 $cls_xcptn = $this->client->errorsToException($errors);
                 throw new $cls_xcptn(
-                    $this->messagePrefix() . ' - can\'t do execution[' . $this->execution
+                    $this->messagePrefix() . ' - can\'t do execution[' . $this->nExecution
                     . '] of prepared statement when connection lost, error: '
                     . $this->client->errorsToString($errors) . '.'
                 );
@@ -598,12 +600,20 @@ class MsSqlQuery extends DbQuery
                 // Unset prepared statement arguments reference.
                 $this->unsetReferences();
                 throw new $cls_xcptn(
-                    $this->messagePrefix() . ' - failed execution[' . $this->execution . '] of prepared statement, '
+                    $this->messagePrefix() . ' - failed execution[' . $this->nExecution . '] of prepared statement, '
                         . $msg . $this->client->errorsToString($errors) . '.'
                 );
             }
         }
         else {
+            // Safeguard against unintended simple query repeated execute().
+            if ($this->nExecution > 1) {
+                throw new \BadMethodCallException(
+                    $this->messagePrefix() . ' - simple query is not reusable, use prepared statement instead,'
+                    . ' if in doubt whether executed do ask !$query->nExecution'
+                );
+            }
+
             // Validate arguments before execution?
             if (($this->validateParams & DbQuery::VALIDATE_EXECUTE) && !empty($this->arguments['simple'])) {
                 // Throws exception on validation failure
@@ -1263,7 +1273,7 @@ class MsSqlQuery extends DbQuery
         if ($invalids) {
             if ($errorContext) {
                 // Prepared statement, later execution.
-                if ($this->execution > 0) {
+                if ($this->nExecution > 1) {
                     // Unset prepared statement arguments reference.
                     $this->unsetReferences();
                 }
@@ -1273,7 +1283,7 @@ class MsSqlQuery extends DbQuery
                         break;
                     case 'execute':
                         $msg = $this->isPreparedStatement ?
-                            (' - aborted prepared statement execution[' . $this->execution . '], argument ') :
+                            (' - aborted prepared statement execution[' . $this->nExecution . '], argument ') :
                             ' - aborted simple query execution, argument ';
                         break;
                     default:

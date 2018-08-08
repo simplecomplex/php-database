@@ -1,6 +1,9 @@
 SimpleComplex/Database 1.x, 2018-08-08
 --------------------------------------
 - Non-MsSql simple query always checks argument types, and object __toString().
+- Query execution counter use natural value (first execution is 1), and counter
+  renamed to nExecution; from execution.
+- Safeguard against unintended reuse of non-prepared statement.
 
 SimpleComplex/Database 1.x, 2018-08-07
 --------------------------------------

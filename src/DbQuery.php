@@ -39,7 +39,7 @@ use SimpleComplex\Database\Exception\DbQueryArgumentException;
  *
  * @property-read string $name
  * @property-read string $id
- * @property-read int $execution
+ * @property-read int $nExecution
  * @property-read string $resultMode
  * @property-read bool $isPreparedStatement
  * @property-read bool $hasLikeClause
@@ -279,7 +279,7 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
     /**
      * @var int
      */
-    protected $execution = -1;
+    protected $nExecution = 0;
 
     /**
      * @var string
@@ -741,7 +741,7 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
                         break;
                     case 'execute':
                         $msg = $this->isPreparedStatement ?
-                            (' - aborted prepared statement execution[' . $this->execution . '], argument ') :
+                            (' - aborted prepared statement execution[' . $this->nExecution . '], argument ') :
                             ' - aborted simple query execution, argument ';
                         break;
                     default:
@@ -819,7 +819,7 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
                         break;
                     case 'execute':
                         $msg = $this->isPreparedStatement ?
-                            (' - aborted prepared statement execution[' . $this->execution . '], argument ') :
+                            (' - aborted prepared statement execution[' . $this->nExecution . '], argument ') :
                             ' - aborted simple query execution, argument ';
                         break;
                     default:
@@ -1104,7 +1104,7 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
         // Protected; readable via 'magic' __get().
         'name',
         'id',
-        'execution',
+        'nExecution',
         'resultMode',
         'isPreparedStatement',
         'hasLikeClause',
