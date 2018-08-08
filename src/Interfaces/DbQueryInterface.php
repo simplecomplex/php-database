@@ -30,7 +30,9 @@ interface DbQueryInterface
      * @param \SimpleComplex\Database\Interfaces\DbClientInterface $client
      *      Reference to parent client.
      * @param string $sql
-     * @param array $options
+     * @param array $options {
+     *      @var bool|int $reusable
+     * }
      *
      * @throws \InvalidArgumentException
      *      Arg $sql empty.
@@ -67,8 +69,9 @@ interface DbQueryInterface
      * Non-prepared statement: set query arguments, for native automated
      * parameter marker substitution or direct substition in the sql.
      *
-     * The base sql remains reusable allowing more ->parameters()->execute(),
-     * much like a prepared statement (except arguments aren't referred).
+     * The base sql remains reusable - if option reusable - allowing more
+     * ->parameters()->execute(), much like a prepared statement
+     * (except arguments aren't referred).
      *
      * Chainable.
      *
@@ -94,7 +97,8 @@ interface DbQueryInterface
      * @return DbResultInterface
      *
      * @throws \LogicException
-     *      Repeated execution of simple query.
+     *      Repeated execution of simple query without truthy option reusable
+     *      and intermediate call to parameters().
      */
     public function execute() : DbResultInterface;
 

@@ -127,27 +127,23 @@ class MsSqlResult extends DbResult
      * @see https://blogs.msdn.microsoft.com/nickhodge/2008/09/22/sql-server-driver-for-php-last-inserted-row-id/
      * @see https://docs.microsoft.com/en-us/sql/t-sql/functions/scope-identity-transact-sql
      *
-     * @param int|string|null $getAsType
-     *      String: i|d|s|b.
-     *      Integer: An SQLSRV_PHPTYPE_* constant.
-     *      Null: Use driver default; probably string.
+     *@param string|null $getAsType
+     *      Values: i|int|integer|d|float|s|string.
      *
-     * @return mixed|null
+     * @return string|int|float|null
      *      Null: The query didn't trigger setting an ID.
      *
      * @throws \LogicException
      *      Sql misses secondary ID select statement.
      * @throws \InvalidArgumentException
      *      Invalid arg $getAsType value.
-     * @throws \TypeError
-     *      Arg $getAsType not int|string|null.
      * @throws DbResultException
      *      Next result.
      *      Next row.
      * @throws DbRuntimeException
      *      Other failure.
      */
-    public function insertId($getAsType = null)
+    public function insertId(string $getAsType = null)
     {
         /**
          * Have to load first result set and row before sqlsrv_get_field()
@@ -179,39 +175,33 @@ class MsSqlResult extends DbResult
         ++$this->rowIndex;
 
         if ($getAsType) {
-            if (is_int($getAsType)) {
-                $type = $getAsType;
+            switch ($getAsType) {
+                case 'i':
+                case 'int':
+                case 'integer':
+                    $id = @sqlsrv_get_field($this->statement, 0, SQLSRV_PHPTYPE_INT);
+                    break;
+                case 'd':
+                case 'float':
+                    $id = @sqlsrv_get_field($this->statement, 0, SQLSRV_PHPTYPE_FLOAT);
+                    break;
+                case 's':
+                case 'string':
+                    $id = @sqlsrv_get_field(
+                        $this->statement,
+                        0,
+                        $this->query->client->characterSet == 'UTF-8' ? SQLSRV_PHPTYPE_STRING('UTF-8') :
+                            SQLSRV_PHPTYPE_STRING(SQLSRV_ENC_CHAR)
+                    );
+                    break;
+                default:
+                    $id = @sqlsrv_get_field($this->statement, 0);
             }
-            elseif (is_string($getAsType)) {
-                switch ($getAsType) {
-                    case 'i':
-                        $type = SQLSRV_PHPTYPE_INT;
-                        break;
-                    case 'd':
-                        $type = SQLSRV_PHPTYPE_FLOAT;
-                        break;
-                    case 's':
-                    case 'b':
-                        $type = SQLSRV_PHPTYPE_STRING($this->query->client->characterSet);
-                        break;
-                    default:
-                        $this->closeAndLog(__FUNCTION__);
-                        throw new \InvalidArgumentException(
-                            $this->query->messagePrefix() . ' - arg $getAsType as string isn\'t i|d|s|b.'
-                        );
-                }
-            }
-            else {
-                $this->closeAndLog(__FUNCTION__);
-                throw new \TypeError(
-                    $this->query->messagePrefix()
-                    . ' - arg $getAsType type[' . Utils::getType($getAsType) . '] isn\'t integer|string|null.'
-                );
-            }
-            $id = @sqlsrv_get_field($this->statement, 0, $type);
-        } else {
+        }
+        else {
             $id = @sqlsrv_get_field($this->statement, 0);
         }
+
         if ($id || $id === null) {
             /**
              * Null: query didn't trigger setting an ID;

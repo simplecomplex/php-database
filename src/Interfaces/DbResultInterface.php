@@ -36,13 +36,14 @@ interface DbResultInterface
     /**
      * Auto ID set by last insert statement.
      *
-     * @param mixed|null $getAsType
+     * @param string|null $getAsType
+     *      Values: i|int|integer|d|float|s|string, default string.
      *
-     * @return mixed|null
+     * @return string|int|float|null
      *      Null: The query didn't trigger setting an ID.
      *      Throws throwable on failure.
      */
-    public function insertId($getAsType = null);
+    public function insertId(string $getAsType = null);
 
     /**
      * Number of rows in a result set.

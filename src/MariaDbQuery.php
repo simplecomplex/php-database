@@ -21,12 +21,6 @@ use SimpleComplex\Database\Exception\DbConnectionException;
  * MariaDB query.
  *
  *
- * Argument object stringification
- * -------------------------------
- * MySQLi attempts to stringify object as query argument, but doesn't check
- * if any __toString() method.
- *
- *
  * Prepared statement are 'use' and num-rows unavailable
  * -----------------------------------------------------
  * Result mode 'store' is not supported for prepared statements (by this
@@ -52,14 +46,23 @@ use SimpleComplex\Database\Exception\DbConnectionException;
  * @see MariaDbResult::nextSet()
  *
  *
+ * Argument object stringification
+ * -------------------------------
+ * MySQLi attempts to stringify object as query argument, but doesn't check
+ * if any __toString() method.
+ *
+ *
  * Prepared statement requires the mysqlnd driver.
  * Because a result set will eventually be handled as \mysqli_result
  * via mysqli_stmt::get_result(); only available with mysqlnd.
  * @see http://php.net/manual/en/mysqli-stmt.get-result.php
  *
- * Properties inherited from DatabaseQuery:
+ * Properties inherited from DbQuery:
+ * @property-read string $name
  * @property-read string $id
- * @property-read int $execution
+ * @property-read int $nExecution
+ * @property-read int $validateParams
+ * @property-read int $reusable
  * @property-read string $resultMode
  * @property-read bool $isPreparedStatement
  * @property-read bool $hasLikeClause
@@ -503,6 +506,10 @@ class MariaDbQuery extends DbQuery
      * Non-prepared statement: set query arguments, for direct substition
      * in the sql string.
      *
+     * The base sql remains reusable - if option reusable - allowing more
+     * ->parameters()->execute(), much like a prepared statement
+     * (except arguments aren't referred).
+     *
      * @see DbQuery::parameters()
      *
      * @param string $types
@@ -608,7 +615,8 @@ class MariaDbQuery extends DbQuery
      *
      * @throws \LogicException
      *      Is prepared statement and the statement is previously closed.
-     *      Repeated execution of simple query.
+     *      Repeated execution of simple query without truthy option reusable
+     *      and intermediate call to parameters().
      * @throws DbConnectionException
      *      Is prepared statement and connection lost.
      * @throws DbRuntimeException
@@ -704,10 +712,10 @@ class MariaDbQuery extends DbQuery
         }
         else {
             // Safeguard against unintended simple query repeated execute().
-            if ($this->nExecution > 1) {
+            if ($this->nExecution > 1 && $this->reusable != $this->nExecution) {
                 throw new \LogicException(
-                    $this->messagePrefix() . ' - simple query is not reusable, use prepared statement instead,'
-                        . ' if in doubt whether executed do ask !$query->nExecution'
+                    $this->messagePrefix() . ' - simple query is not reusable without'
+                    . (!$this->reusable ? ' truthy option reusable.' : ' intermediate call to parameters().')
                 );
             }
 

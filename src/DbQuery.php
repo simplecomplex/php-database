@@ -54,6 +54,8 @@ use SimpleComplex\Database\Exception\DbQueryArgumentException;
  * @property-read string $name
  * @property-read string $id
  * @property-read int $nExecution
+ * @property-read int $validateParams
+ * @property-read int $reusable
  * @property-read string $resultMode
  * @property-read bool $isPreparedStatement
  * @property-read bool $hasLikeClause
@@ -62,7 +64,6 @@ use SimpleComplex\Database\Exception\DbQueryArgumentException;
  * @property-read array $arguments
  * @property-read bool|null $statementClosed
  * @property-read bool $transactionStarted  Value of client ditto.
- * @property-read int $validateParams
  *
  * @package SimpleComplex\Database
  */
@@ -163,8 +164,9 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
      */
     const OPTIONS_GENERIC = [
         'name',
-        'sql_minify',
         'validate_params',
+        'reusable',
+        'sql_minify',
         'result_mode',
         'affected_rows',
         'insert_id',
@@ -318,6 +320,11 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
     protected $isPreparedStatement = false;
 
     /**
+     * @var int
+     */
+    protected $reusable = 0;
+
+    /**
      * @var bool
      */
     protected $hasLikeClause = false;
@@ -406,6 +413,11 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
                 $this->messagePrefix() . ' - arg $sql length[' . strlen($sql) . '] is effectively empty.'
             );
         }
+
+        if (!empty($options['reusable'] )) {
+            $this->reusable = 1;
+        }
+
         if ($options['sql_minify'] ?? static::SQL_MINIFY) {
             $this->sql = $this->sqlMinify($sql);
         }
@@ -473,11 +485,17 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
             );
         }
 
-        // Reset; secure base sql reusability; @todo: needed?.
+        // Allow another execution of this query.
+        if ($this->reusable && $this->nExecution) {
+            ++$this->reusable;
+        }
+
+        // Reset; secure base sql reusability, and that dump of query upon
+        // parameter substitution error doesn't show out-dated tampered sql.
         $this->sqlTampered = null;
 
         // Checks for parameters/arguments count mismatch.
-        $sql_fragments = $this->sqlFragments($this->sqlTampered ?? $this->sql, $arguments);
+        $sql_fragments = $this->sqlFragments($this->sql, $arguments);
 
         if ($sql_fragments) {
             $this->sqlTampered = $this->substituteParametersByArgs($sql_fragments, $types, $arguments);
@@ -1021,6 +1039,7 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
         // and/or on query failure.
         if ($this->validateParams) {
             $this->parameterTypes = $tps;
+            unset($this->arguments['simple']);
             $this->arguments['simple'] =& $args;
         }
 
@@ -1121,6 +1140,7 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
         'nExecution',
         'resultMode',
         'isPreparedStatement',
+        'reusable',
         'hasLikeClause',
         'sql',
         'sqlTampered',

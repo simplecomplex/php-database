@@ -118,19 +118,14 @@ class MariaDbResult extends DbResult
      * Auto ID set by last insert or update statement.
      *
      * @param string|null $getAsType
-     *      String: i|d|s|b.
-     *      Null: Use driver default; probably string.
+     *      Values: i|int|integer|d|float|s|string.
      *
-     * @return mixed|null
+     * @return string|int|float|null
      *      Null: The query didn't trigger setting an ID.
      *
-     * @throws \InvalidArgumentException
-     *      Invalid arg $getAsType value.
-     * @throws \TypeError
-     *      Arg $getAsType not string|null.
      * @throws DbRuntimeException
      */
-    public function insertId($getAsType = null)
+    public function insertId(string $getAsType = null)
     {
         if ($this->isPreparedStatement) {
             $id = @$this->statement->insert_id;
@@ -139,29 +134,17 @@ class MariaDbResult extends DbResult
         }
         if ($id) {
             if ($getAsType) {
-                if (is_string($getAsType)) {
-                    switch ($getAsType) {
-                        case 'i':
-                            return (int) $id;
-                        case 'd':
-                            return (float) $id;
-                        case 's':
-                        case 'b':
-                            return '' . $id;
-                        default:
-                            $this->closeAndLog(__FUNCTION__);
-                            throw new \InvalidArgumentException(
-                                $this->query->messagePrefix()
-                                . ' - arg $getAsType as string isn\'t i|d|s|b.'
-                            );
-                    }
-                }
-                else {
-                    $this->closeAndLog(__FUNCTION__);
-                    throw new \TypeError(
-                        $this->query->messagePrefix()
-                        . ' - arg $getAsType type[' . Utils::getType($getAsType) . '] isn\'t string|null.'
-                    );
+                switch ($getAsType) {
+                    case 'i':
+                    case 'int':
+                    case 'integer':
+                        return (int) $id;
+                    case 'd':
+                    case 'float':
+                        return (float) $id;
+                    case 's':
+                    case 'string':
+                        return '' . $id;
                 }
             }
             return $id;

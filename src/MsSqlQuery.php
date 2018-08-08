@@ -25,6 +25,13 @@ use SimpleComplex\Database\Exception\DbQueryException;
  * MS SQL query.
  *
  *
+ * Multi-query only when stored procedure
+ * --------------------------------------
+ * Multi-query producing more results sets is not supported by MS SQL,
+ * except when calling stored procedure. For multi vs. batch query, see:
+ * @see DbQuery
+ *
+ *
  * Argument object stringification
  * -------------------------------
  * Sqlsrv handles DateTimes vs. string transparently, interchangeably.
@@ -34,16 +41,12 @@ use SimpleComplex\Database\Exception\DbQueryException;
  * of any __toString() method.
  *
  *
- * Multi-query only when stored procedure
- * ------------------------------------
- * Multi-query producing more results sets is not supported by MS SQL,
- * except when calling stored procedure. For multi vs. batch query, see:
- * @see DbQuery
- *
- *
- * Inherited properties:
+ * Properties inherited from DbQuery:
+ * @property-read string $name
  * @property-read string $id
- * @property-read int $execution
+ * @property-read int $nExecution
+ * @property-read int $validateParams
+ * @property-read int $reusable
  * @property-read string $resultMode
  * @property-read bool $isPreparedStatement
  * @property-read bool $hasLikeClause
@@ -344,6 +347,14 @@ class MsSqlQuery extends DbQuery
             $this->client->reConnectDisable();
         }
 
+        $this->getInsertId = !empty($options['insert_id']);
+        // The sql never gets tampered by anything (like parameter substitution)
+        // so it's safe to append the insert id ding already here.
+        if ($this->getInsertId && stripos($sql, static::SQL_INSERT_ID) === false) {
+            $this->sqlTampered = $this->sql . '; ' . static::SQL_INSERT_ID;
+        }
+        $this->explorableIndex[] = 'getInsertId';
+
         if (isset($options['query_timeout'])) {
             $this->queryTimeout = $options['query_timeout'];
             if ($this->queryTimeout < 0) {
@@ -360,12 +371,6 @@ class MsSqlQuery extends DbQuery
         }
         $this->explorableIndex[] = 'sendDataChunked';
         $this->explorableIndex[] = 'sendChunksLimit';
-
-        $this->getInsertId = !empty($options['insert_id']);
-        if ($this->getInsertId && stripos($sql, static::SQL_INSERT_ID) === false) {
-            $this->sqlTampered = $this->sql . '; ' . static::SQL_INSERT_ID;
-        }
-        $this->explorableIndex[] = 'getInsertId';
     }
 
     public function __destruct()
@@ -432,11 +437,10 @@ class MsSqlQuery extends DbQuery
         $this->isPreparedStatement = true;
 
         // Checks for parameters/arguments count mismatch.
-        $sql_fragments = $this->sqlFragments($this->sqlTampered ?? $this->sql, $arguments);
+        $sql_fragments = $this->sqlFragments($this->sql, $arguments);
 
         if ($sql_fragments) {
             unset($sql_fragments);
-
             // Set instance var $arguments['prepared'] or $arguments['simple'].
             $this->adaptArguments($types, $arguments);
         }
@@ -479,10 +483,9 @@ class MsSqlQuery extends DbQuery
      * Non-prepared statement: set query arguments for native automated
      * parameter marker substitution.
      *
-     * The base sql remains reusable allowing more ->parameters()->execute(),
-     * much like a prepared statement (except arguments aren't referred).
-     *
-     * Sql parameter marker is question mark.
+     * The base sql remains reusable - if option reusable - allowing more
+     * ->parameters()->execute(), much like a prepared statement
+     * (except arguments aren't referred).
      *
      * Chainable.
      *
@@ -519,10 +522,14 @@ class MsSqlQuery extends DbQuery
             );
         }
 
-        // Checks for parameters/arguments count mismatch.
-        $sql_fragments = $this->sqlFragments($this->sqlTampered ?? $this->sql, $arguments);
-        if ($sql_fragments) {
+        // Allow another execution of this query.
+        if ($this->reusable && $this->nExecution) {
+            ++$this->reusable;
+        }
 
+        // Checks for parameters/arguments count mismatch.
+        $sql_fragments = $this->sqlFragments($this->sql, $arguments);
+        if ($sql_fragments) {
             // Set instance var $arguments['prepared'] or $arguments['simple'].
             $this->adaptArguments($types, $arguments);
         }
@@ -537,7 +544,8 @@ class MsSqlQuery extends DbQuery
      *
      * @throws \LogicException
      *      Query statement previously closed.
-     *      Repeated execution of simple query.
+     *      Repeated execution of simple query without truthy option reusable
+     *      and intermediate call to parameters().
      * @throws DbConnectionException
      *      Is prepared statement and connection lost.
      * @throws DbQueryException
@@ -606,10 +614,10 @@ class MsSqlQuery extends DbQuery
         }
         else {
             // Safeguard against unintended simple query repeated execute().
-            if ($this->nExecution > 1) {
+            if ($this->nExecution > 1 && $this->reusable != $this->nExecution) {
                 throw new \LogicException(
-                    $this->messagePrefix() . ' - simple query is not reusable, use prepared statement instead,'
-                    . ' if in doubt whether executed do ask !$query->nExecution'
+                    $this->messagePrefix() . ' - simple query is not reusable without'
+                        . (!$this->reusable ? ' truthy option reusable.' : ' intermediate call to parameters().')
                 );
             }
 
@@ -1568,6 +1576,8 @@ class MsSqlQuery extends DbQuery
         if ($this->isPreparedStatement) {
             $this->arguments['prepared'] =& $typed_args;
         } else {
+            // If reusable.
+            unset($this->arguments['simple']);
             // Don't refer; the prospect of a slight performance gain isn't
             // worth the risk.
             // A simple query's arguments shan't refer to the outside;
