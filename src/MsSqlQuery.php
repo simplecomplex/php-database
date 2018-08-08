@@ -38,7 +38,7 @@ use SimpleComplex\Database\Exception\DbQueryException;
  * ------------------------------------
  * Multi-query producing more results sets is not supported by MS SQL,
  * except when calling stored procedure. For multi vs. batch query, see:
- * @see DbQueryInterface
+ * @see DbQuery
  *
  *
  * Inherited properties:

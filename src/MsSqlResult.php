@@ -327,6 +327,7 @@ class MsSqlResult extends DbResult
      *
      * @param int $index
      * @param string $column
+     *      Non-empty: fetch column by that name, ignore arg $index.
      *
      * @return mixed|null
      *      Null: No more rows.

@@ -12,15 +12,6 @@ namespace SimpleComplex\Database\Interfaces;
 /**
  * Database query interface.
  *
- *
- * Multi-query versus batch query
- * ------------------------------
- * A batch query contains more non-selecting queries.
- * A multi-query contains more selecting queries; producing result set.
- * Batch query is supported by all common RMDSs.
- * Multi-query is supported by MariaDB/MySQL and Postgresql.
- *
- *
  * @property-read string $id
  * @property-read bool $isPreparedStatement
  * @property-read bool $hasLikeClause

@@ -20,7 +20,7 @@ use SimpleComplex\Tests\Database\Stringable;
  *
  * @code
  * # CLI
- * php cli.phpsh utils-execute backend/vendor/simplecomplex/database/dev/mariadb/utils_execute_mariadb.php -yf
+ * php cli.phpsh utils-execute backend/vendor/simplecomplex/database/dev/mariadb/utils_execute_mariadb_simple.php -yf
  * @endcode
  */
 
@@ -60,7 +60,7 @@ use SimpleComplex\Tests\Database\Stringable;
         '_4_blob' => sprintf("%08d", decbin(4)),
         '_5_date' => $time->getDateISOlocal(),
         //'_6_datetime' => '' . $time->getDateISOlocal(),
-        '_6_datetime' => new \DateTime('2000-01-01'),
+        '_6_datetime' => new Time('2000-01-01'),
         // But MySQLi doesn't check if object has __toString() method.
         //'_7_text' => new stdClass(),
         '_7_text' => '',

@@ -21,6 +21,7 @@ use SimpleComplex\Database\Exception\DbQueryArgumentException;
 /**
  * Database query.
  *
+ *
  * Prepared statement vs. simple statement
  * ---------------------------------------
  * A prepared statement's arguments are referred and therefore changes will
@@ -32,10 +33,23 @@ use SimpleComplex\Database\Exception\DbQueryArgumentException;
  * does support that.
  * @see DbQuery::parameters()
  *
+ *
+ * Multi-query vs. batch query vs. stored procedure
+ * ------------------------------------------------
+ * A batch query contains more non-selecting queries.
+ * A multi-query contains more selecting queries; producing result set.
+ * Batch query is supported by all common RMDSs.
+ * Multi-query is supported by MariaDB/MySQL and Postgresql.
+ * A stored procedure can also produce more (selecting) result sets.
+ * Using multi-query in production is probably a mistake. A prepared statement
+ * calling a stored procedure is safer.
+ *
+ *
  * CRUD vs non-CRUD statements
- * ---------------
+ * ---------------------------
  * CRUD: (at least) INSERT, UPDATE, REPLACE, DELETE.
  * Non-CRUD: (at least) SELECT, DESCRIBE, EXPLAIN, HELP, USE.
+ *
  *
  * @property-read string $name
  * @property-read string $id

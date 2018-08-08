@@ -37,16 +37,25 @@ class QueryArgumentTest extends TestCase
     const VALIDATE_PARAMS = DbQuery::VALIDATE_FAILURE | DbQuery::VALIDATE_STRINGABLE_EXEC;
 
     /**
+     * @see ResetTest::testResetStructure()
+     */
+    public function testReset()
+    {
+        $reset_test = new ResetTest();
+        $reset_test->testResetStructure();
+        /** @var MariaDbClient $client */
+        $client = $reset_test->testResetPopulate();
+        $this->assertInstanceOf(MariaDbClient::class, $client);
+    }
+
+    /**
      * Arguments referred; old-school pattern.
      *
      * @see ResetTest::testResetPopulate()
      */
     public function testQueryArgumentsReferred()
     {
-        $reset_test = new ResetTest();
-        $reset_test->testResetStructure();
-        /** @var MariaDbClient $client */
-        $client = $reset_test->testResetPopulate();
+        $client = (new ClientTest())->testInstantiation();
 
         /** @var MariaDbQuery $query */
         $query = $client->query(
@@ -158,7 +167,7 @@ class QueryArgumentTest extends TestCase
 
         $types = 'idssbss';
 
-        $time = new Time();
+        $time = new Time('2001-01-01T00:00:00+01:00');
         $args = [
             '_0_int' => 0,
             '_1_float' => 1.0,
@@ -166,6 +175,7 @@ class QueryArgumentTest extends TestCase
             '_3_varchar' => 'arguments keyed',
             '_4_blob' => sprintf("%08d", decbin(4)),
             '_5_date' => $time->getDateISOlocal(),
+            // This doesn't work when called outside phpunit context.
             '_6_datetime' => '' . $time,
         ];
         TestHelper::queryPrepare($query, $types, $args);

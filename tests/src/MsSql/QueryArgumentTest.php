@@ -36,16 +36,25 @@ class QueryArgumentTest extends TestCase
     const VALIDATE_PARAMS = DbQuery::VALIDATE_PREPARE | DbQuery::VALIDATE_EXECUTE | DbQuery::VALIDATE_FAILURE;
 
     /**
+     * @see ResetTest::testResetStructure()
+     */
+    public function testReset()
+    {
+        $reset_test = new ResetTest();
+        $reset_test->testResetStructure();
+        /** @var MsSqlClient $client */
+        $client = $reset_test->testResetPopulate();
+        $this->assertInstanceOf(MsSqlClient::class, $client);
+    }
+
+    /**
      * Arguments referred; old-school pattern.
      *
      * @see ResetTest::testResetPopulate()
      */
     public function testQueryArgumentsReferred()
     {
-        $reset_test = new ResetTest();
-        $reset_test->testResetStructure();
-        /** @var MsSqlClient $client */
-        $client = $reset_test->testResetPopulate();
+        $client = (new ClientTest())->testInstantiation();
 
         /** @var MsSqlQuery $query */
         $query = $client->query(

@@ -40,10 +40,12 @@ use SimpleComplex\Database\Exception\DbConnectionException;
  * Multi-query
  * -----------
  * Multi-query is supported by MariaDB; for multi vs. batch query, see:
- * @see DbQueryInterface
+ * @see DbQuery
  * Multi-query is even required for batch query; multiple non-selecting queries.
- * Calling a single stored procedure does not require multi-query, as long as
- * single result set.
+ * Calling a single stored procedure does NOT require multi-query, not even for
+ * stored procedure returning more result sets.
+ * Using multi-query in production is probably a mistake. A prepared statement
+ * calling a stored procedure is safer.
  *
  * NB: An error in a multi-query might not be detected until all result sets
  * have been next'ed; seen when attempting to truncate disregarding foreign key.

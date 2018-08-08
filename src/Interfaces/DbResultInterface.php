@@ -61,6 +61,18 @@ interface DbResultInterface
     public function numColumns() : int;
 
     /**
+     * Get value of a single column in a row.
+     *
+     * @param int $index
+     * @param string $column
+     *      Non-empty: fetch column by that name, ignore arg $index.
+     *
+     * @return mixed|null
+     *      Null: No more rows.
+     */
+    public function fetchField(int $index = 0, string $column = '');
+
+    /**
      * Associative (column-keyed) or numerically indexed array.
      *
      * @param int $as

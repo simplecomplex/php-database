@@ -118,11 +118,9 @@ class ResetTest extends TestCase
                 //'detect_multi' => true,
             ]
         );
-
         /** @var MariaDbResult $result */
         $result = $query->execute();
         $this->assertInstanceOf(MariaDbResult::class, $result);
-
         // Do traverse all result sets; an erroring query in a MariaDB/MySQL
         // multi-query might not materialize until traversed.
         while (($success = $result->nextSet())) {
@@ -133,21 +131,16 @@ class ResetTest extends TestCase
         }
 
         // Get .sql file containing inserts.
-        $file_path = TestHelper::fileFind('MariaDb/sql/test_scx_mariadb.routines.drop.sql', 'tests');
+        $file_path = TestHelper::fileFind('MariaDb/sql/routines/test_scx_mariadb.drop.sql', 'tests');
         $sql = file_get_contents($file_path);
         /** @var MariaDbQuery $query */
-        $query = $client->query(
-            $sql,
-            [
+        $query = $client->query($sql, [
                 //'detect_multi' => false,
                 'sql_minify' => false,
-            ]
-        );
-
+            ]);
         /** @var MariaDbResult $result */
         $result = $query->execute();
         $this->assertInstanceOf(MariaDbResult::class, $result);
-
         // Do traverse all result sets; an erroring query in a MariaDB/MySQL
         // multi-query might not materialize until traversed.
         while (($success = $result->nextSet())) {
@@ -157,21 +150,16 @@ class ResetTest extends TestCase
             );
         }
 
-        $file_path = TestHelper::fileFind('MariaDb/sql/test_scx_mariadb.routines.typish-insert.sql', 'tests');
+        $file_path = TestHelper::fileFind('MariaDb/sql/routines/test_scx_mariadb.typish-insert.sql', 'tests');
         $sql = file_get_contents($file_path);
         /** @var MariaDbQuery $query */
-        $query = $client->query(
-            $sql,
-            [
-                'detect_multi' => false,
-                'sql_minify' => false,
-            ]
-        );
-
+        $query = $client->query($sql, [
+            'detect_multi' => false,
+            'sql_minify' => false,
+        ]);
         /** @var MariaDbResult $result */
         $result = $query->execute();
         $this->assertInstanceOf(MariaDbResult::class, $result);
-
         // Do traverse all result sets; an erroring query in a MariaDB/MySQL
         // multi-query might not materialize until traversed.
         while (($success = $result->nextSet())) {
@@ -181,21 +169,35 @@ class ResetTest extends TestCase
             );
         }
 
-        $file_path = TestHelper::fileFind('MariaDb/sql/test_scx_mariadb.routines.typish-insert-select.sql', 'tests');
+        $file_path = TestHelper::fileFind('MariaDb/sql/routines/test_scx_mariadb.typish-insert-select.sql', 'tests');
         $sql = file_get_contents($file_path);
         /** @var MariaDbQuery $query */
-        $query = $client->query(
-            $sql,
-            [
-                'detect_multi' => false,
-                'sql_minify' => false,
-            ]
-        );
-
+        $query = $client->query($sql, [
+            'detect_multi' => false,
+            'sql_minify' => false,
+        ]);
         /** @var MariaDbResult $result */
         $result = $query->execute();
         $this->assertInstanceOf(MariaDbResult::class, $result);
+        // Do traverse all result sets; an erroring query in a MariaDB/MySQL
+        // multi-query might not materialize until traversed.
+        while (($success = $result->nextSet())) {
+            $this->assertSame(
+                true,
+                $success
+            );
+        }
 
+        $file_path = TestHelper::fileFind('MariaDb/sql/routines/test_scx_mariadb.typish-insert-select-select.sql', 'tests');
+        $sql = file_get_contents($file_path);
+        /** @var MariaDbQuery $query */
+        $query = $client->query($sql, [
+            'detect_multi' => false,
+            'sql_minify' => false,
+        ]);
+        /** @var MariaDbResult $result */
+        $result = $query->execute();
+        $this->assertInstanceOf(MariaDbResult::class, $result);
         // Do traverse all result sets; an erroring query in a MariaDB/MySQL
         // multi-query might not materialize until traversed.
         while (($success = $result->nextSet())) {

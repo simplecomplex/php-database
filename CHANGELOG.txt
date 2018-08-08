@@ -4,6 +4,9 @@ SimpleComplex/Database 1.x, 2018-08-08
 - Query execution counter use natural value (first execution is 1), and counter
   renamed to nExecution; from execution.
 - Safeguard against unintended reuse of non-prepared statement.
+- MariaDb ability confirmed, to i. call stored procedure via prepared statement,
+  and ii. produce and handle more results sets from stored procedure
+  via prepared statement.
 
 SimpleComplex/Database 1.x, 2018-08-07
 --------------------------------------
