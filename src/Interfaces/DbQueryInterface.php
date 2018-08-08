@@ -64,6 +64,8 @@ interface DbQueryInterface
      *
      * @return $this|DbQueryInterface
      *
+     * @throws \LogicException
+     *      Method called more than once for this query.
      * @throws \SimpleComplex\Database\Exception\DbConnectionException
      *      Propagated.
      * @throws \SimpleComplex\Database\Exception\DbRuntimeException
@@ -99,6 +101,9 @@ interface DbQueryInterface
      * Any query must be executed, even non-prepared statement.
      *
      * @return DbResultInterface
+     *
+     * @throws \LogicException
+     *      Repeated execution of simple query.
      */
     public function execute() : DbResultInterface;
 

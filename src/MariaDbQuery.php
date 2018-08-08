@@ -606,11 +606,10 @@ class MariaDbQuery extends DbQuery
      *
      * @throws \LogicException
      *      Is prepared statement and the statement is previously closed.
+     *      Repeated execution of simple query.
      * @throws DbConnectionException
      *      Is prepared statement and connection lost.
      * @throws DbRuntimeException
-     * @throws \BadMethodCallException
-     *      Repeated execution of simple query.
      */
     public function execute(): DbResultInterface
     {
@@ -704,7 +703,7 @@ class MariaDbQuery extends DbQuery
         else {
             // Safeguard against unintended simple query repeated execute().
             if ($this->nExecution > 1) {
-                throw new \BadMethodCallException(
+                throw new \LogicException(
                     $this->messagePrefix() . ' - simple query is not reusable, use prepared statement instead,'
                         . ' if in doubt whether executed do ask !$query->nExecution'
                 );
