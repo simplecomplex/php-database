@@ -805,8 +805,8 @@ class QueryArgumentTest extends TestCase
         $client = (new ClientTest())->testInstantiation();
 
         $query = $client->query(
-            'INSERT INTO typish (_0_int, _1_float, _2_decimal, _3_varchar, _4_blob, _5_date, _6_datetime)
-            VALUES (?, ?, ?, ?, ?, ?, ?)',
+            'INSERT INTO typish (_0_int, _1_float, _2_decimal, _3_varchar, _4_blob, _5_date, _6_datetime, _7_nvarchar)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
             [
                 'validate_params' => static::VALIDATE_PARAMS,
                 'sql_minify' => true,
@@ -815,17 +815,18 @@ class QueryArgumentTest extends TestCase
             ]
         );
 
-        $types = 'idssbss';
+        $types = 'idssbsss';
 
         $time = new Time('2001-01-01T00:00:00+01:00');
         $args = [
             '_0_int' => 0,
             '_1_float' => 1.0,
             '_2_decimal' => '2.0',
-            '_3_varchar' => 'simple reusable',
+            '_3_varchar' => __FUNCTION__,
             '_4_blob' => sprintf("%08d", decbin(4)),
             '_5_date' => $time->getDateISOlocal(),
             '_6_datetime' => $time,
+            '_7_nvarchar' => 'whatever',
         ];
         TestHelper::queryParameters($query, $types, $args);
         $result = TestHelper::queryExecute($query);

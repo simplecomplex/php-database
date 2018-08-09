@@ -21,9 +21,9 @@ class MariaDbError extends DbError
     /**
      * Connection related RMDBS native error codes.
      *
-     * @var int
+     * @var int[]
      */
-    const CONNECTION = [
+    const CONNECTION_CODES = [
         // Can't create UNIX socket (%d).
         2001,
         // Can't connect to local MySQL server through socket '%s' (%d).
@@ -75,9 +75,9 @@ class MariaDbError extends DbError
     /**
      * Query related RMDBS native error codes.
      *
-     * @var int
+     * @var int[]
      */
-    const QUERY = [
+    const QUERY_CODES = [
         // Statement not prepared
         2030,
         // No data supplied for parameters in prepared statement
@@ -206,9 +206,9 @@ class MariaDbError extends DbError
     /**
      * Result related RMDBS native error codes.
      *
-     * @var int
+     * @var int[]
      */
-    const RESULT = [
+    const RESULT_CODES = [
         // Commands out of sync; you can't run this command now
         // = Typically omitting to do a next_result().
         2014,

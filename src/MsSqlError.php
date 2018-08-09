@@ -24,9 +24,9 @@ class MsSqlError extends DbError
     /**
      * Connection related RMDBS native error codes.
      *
-     * @var int
+     * @var int[]
      */
-    const CONNECTION = [
+    const CONNECTION_CODES = [
         // Cannot open database ”%s” requested by the login. The login failed.
         4060,
         // Login failed for user ’%s’.
@@ -36,29 +36,36 @@ class MsSqlError extends DbError
     /**
      * Query related RMDBS native error codes.
      *
-     * @var int
+     * @var int[]
      */
-    const QUERY = [
+    const QUERY_CODES = [
+        // Use range 101, 701 instead.
         // Incorrect syntax near '%s'.
-        102,
+        // 102,
         // Cannot insert the value NULL into column '%.*ls', table '%.*ls'; column does not allow nulls. %ls fails.
-        515,
+        // 515,
         // Cannot truncate table '%s' because it is being referenced by a FOREIGN KEY constraint.
-        4712,
-
-        // 101 - 701
+        // 4712,
     ];
 
+    /**
+     * Query related RMDBS native error code ranges.
+     *
+     * @var array
+     */
     const QUERY_RANGES = [
         [
-            101, 701
+            /**
+             * @see https://docs.microsoft.com/en-us/previous-versions/sql/sql-server-2008-r2/cc645611(v%3dsql.105)
+             */
+            101, 681
         ]
     ];
 
     /**
      * Result related RMDBS native error codes.
      *
-     * @var int
+     * @var int[]
      */
-    const RESULT = [];
+    const RESULT_CODES = [];
 }

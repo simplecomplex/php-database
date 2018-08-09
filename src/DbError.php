@@ -24,23 +24,44 @@ abstract class DbError
     /**
      * Connection related RMDBS native error codes.
      *
+     * @var int[]
+     */
+    const CONNECTION_CODES = [];
+
+    /**
+     * Connection related RMDBS native error code ranges.
+     *
      * @var array
      */
-    const CONNECTION = [];
+    const CONNECTION_RANGES = [];
 
     /**
      * Query related RMDBS native error codes.
      *
+     * @var int[]
+     */
+    const QUERY_CODES = [];
+
+    /**
+     * Query related RMDBS native error code ranges.
+     *
      * @var array
      */
-    const QUERY = [];
+    const QUERY_RANGES = [];
 
     /**
      * Result related RMDBS native error codes.
      *
+     * @var int[]
+     */
+    const RESULT_CODES = [];
+
+    /**
+     * Result related RMDBS native error code ranges.
+     *
      * @var array
      */
-    const RESULT = [];
+    const RESULT_RANGES = [];
 
     /**
      * @see \SimpleComplex\Database\Interfaces\DbClientInterface::getErrors()

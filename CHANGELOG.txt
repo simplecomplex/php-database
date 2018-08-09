@@ -8,6 +8,7 @@ SimpleComplex/Database 1.x, 2018-08-09
   IDE recognition of list types (array[], object[]) and far simpler method
   parameter signature.
 - Result fetchObject(), fetchAllObjects() check that class actually exists.
+- Resolve native error code using error code ranges as well as particular codes.
 
 SimpleComplex/Database 1.x, 2018-08-08
 --------------------------------------

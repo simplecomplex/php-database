@@ -392,18 +392,54 @@ abstract class DbClient extends Explorable implements DbClientInterface
                 $list =& $errors;
             }
             $class = static::CLASS_ERROR_CODES;
-            $connection = constant($class . '::CONNECTION');
-            $query = constant($class . '::QUERY');
-            $result = constant($class . '::RESULT');
+            /**
+             * @see DbError::CONNECTION_CODES
+             */
+            $connection_codes = constant($class . '::CONNECTION_CODES');
+            /**
+             * @see DbError::CONNECTION_RANGES
+             */
+            $connection_ranges = constant($class . '::CONNECTION_RANGES');
+            /**
+             * @see DbError::QUERY_CODES
+             */
+            $query_codes = constant($class . '::QUERY_CODES');
+            /**
+             * @see DbError::QUERY_RANGES
+             */
+            $query_ranges = constant($class . '::QUERY_RANGES');
+            /**
+             * @see DbError::RESULT_CODES
+             */
+            $result_codes = constant($class . '::RESULT_CODES');
+            /**
+             * @see DbError::RESULT_RANGES
+             */
+            $result_ranges = constant($class . '::RESULT_RANGES');
             foreach ($list as $code) {
-                if (in_array($code, $connection)) {
+                if (in_array($code, $connection_codes)) {
                     return DbConnectionException::class;
                 }
-                if (in_array($code, $query)) {
+                foreach ($connection_ranges as $range) {
+                    if ($code >= $range[0] && $code <= $range[1]) {
+                        return DbConnectionException::class;
+                    }
+                }
+                if (in_array($code, $query_codes)) {
                     return DbQueryException::class;
                 }
-                if (in_array($code, $result)) {
+                foreach ($query_ranges as $range) {
+                    if ($code >= $range[0] && $code <= $range[1]) {
+                        return DbQueryException::class;
+                    }
+                }
+                if (in_array($code, $result_codes)) {
                     return DbResultException::class;
+                }
+                foreach ($result_ranges as $range) {
+                    if ($code >= $range[0] && $code <= $range[1]) {
+                        return DbResultException::class;
+                    }
                 }
             }
             if (reset($list) == static::ERROR_CODE_CONNECT) {
