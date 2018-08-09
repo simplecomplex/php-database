@@ -41,7 +41,7 @@ class TestHelper extends \SimpleComplex\Tests\Utils\TestHelper
      * @throws \Throwable
      *      Re-throws query execution failure.
      */
-    public static function queryPrepare(DbQuery $query, string $types, array &$arguments)
+    public static function queryPrepare(DbQuery $query, string $types = '', array &$arguments = [])
     {
         try {
             $query->prepare($types, $arguments);
@@ -65,7 +65,7 @@ class TestHelper extends \SimpleComplex\Tests\Utils\TestHelper
      * @throws \Throwable
      *      Re-throws query execution failure.
      */
-    public static function queryParameters(DbQuery $query, string $types, array &$arguments)
+    public static function queryParameters(DbQuery $query, string $types = '', array &$arguments = [])
     {
         try {
             $query->parameters($types, $arguments);

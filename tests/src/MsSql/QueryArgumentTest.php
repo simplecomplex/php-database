@@ -100,6 +100,7 @@ class QueryArgumentTest extends TestCase
 
         $_1_float = 1.1;
         $_2_decimal = '2.2';
+        $_3_varchar = 'arguments referred 2';
         $result = TestHelper::queryExecute($query);
         $this->assertInstanceOf(MsSqlResult::class, $result);
         $this->assertSame(1, $result->affectedRows());

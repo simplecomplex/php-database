@@ -972,7 +972,7 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
         }
 
         $tps = $types;
-        if ($tps === '') {
+        if (!$tps) {
             // Detect types.
             $tps = $this->parameterTypesDetect($arguments);
         }

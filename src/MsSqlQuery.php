@@ -1442,7 +1442,7 @@ class MsSqlQuery extends DbQuery
         // Some arguments aren't fully type qualified.--------------------------
         // Use arg $types to establish types of args that aren't arrays.
         $tps = $types;
-        if ($tps === '') {
+        if (!$tps) {
             // Detect types, except of buckets that are type qualified array.
             $tps = $this->parameterTypesDetect($arguments, array_keys($typed__fully));
         }

@@ -420,7 +420,7 @@ class MariaDbQuery extends DbQuery
             unset($sql_fragments);
 
             $tps = $types;
-            if ($tps === '') {
+            if (!$tps) {
                 // Detect types.
                 $tps = $this->parameterTypesDetect($arguments);
             }

@@ -176,7 +176,8 @@ $affected_rows = $result->affectedRows();
 $insert_id = $result->insertId();
 
 // Insert two rows, using a prepared statement
-// and that _are_ declared as sqlsrv typed arrays ------------------------------
+// and types empty (guess type argument's actual type)
+// and arguments partially declared as sqlsrv typed arrays ---------------------
 $arguments = [
     [
         'Doe',
@@ -184,23 +185,17 @@ $arguments = [
         null,
         SQLSRV_SQLTYPE_VARCHAR('max')
     ],
-    'firstName' => [
-        'Jane',
-        SQLSRV_PARAM_IN,
-        null,
-        SQLSRV_SQLTYPE_VARCHAR('max')
-    ],
-    // Well, incomplete, but the $types arg for prepare() fixes that.
     [
-        '1970-01-01',
+        'Jane',
     ],
+    '1970-01-01',
 ];
 $query = $client->query('INSERT INTO person (lastName, firstName, birthday) VALUES (?, ?, ?)')
-    ->prepare('sss', $arguments)
+    ->prepare('', $arguments)
     // Insert first row.
     ->execute();
 // Insert second row.
-$arguments['firstName'][0] = 'John';
+$arguments[1][0] = 'John';
 $query->execute();
 
 // Get a row, using a simple statement -----------------------------------------
