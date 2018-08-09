@@ -449,7 +449,7 @@ class MsSqlResult extends DbResult
      *
      * @throws DbRuntimeException
      */
-    public function fetchObject(string $class = '', array $args = [])
+    public function fetchObject(string $class = '', array $args = []) /*: object */
     {
         $row = @sqlsrv_fetch_object($this->statement, $class, $args);
         // sqlsrv_fetch_object() implicitly moves to first set.

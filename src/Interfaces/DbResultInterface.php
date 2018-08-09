@@ -97,7 +97,7 @@ interface DbResultInterface
      *      No more rows.
      *      Throws throwable on failure.
      */
-    public function fetchObject(string $class = '', array $args = []);
+    public function fetchObject(string $class = '', array $args = []) /*: object */;
 
     /**
      * Fetch all rows into a list.

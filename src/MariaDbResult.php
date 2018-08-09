@@ -406,7 +406,7 @@ class MariaDbResult extends DbResult
      *
      * @throws DbRuntimeException
      */
-    public function fetchObject(string $class = '', array $args = [])
+    public function fetchObject(string $class = '', array $args = []) /*: object */
     {
         ++$this->rowIndex;
         if (!$this->result && !($load = $this->loadResult())) {
