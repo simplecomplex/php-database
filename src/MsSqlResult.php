@@ -312,11 +312,11 @@ class MsSqlResult extends DbResult
     /**
      * Get value of a single column in a row.
      *
-     * Nb: Don't call this more times for a single row using arg $column;
+     * Nb: Don't call this more times for a single row using arg $name;
      * will move cursor to next row.
      *
      * @param int $index
-     * @param string $column
+     * @param string $name
      *      Non-empty: fetch column by that name, ignore arg $index.
      *
      * @return mixed|null
@@ -325,16 +325,17 @@ class MsSqlResult extends DbResult
      * @throws \InvalidArgumentException
      *      Arg $index negative.
      * @throws \OutOfRangeException
-     *      Result row has no such $column.
+     *      Result row has no such $index|$name.
      * @throws DbRuntimeException
      */
-    public function fetchField(int $index = 0, string $column = '')
+    public function fetchColumn(int $index = 0, string $name = null)
     {
-        if (!$column) {
+        // Column name cannot be '0' (sql illegal) so loose check suffices.
+        if (!$name) {
             if ($index < 0) {
                 $this->closeAndLog(__FUNCTION__);
                 throw new \InvalidArgumentException(
-                    $this->query->messagePrefix() . ' - failed fetching field, arg $index['
+                    $this->query->messagePrefix() . ' - failed fetching column, arg $index['
                     . $index . '] cannot be negative.'
                 );
             }
@@ -342,8 +343,8 @@ class MsSqlResult extends DbResult
                 // No row at all.
                 $this->closeAndLog(__FUNCTION__);
                 throw new DbResultException(
-                    $this->query->messagePrefix() . ' - failed getting field by '
-                    . (!$column ? ('$index[' . $index . ']') : ('$column[' . $column . ']'))
+                    $this->query->messagePrefix() . ' - failed getting column by '
+                    . (!$name ? ('$index[' . $index . ']') : ('$name[' . $name . ']'))
                     . ', no result row at all.'
                 );
             }
@@ -362,7 +363,7 @@ class MsSqlResult extends DbResult
             if (!$this->query->client->getErrors(DbError::AS_STRING_EMPTY_ON_NONE)) {
                 $this->closeAndLog(__FUNCTION__);
                 throw new \OutOfRangeException(
-                    $this->query->messagePrefix() . ' - failed fetching field by $index[' . $index
+                    $this->query->messagePrefix() . ' - failed fetching column by $index[' . $index
                     . '], presumably row has no such index.'
                 );
             }
@@ -376,13 +377,13 @@ class MsSqlResult extends DbResult
             }
             ++$this->rowIndex;
             if ($row) {
-                if (array_key_exists($column, $row)) {
-                    return $row[$column];
+                if (array_key_exists($name, $row)) {
+                    return $row[$name];
                 }
                 $this->closeAndLog(__FUNCTION__);
                 throw new \OutOfRangeException(
                     $this->query->messagePrefix()
-                    . ' - failed fetching field, row has no $column[' . $column . '].'
+                    . ' - failed fetching column, row has no $name[' . $name . '].'
                 );
             }
             elseif ($row === null) {
@@ -394,8 +395,8 @@ class MsSqlResult extends DbResult
         $this->closeAndLog(__FUNCTION__);
         $cls_xcptn = $this->query->client->errorsToException($errors, DbResultException::class);
         throw new $cls_xcptn(
-            $this->query->messagePrefix() . ' - failed fetching field by '
-            . (!$column ? ('$index[' . $index . ']') : ('$column[' . $column . ']')) . ', error: '
+            $this->query->messagePrefix() . ' - failed fetching column by '
+            . (!$name ? ('$index[' . $index . ']') : ('$name[' . $name . ']')) . ', error: '
             . $this->query->client->errorsToString($errors) . '.'
         );
     }
@@ -412,7 +413,7 @@ class MsSqlResult extends DbResult
      *
      * @throws DbRuntimeException
      */
-    public function fetchArray(int $as = DbResult::FETCH_ASSOC)
+    public function fetchArray(int $as = DbResult::FETCH_ASSOC) /*: ?array*/
     {
         $row = @sqlsrv_fetch_array(
             $this->statement,
@@ -447,10 +448,18 @@ class MsSqlResult extends DbResult
      * @return object|null
      *      Null: No more rows.
      *
+     * @throws \InvalidArgumentException
+     *      Non-empty arg $class when such class doesn't exist.
      * @throws DbRuntimeException
      */
-    public function fetchObject(string $class = '', array $args = []) /*: object */
+    public function fetchObject(string $class = null, array $args = null) /*: ?object*/
     {
+        if ($class && !class_exists($class)) {
+            $this->closeAndLog(__FUNCTION__);
+            throw new \InvalidArgumentException(
+                $this->query->messagePrefix() . ' - can\'t fetch row as object into non-existent class[' . $class . '].'
+            );
+        }
         $row = @sqlsrv_fetch_object($this->statement, $class, $args);
         // sqlsrv_fetch_object() implicitly moves to first set.
         if ($this->setIndex < 0) {
@@ -470,137 +479,158 @@ class MsSqlResult extends DbResult
     }
 
     /**
-     * Fetch all rows into a list.
-     *
-     * Option 'list_by_column' is not supported when fetching as numerically
+     * Fetch all rows into a list of associative (column-keyed) or numerically
      * indexed arrays.
      *
      * @param int $as
      *      Default: ~associative.
-     *      DbResult::FETCH_ASSOC|DbResult::FETCH_NUMERIC|DbResult::FETCH_OBJECT
-     * @param array $options {
-     *      @var string $list_by_column  Key list by that column's values.
-     *      @var string $class  Object class name.
-     *      @var array $args  Object constructor args.
-     * }
+     *      DbResult::FETCH_ASSOC|DbResult::FETCH_NUMERIC
+     * @param string $list_by_column
+     *      Key list by that column's values; illegal when $as:FETCH_NUMERIC.
+     *      Empty: numerically indexed list.
      *
      * @return array
+     *      Empty on no rows.
      *
-     * @throws \LogicException
-     *      Providing 'list_by_column' option when fetching as numeric array.
      * @throws \InvalidArgumentException
-     *      Providing 'list_by_column' option and no such column in result row.
+     *      Non-empty arg $list_by_column when arg $as is FETCH_NUMERIC.
+     *      Non-empty arg $list_by_column when no such column exist.
      * @throws DbRuntimeException
      */
-    public function fetchAll(int $as = DbResult::FETCH_ASSOC, array $options = []) : array
+    public function fetchAllArrays(int $as = DbResult::FETCH_ASSOC, string $list_by_column = null) : array
     {
-        $column_keyed = !empty($options['list_by_column']);
         $list = [];
-        switch ($as) {
-            case DbResult::FETCH_NUMERIC:
-                if ($column_keyed) {
-                    $this->closeAndLog(__FUNCTION__);
-                    throw new \LogicException(
-                        $this->query->client->messagePrefix()
-                        . ' - arg $options \'list_by_column\' is not supported when fetching as numeric arrays.'
-                    );
+        if ($as == DbResult::FETCH_NUMERIC) {
+            if ($list_by_column) {
+                $this->closeAndLog(__FUNCTION__);
+                throw new \InvalidArgumentException(
+                    $this->query->client->messagePrefix() . ' - arg $list_by_column type['
+                    . Utils::getType($list_by_column) . '] must be empty when fetching all rows as numeric arrays.'
+                );
+            }
+            while (($row = @sqlsrv_fetch_array($this->statement, SQLSRV_FETCH_NUMERIC))) {
+                // sqlsrv_fetch_array() implicitly moves to first set.
+                if ($this->setIndex < 0) {
+                    ++$this->setIndex;
                 }
-                while (($row = @sqlsrv_fetch_array($this->statement, SQLSRV_FETCH_NUMERIC))) {
-                    // sqlsrv_fetch_array() implicitly moves to first set.
-                    if ($this->setIndex < 0) {
-                        ++$this->setIndex;
-                    }
-                    ++$this->rowIndex;
+                ++$this->rowIndex;
+                $list[] = $row;
+            }
+            if ($this->setIndex < 0) {
+                ++$this->setIndex;
+            }
+            ++$this->rowIndex;
+        }
+        else {
+            $first = true;
+            while (($row = @sqlsrv_fetch_array($this->statement, SQLSRV_FETCH_ASSOC))) {
+                // sqlsrv_fetch_array() implicitly moves to first set.
+                if ($this->setIndex < 0) {
+                    ++$this->setIndex;
+                }
+                ++$this->rowIndex;
+                if (!$list_by_column) {
                     $list[] = $row;
                 }
-                if ($this->setIndex < 0) {
-                    ++$this->setIndex;
-                }
-                ++$this->rowIndex;
-                break;
-            case DbResult::FETCH_OBJECT:
-                $key_column = !$column_keyed ? null : $options['list_by_column'];
-                $first = true;
-                while (
-                    ($row = @sqlsrv_fetch_object($this->statement, $options['class'] ?? '', $options['args'] ?? []))
-                ) {
-                    // sqlsrv_fetch_object() implicitly moves to first set.
-                    if ($this->setIndex < 0) {
-                        ++$this->setIndex;
-                    }
-                    ++$this->rowIndex;
-                    if (!$column_keyed) {
-                        $list[] = $row;
-                    }
-                    else {
-                        if ($first) {
-                            $first = false;
-                            if (!property_exists($row, $key_column)) {
-                                $this->closeAndLog(__FUNCTION__);
-                                throw new \InvalidArgumentException(
-                                    $this->query->messagePrefix()
-                                    . ' - failed fetching all rows as objects keyed by column[' . $key_column
-                                    . '], non-existent column.'
-                                );
-                            }
+                else {
+                    if ($first) {
+                        $first = false;
+                        if (!array_key_exists($list_by_column, $row)) {
+                            $this->closeAndLog(__FUNCTION__);
+                            throw new \InvalidArgumentException(
+                                $this->query->messagePrefix()
+                                . ' - failed fetching all rows as associative arrays listed by column['
+                                . $list_by_column . '], non-existent column.'
+                            );
                         }
-                        $list[$row->{$key_column}] = $row;
                     }
+                    $list[$row[$list_by_column]] = $row;
                 }
-                if ($this->setIndex < 0) {
-                    ++$this->setIndex;
-                }
-                ++$this->rowIndex;
-                break;
-            default:
-                $key_column = !$column_keyed ? null : $options['list_by_column'];
-                $first = true;
-                while (($row = @sqlsrv_fetch_array($this->statement, SQLSRV_FETCH_ASSOC))) {
-                    // sqlsrv_fetch_array() implicitly moves to first set.
-                    if ($this->setIndex < 0) {
-                        ++$this->setIndex;
-                    }
-                    ++$this->rowIndex;
-                    if (!$column_keyed) {
-                        $list[] = $row;
-                    }
-                    else {
-                        if ($first) {
-                            $first = false;
-                            if (!array_key_exists($key_column, $row)) {
-                                $this->closeAndLog(__FUNCTION__);
-                                throw new \InvalidArgumentException(
-                                    $this->query->messagePrefix()
-                                    . ' - failed fetching all rows as assoc arrays keyed by column[' . $key_column
-                                    . '], non-existent column.'
-                                );
-                            }
-                        }
-                        $list[$row[$key_column]] = $row;
-                    }
-                }
-                if ($this->setIndex < 0) {
-                    ++$this->setIndex;
-                }
-                ++$this->rowIndex;
+            }
+            if ($this->setIndex < 0) {
+                ++$this->setIndex;
+            }
+            ++$this->rowIndex;
         }
         // Last fetched row must be null; no more rows.
         if ($row !== null) {
-            switch ($as) {
-                case DbResult::FETCH_NUMERIC:
-                    $em = 'numeric array';
-                    break;
-                case DbResult::FETCH_OBJECT:
-                    $em = 'object';
-                    break;
-                default:
-                    $em = 'assoc array';
-            }
             $errors = $this->query->client->getErrors();
             $this->closeAndLog(__FUNCTION__);
             $cls_xcptn = $this->query->client->errorsToException($errors, DbResultException::class);
             throw new $cls_xcptn(
-                $this->query->messagePrefix() . ' - failed fetching all rows as ' . $em . ', error: '
+                $this->query->messagePrefix() . ' - failed fetching complete list of all rows as '
+                . ($as = DbResult::FETCH_ASSOC ? 'associative' : 'numeric') . ' arrays, error: '
+                . $this->query->client->errorsToString($errors) . '.'
+            );
+        }
+        return $list;
+    }
+
+    /**
+     * Fetch all rows into a list of column-keyed objects.
+     *
+     * @param string $class
+     *      Optional class name; effective default stdClass.
+     * @param string $list_by_column
+     *      Key list by that column's values; illegal when $as:FETCH_NUMERIC.
+     *      Empty: numerically indexed list.
+     * @param array $args
+     *      Optional constructor args.
+     *
+     * @return object[]
+     *      Empty on no rows.
+     *
+     * @throws \InvalidArgumentException
+     *      Non-empty arg $class when such class doesn't exist.
+     *      Non-empty arg $list_by_column when no such column exist.
+     * @throws DbRuntimeException
+     */
+    public function fetchAllObjects(string $class = null, string $list_by_column = null, array $args = null) : array
+    {
+        if ($class && !class_exists($class)) {
+            $this->closeAndLog(__FUNCTION__);
+            throw new \InvalidArgumentException(
+                $this->query->messagePrefix()
+                . ' - can\'t fetch all rows as objects into non-existent class[' . $class . '].'
+            );
+        }
+        $list = [];
+        $first = true;
+        while (($row = @sqlsrv_fetch_object($this->statement, $class, $args))) {
+            // sqlsrv_fetch_object() implicitly moves to first set.
+            if ($this->setIndex < 0) {
+                ++$this->setIndex;
+            }
+            ++$this->rowIndex;
+            if (!$list_by_column) {
+                $list[] = $row;
+            }
+            else {
+                if ($first) {
+                    $first = false;
+                    if (!property_exists($row, $list_by_column)) {
+                        $this->closeAndLog(__FUNCTION__);
+                        throw new \InvalidArgumentException(
+                            $this->query->messagePrefix()
+                            . ' - failed fetching all rows as objects listed by column[' . $list_by_column
+                            . '], non-existent column.'
+                        );
+                    }
+                }
+                $list[$row->{$key_column}] = $row;
+            }
+        }
+        if ($this->setIndex < 0) {
+            ++$this->setIndex;
+        }
+        ++$this->rowIndex;
+        // Last fetched row must be null; no more rows.
+        if ($row !== null) {
+            $errors = $this->query->client->getErrors();
+            $this->closeAndLog(__FUNCTION__);
+            $cls_xcptn = $this->query->client->errorsToException($errors, DbResultException::class);
+            throw new $cls_xcptn(
+                $this->query->messagePrefix() . ' - failed fetching complete list of all rows as objects, error: '
                 . $this->query->client->errorsToString($errors) . '.'
             );
         }

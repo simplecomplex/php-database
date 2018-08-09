@@ -65,13 +65,13 @@ interface DbResultInterface
      * Get value of a single column in a row.
      *
      * @param int $index
-     * @param string $column
+     * @param string $name
      *      Non-empty: fetch column by that name, ignore arg $index.
      *
      * @return mixed|null
      *      Null: No more rows.
      */
-    public function fetchField(int $index = 0, string $column = '');
+    public function fetchColumn(int $index = 0, string $name = null);
 
     /**
      * Associative (column-keyed) or numerically indexed array.
@@ -83,7 +83,7 @@ interface DbResultInterface
      *      No more rows.
      *      Throws throwable on failure.
      */
-    public function fetchArray(int $as = DbResult::FETCH_ASSOC);
+    public function fetchArray(int $as = DbResult::FETCH_ASSOC) /*: ?array*/;
 
     /**
      * Column-keyed object.
@@ -97,26 +97,41 @@ interface DbResultInterface
      *      No more rows.
      *      Throws throwable on failure.
      */
-    public function fetchObject(string $class = '', array $args = []) /*: object */;
+    public function fetchObject(string $class = null, array $args = null) /*: ?object*/;
 
     /**
-     * Fetch all rows into a list.
-     *
-     * Option 'list_by_column' is not supported when fetching as numerically
+     * Fetch all rows into a list of associative (column-keyed) or numerically
      * indexed arrays.
      *
      * @param int $as
-     *      Default: column-keyed.
-     * @param array $options {
-     *      @var string $list_by_column  Key list by that column's values.
-     *      @var string $class  Object class name.
-     *      @var array $args  Object constructor args.
-     * }
+     *      Default: ~associative.
+     *      DbResult::FETCH_ASSOC|DbResult::FETCH_NUMERIC
+     * @param string $list_by_column
+     *      Key list by that column's values; illegal when $as:FETCH_NUMERIC.
+     *      Empty: numerically indexed list.
      *
      * @return array
+     *      Empty on no rows.
      *      Throws throwable on failure.
      */
-    public function fetchAll(int $as = DbResult::FETCH_ASSOC, array $options = []) : array;
+    public function fetchAllArrays(int $as = DbResult::FETCH_ASSOC, string $list_by_column = null) : array;
+
+    /**
+     * Fetch all rows into a list of column-keyed objects.
+     *
+     * @param string $class
+     *      Optional class name; effective default stdClass.
+     * @param string $list_by_column
+     *      Key list by that column's values; illegal when $as:FETCH_NUMERIC.
+     *      Empty: numerically indexed list.
+     * @param array $args
+     *      Optional constructor args.
+     *
+     * @return object[]
+     *      Empty on no rows.
+     *      Throws throwable on failure.
+     */
+    public function fetchAllObjects(string $class = null, string $list_by_column = null, array $args = null) : array;
 
     /**
      * Move cursor to next result set.

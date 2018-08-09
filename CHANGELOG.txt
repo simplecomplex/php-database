@@ -1,3 +1,14 @@
+SimpleComplex/Database 1.x, 2018-08-09
+--------------------------------------
+- MsSql query bugfixes: use simple arguments when simple query,
+  and allow type qualified array to have only a single bucket,
+  and check for non-empty type buckets.
+- Result fetchColumn renamed; from fetchField.
+- Result fetchAllArrays(), fetchAllObjects() instead of fetchAll(), to secure
+  IDE recognition of list types (array[], object[]) and far simpler method
+  parameter signature.
+- Result fetchObject(), fetchAllObjects() check that class actually exists.
+
 SimpleComplex/Database 1.x, 2018-08-08
 --------------------------------------
 - Non-MsSql simple query always checks argument types, and object __toString().

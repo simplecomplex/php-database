@@ -97,7 +97,7 @@ class PopulateTest extends TestCase
         $result_select = $query_select->execute();
         $num_rows = $result_select->numRows();
         TestHelper::logVariable('num_rows', $num_rows);
-        $all_rows = $result_select->fetchAll();
+        $all_rows = $result_select->fetchAllArrays();
         TestHelper::logVariable('count rows', count($all_rows));
     }
 

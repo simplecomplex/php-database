@@ -597,7 +597,9 @@ class QueryArgumentTest extends TestCase
             '_0_int' => 0,
             '_1_float' => 1.0,
             '_2_decimal' => '2.0',
-            '_3_varchar' => 'arguments type qualified partially',
+            '_3_varchar' => [
+                'arguments type qualified partially',
+            ],
             '_4_blob' => [
                 sprintf("%08d", decbin(4)),
                 //new TestHelper(),

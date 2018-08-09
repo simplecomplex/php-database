@@ -12,6 +12,9 @@ namespace SimpleComplex\Database;
 /**
  * Lists of relevant MsSQL native connection|query|result error codes.
  *
+ * SQL Server error codes (no up-to-date documentation available):
+ * @see https://docs.microsoft.com/en-us/previous-versions/sql/sql-server-2008-r2/cc645603(v=sql.105)
+ *
  * @see DbClient::errorsToException()
  *
  * @package SimpleComplex\Database
@@ -38,8 +41,18 @@ class MsSqlError extends DbError
     const QUERY = [
         // Incorrect syntax near '%s'.
         102,
+        // Cannot insert the value NULL into column '%.*ls', table '%.*ls'; column does not allow nulls. %ls fails.
+        515,
         // Cannot truncate table '%s' because it is being referenced by a FOREIGN KEY constraint.
         4712,
+
+        // 101 - 701
+    ];
+
+    const QUERY_RANGES = [
+        [
+            101, 701
+        ]
     ];
 
     /**

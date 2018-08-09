@@ -165,7 +165,7 @@ class StoredProcedureTest extends TestCase
 
         //$this->assertSame(1, $result->nextSet());
 
-        $insert_id = $result->fetchField();
+        $insert_id = $result->fetchColumn();
         $this->assertInternalType('int', $insert_id);
         TestHelper::logVariable(__FUNCTION__, $insert_id);
 

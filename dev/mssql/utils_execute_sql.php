@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-use \SimpleComplex\Utils\Dependency;
+use SimpleComplex\Utils\Dependency;
 
-use \SimpleComplex\Database\Database;
+use SimpleComplex\Database\DbResult;
 
 
 // Bootstrap.-------------------------------------------------------------------
@@ -148,9 +148,7 @@ $id_last = 4;
 
 //$query->parameters('ii', [$id_first, $id_last]);
 $result = $query->execute();
-$variable = $result->fetchAll(DbResult::FETCH_ASSOC, [
-    'list_by_column' => 'MedarbejderNR',
-]);
+$variable = $result->fetchAllArrays(DbResult::FETCH_ASSOC, 'MedarbejderNR');
 $logger->debug('' . "\n" . $inspect->variable($variable));
 
 $query->close();

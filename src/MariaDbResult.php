@@ -276,7 +276,7 @@ class MariaDbResult extends DbResult
      * will move cursor to next row.
      *
      * @param int $index
-     * @param string $column
+     * @param string $name
      *      Non-empty: fetch column by that name, ignore arg $index.
      *
      * @return mixed|null
@@ -285,11 +285,12 @@ class MariaDbResult extends DbResult
      * @throws \InvalidArgumentException
      *      Arg $index negative.
      * @throws \OutOfRangeException
-     *      Result row has no such $index or $column.
+     *      Result row has no such $index or $name.
      * @throws DbRuntimeException
      */
-    public function fetchField(int $index = 0, string $column = '')
+    public function fetchColumn(int $index = 0, string $name = null)
     {
+        // Result set routine; don't change or move.
         ++$this->rowIndex;
         if (!$this->result && !($load = $this->loadResult())) {
             if ($load === null) {
@@ -302,16 +303,18 @@ class MariaDbResult extends DbResult
             }
             $this->closeAndLog(__FUNCTION__);
             throw new $cls_xcptn(
-                $this->query->messagePrefix() . ' - failed fetching field by '
-                . (!$column ? ('$index[' . $index . ']') : ('$column[' . $column . ']'))
+                $this->query->messagePrefix() . ' - failed fetching column by '
+                . (!$name ? ('$index[' . $index . ']') : ('$name[' . $name . ']'))
                 . ', no result set' . $msg . '.'
             );
         }
-        if (!$column) {
+
+        // Column name cannot be '0' (sql illegal) so loose check suffices.
+        if (!$name) {
             if ($index < 0) {
                 $this->closeAndLog(__FUNCTION__);
                 throw new \InvalidArgumentException(
-                    $this->query->messagePrefix() . ' - failed fetching field, arg $index['
+                    $this->query->messagePrefix() . ' - failed fetching column, arg $index['
                     . $index . '] is negative.'
                 );
             }
@@ -322,19 +325,19 @@ class MariaDbResult extends DbResult
         }
         if ($row) {
             $length = null;
-            if (!$column) {
+            if (!$name) {
                 $length = count($row);
                 if ($index < $length) {
                     return $row[$index];
                 }
-            } elseif (array_key_exists($column, $row)) {
-                return $row[$column];
+            } elseif (array_key_exists($name, $row)) {
+                return $row[$name];
             }
             $this->closeAndLog(__FUNCTION__);
             throw new \OutOfRangeException(
-                $this->query->messagePrefix() . ' - failed fetching field, row '
-                . (!$column ? (' length[' .  $length . '] has no $index[' . $index . '].') :
-                    ('has no $column[' . $column . '].')
+                $this->query->messagePrefix() . ' - failed fetching column, row '
+                . (!$name ? (' length[' .  $length . '] has no column $index[' . $index . '].') :
+                    ('has no column $name[' . $name . '].')
                 )
             );
         }
@@ -345,14 +348,14 @@ class MariaDbResult extends DbResult
         $this->closeAndLog(__FUNCTION__);
         $cls_xcptn = $this->query->client->errorsToException($errors, DbResultException::class);
         throw new $cls_xcptn(
-            $this->query->messagePrefix() . ' - failed fetching field by '
-            . (!$column ? ('$index[' . $index . ']') : ('$column[' . $column . ']')) . ', error: '
+            $this->query->messagePrefix() . ' - failed fetching column by '
+            . (!$name ? ('$index[' . $index . ']') : ('$name[' . $name . ']')) . ', error: '
             . $this->query->client->errorsToString($errors) . '.'
         );
     }
 
     /**
-     * Associative (column-keyed) or numerically indexed array.
+     * Fetch row as associative (column-keyed) or numerically indexed array.
      *
      * @param int $as
      *      Default: ~associative.
@@ -363,8 +366,9 @@ class MariaDbResult extends DbResult
      *
      * @throws DbRuntimeException
      */
-    public function fetchArray(int $as = DbResult::FETCH_ASSOC)
+    public function fetchArray(int $as = DbResult::FETCH_ASSOC) /*: ?array*/
     {
+        // Result set routine; don't change or move.
         ++$this->rowIndex;
         if (!$this->result && !($load = $this->loadResult())) {
             if ($load === null) {
@@ -380,6 +384,7 @@ class MariaDbResult extends DbResult
                 $this->query->messagePrefix() . ' - failed fetching row as array, no result set' . $msg . '.'
             );
         }
+
         $row = $as == DbResult::FETCH_ASSOC ? @$this->result->fetch_assoc() : @$this->result->fetch_array(MYSQLI_NUM);
         if ($row || $row === null) {
             return $row;
@@ -394,7 +399,7 @@ class MariaDbResult extends DbResult
     }
 
     /**
-     * Column-keyed object.
+     * Fetch row as column-keyed object.
      *
      * @param string $class
      *      Optional class name; effective default stdClass.
@@ -404,10 +409,13 @@ class MariaDbResult extends DbResult
      * @return object|null
      *      Null: No more rows.
      *
+     * @throws \InvalidArgumentException
+     *      Non-empty arg $class when such class doesn't exist.
      * @throws DbRuntimeException
      */
-    public function fetchObject(string $class = '', array $args = []) /*: object */
+    public function fetchObject(string $class = null, array $args = null) /*: ?object*/
     {
+        // Result set routine; don't change or move.
         ++$this->rowIndex;
         if (!$this->result && !($load = $this->loadResult())) {
             if ($load === null) {
@@ -421,6 +429,13 @@ class MariaDbResult extends DbResult
             $this->closeAndLog(__FUNCTION__);
             throw new $cls_xcptn(
                 $this->query->messagePrefix() . ' - failed fetching row as object, no result set' . $msg . '.'
+            );
+        }
+
+        if ($class && !class_exists($class)) {
+            $this->closeAndLog(__FUNCTION__);
+            throw new \InvalidArgumentException(
+                $this->query->messagePrefix() . ' - can\'t fetch row as object into non-existent class[' . $class . '].'
             );
         }
         $row = @$this->result->fetch_object($class, $args);
@@ -437,30 +452,27 @@ class MariaDbResult extends DbResult
     }
 
     /**
-     * Fetch all rows into a list.
-     *
-     * Option 'list_by_column' is not supported when fetching as numerically
+     * Fetch all rows into a list of associative (column-keyed) or numerically
      * indexed arrays.
      *
      * @param int $as
-     *      Default: ~associalive.
-     *      DbResult::FETCH_ASSOC|DbResult::FETCH_NUMERIC|DbResult::FETCH_OBJECT
-     * @param array $options {
-     *      @var string $list_by_column  Key list by that column's values.
-     *      @var string $class  Object class name.
-     *      @var array $args  Object constructor args.
-     * }
+     *      Default: ~associative.
+     *      DbResult::FETCH_ASSOC|DbResult::FETCH_NUMERIC
+     * @param string $list_by_column
+     *      Key list by that column's values; illegal when $as:FETCH_NUMERIC.
+     *      Empty: numerically indexed list.
      *
      * @return array
+     *      Empty on no rows.
      *
-     * @throws \LogicException
-     *      Providing 'list_by_column' option when fetching as numeric array.
      * @throws \InvalidArgumentException
-     *      Providing 'list_by_column' option and no such column in result row.
+     *      Non-empty arg $list_by_column when arg $as is FETCH_NUMERIC.
+     *      Non-empty arg $list_by_column when no such column exist.
      * @throws DbRuntimeException
      */
-    public function fetchAll(int $as = DbResult::FETCH_ASSOC, array $options = []) : array
+    public function fetchAllArrays(int $as = DbResult::FETCH_ASSOC, string $list_by_column = null) : array
     {
+        // Result set routine; don't change or move.
         if (!$this->result && !($load = $this->loadResult())) {
             if ($load === null) {
                 $cls_xcptn = DbResultException::class;
@@ -472,94 +484,65 @@ class MariaDbResult extends DbResult
             }
             $this->closeAndLog(__FUNCTION__);
             throw new $cls_xcptn(
-                $this->query->messagePrefix() . ' - failed fetching all rows, no result set' . $msg . '.'
+                $this->query->messagePrefix() . ' - failed fetching all rows as arrays, no result set' . $msg . '.'
             );
         }
-        $column_keyed = !empty($options['list_by_column']);
-        switch ($as) {
-            case DbResult::FETCH_NUMERIC:
-                if ($column_keyed) {
-                    $this->closeAndLog(__FUNCTION__);
-                    throw new \LogicException(
-                        $this->query->client->messagePrefix()
-                        . ' - arg $options \'list_by_column\' is not supported when fetching as numeric arrays.'
-                    );
-                }
-                $list = @$this->result->fetch_all(MYSQLI_NUM);
-                if (!is_array($list)) {
-                    $errors = $this->query->getErrors();
-                    $this->closeAndLog(__FUNCTION__);
-                    $cls_xcptn = $this->query->client->errorsToException($errors, DbResultException::class);
-                    throw new $cls_xcptn(
-                        $this->query->messagePrefix() . ' - failed fetching all rows as numeric array, error: '
-                        . $this->query->client->errorsToString($errors) . '.'
-                    );
-                }
-                $this->rowIndex += count($list);
-                return $list;
-            case DbResult::FETCH_OBJECT:
-                $key_column = !$column_keyed ? null : $options['list_by_column'];
-                $list = [];
-                $first = true;
-                while (
-                    ($row = @$this->result->fetch_object($options['class'] ?? '', $options['args'] ?? []))
-                ) {
-                    ++$this->rowIndex;
-                    if (!$column_keyed) {
-                        $list[] = $row;
-                    }
-                    else {
-                        if ($first) {
-                            $first = false;
-                            if (!property_exists($row, $key_column)) {
-                                $this->closeAndLog(__FUNCTION__);
-                                throw new \InvalidArgumentException(
-                                    $this->query->messagePrefix()
-                                    . ' - failed fetching all rows as objects keyed by column[' . $key_column
-                                    . '], non-existent column.'
-                                );
-                            }
-                        }
-                        $list[$row->{$key_column}] = $row;
-                    }
-                }
-                ++$this->rowIndex;
-                break;
-            default:
-                if (!$column_keyed) {
-                    $list = @$this->result->fetch_all(MYSQLI_ASSOC);
-                    if (!is_array($list)) {
-                        $errors = $this->query->getErrors();
-                        $this->closeAndLog(__FUNCTION__);
-                        $cls_xcptn = $this->query->client->errorsToException($errors, DbResultException::class);
-                        throw new $cls_xcptn(
-                            $this->query->messagePrefix() . ' - failed fetching all rows as assoc array, error: '
-                            . $this->query->client->errorsToString($errors) . '.'
-                        );
-                    }
-                    $this->rowIndex += count($list);
-                    return $list;
-                }
-                $key_column = !$column_keyed ? null : $options['list_by_column'];
-                $list = [];
-                $first = true;
-                while (($row = @$this->result->fetch_assoc())) {
-                    ++$this->rowIndex;
-                    if ($first) {
-                        $first = false;
-                        if (!array_key_exists($key_column, $row)) {
-                            $this->closeAndLog(__FUNCTION__);
-                            throw new \InvalidArgumentException(
-                                $this->query->messagePrefix()
-                                . ' - failed fetching all rows as assoc arrays keyed by column[' . $key_column
-                                . '], non-existent column.'
-                            );
-                        }
-                    }
-                    $list[$row[$key_column]] = $row;
-                }
-                ++$this->rowIndex;
+
+        if ($as == DbResult::FETCH_NUMERIC) {
+            if ($list_by_column) {
+                $this->closeAndLog(__FUNCTION__);
+                throw new \InvalidArgumentException(
+                    $this->query->client->messagePrefix() . ' - arg $list_by_column type['
+                    . Utils::getType($list_by_column) . '] must be empty when fetching all rows as numeric arrays.'
+                );
+            }
+            $list = @$this->result->fetch_all(MYSQLI_NUM);
+            if (!is_array($list)) {
+                $errors = $this->query->getErrors();
+                $this->closeAndLog(__FUNCTION__);
+                $cls_xcptn = $this->query->client->errorsToException($errors, DbResultException::class);
+                throw new $cls_xcptn(
+                    $this->query->messagePrefix() . ' - failed fetching all rows as numeric arrays, error: '
+                    . $this->query->client->errorsToString($errors) . '.'
+                );
+            }
+            $this->rowIndex += count($list);
+            return $list;
         }
+
+        if (!$list_by_column) {
+            $list = @$this->result->fetch_all(MYSQLI_ASSOC);
+            if (!is_array($list)) {
+                $errors = $this->query->getErrors();
+                $this->closeAndLog(__FUNCTION__);
+                $cls_xcptn = $this->query->client->errorsToException($errors, DbResultException::class);
+                throw new $cls_xcptn(
+                    $this->query->messagePrefix() . ' - failed fetching all rows as associative array, error: '
+                    . $this->query->client->errorsToString($errors) . '.'
+                );
+            }
+            $this->rowIndex += count($list);
+            return $list;
+        }
+        // Array list by column.
+        $list = [];
+        $first = true;
+        while (($row = @$this->result->fetch_assoc())) {
+            ++$this->rowIndex;
+            if ($first) {
+                $first = false;
+                if (!array_key_exists($list_by_column, $row)) {
+                    $this->closeAndLog(__FUNCTION__);
+                    throw new \InvalidArgumentException(
+                        $this->query->messagePrefix()
+                        . ' - failed fetching all rows as associative arrays listed by column[' . $list_by_column
+                        . '], non-existent column.'
+                    );
+                }
+            }
+            $list[$row[$list_by_column]] = $row;
+        }
+        ++$this->rowIndex;
         // Last fetched row must be null; no more rows.
         if ($row !== null) {
             $errors = $this->query->getErrors();
@@ -567,7 +550,87 @@ class MariaDbResult extends DbResult
             $cls_xcptn = $this->query->client->errorsToException($errors, DbResultException::class);
             throw new $cls_xcptn(
                 $this->query->messagePrefix()
-                . ' - failed fetching all rows as ' . ($as == DbResult::FETCH_OBJECT ? 'object' : 'assoc array')
+                . ' - failed fetching complete list of all rows as associative arrays, error: '
+                . $this->query->client->errorsToString($errors) . '.'
+            );
+        }
+        return $list;
+    }
+
+    /**
+     * Fetch all rows into a list of column-keyed objects.
+     *
+     * @param string $class
+     *      Optional class name; effective default stdClass.
+     * @param string $list_by_column
+     *      Key list by that column's values; illegal when $as:FETCH_NUMERIC.
+     *      Empty: numerically indexed list.
+     * @param array $args
+     *      Optional constructor args.
+     *
+     * @return object[]
+     *      Empty on no rows.
+     *
+     * @throws \InvalidArgumentException
+     *      Non-empty arg $class when such class doesn't exist.
+     *      Non-empty arg $list_by_column when no such column exist.
+     * @throws DbRuntimeException
+     */
+    public function fetchAllObjects(string $class = null, string $list_by_column = null, array $args = null) : array
+    {
+        // Result set routine; don't change or move.
+        if (!$this->result && !($load = $this->loadResult())) {
+            if ($load === null) {
+                $cls_xcptn = DbResultException::class;
+                $msg = '';
+            } else {
+                $errors = $this->query->getErrors();
+                $cls_xcptn = $this->query->client->errorsToException($errors, DbResultException::class);
+                $msg = ', error: ' . $this->query->client->errorsToString($errors);
+            }
+            $this->closeAndLog(__FUNCTION__);
+            throw new $cls_xcptn(
+                $this->query->messagePrefix() . ' - failed fetching all rows as objects, no result set' . $msg . '.'
+            );
+        }
+
+        if ($class && !class_exists($class)) {
+            $this->closeAndLog(__FUNCTION__);
+            throw new \InvalidArgumentException(
+                $this->query->messagePrefix()
+                . ' - can\'t fetch all rows as objects into non-existent class[' . $class . '].'
+            );
+        }
+        $list = [];
+        $first = true;
+        while (($row = @$this->result->fetch_object($class, $args))) {
+            ++$this->rowIndex;
+            if (!$list_by_column) {
+                $list[] = $row;
+            }
+            else {
+                if ($first) {
+                    $first = false;
+                    if (!property_exists($row, $list_by_column)) {
+                        $this->closeAndLog(__FUNCTION__);
+                        throw new \InvalidArgumentException(
+                            $this->query->messagePrefix()
+                            . ' - failed fetching all rows as objects listed by column[' . $list_by_column
+                            . '], non-existent column.'
+                        );
+                    }
+                }
+                $list[$row->{$list_by_column}] = $row;
+            }
+        }
+        ++$this->rowIndex;
+        // Last fetched row must be null; no more rows.
+        if ($row !== null) {
+            $errors = $this->query->getErrors();
+            $this->closeAndLog(__FUNCTION__);
+            $cls_xcptn = $this->query->client->errorsToException($errors, DbResultException::class);
+            throw new $cls_xcptn(
+                $this->query->messagePrefix() . ' - failed fetching complete list of all rows as objects, error: '
                 . $this->query->client->errorsToString($errors) . '.'
             );
         }

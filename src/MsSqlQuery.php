@@ -624,7 +624,7 @@ class MsSqlQuery extends DbQuery
             // Validate arguments before execution?
             if (($this->validateParams & DbQuery::VALIDATE_EXECUTE) && !empty($this->arguments['simple'])) {
                 // Throws exception on validation failure
-                $this->validateArgumentsNativeType($this->arguments['prepared'], [], 'execute');
+                $this->validateArgumentsNativeType($this->arguments['simple'], [], 'execute');
             }
 
             $options = [
@@ -1365,21 +1365,18 @@ class MsSqlQuery extends DbQuery
                     $typed__fully[$i] = false;
                     $all_fully_typed = false;
                 }
-
-                $direction = $arg[1];
-                if (
-                    $direction !== SQLSRV_PARAM_IN && $direction !== SQLSRV_PARAM_INOUT
-                    && $direction !== SQLSRV_PARAM_OUT
-                ) {
-                    if ($direction === null) {
-                        // Secure direction; despite writing to &$arguments is ugly.
-                        $arg[1] = $direction = SQLSRV_PARAM_IN;
-                    }
-                    else {
+                if (!isset($arg[1])) {
+                    $direction = SQLSRV_PARAM_IN;
+                }
+                else {
+                    $direction = $arg[1];
+                    if (
+                        $direction !== SQLSRV_PARAM_IN && $direction !== SQLSRV_PARAM_INOUT
+                        && $direction !== SQLSRV_PARAM_OUT
+                    ) {
                         throw new DbQueryArgumentException(
-                            $this->messagePrefix()
-                            . ' - arg $arguments direction bucket at index[' . $i . '][1] type['
-                            . Utils::getType($arg[1])
+                            $this->messagePrefix() . ' - arg $arguments direction bucket at index['
+                            . $i . '][1] type[' . Utils::getType($arg[1])
                             . '] is not int SQLSRV_PARAM_IN|SQLSRV_PARAM_INOUT|SQLSRV_PARAM_OUT or null.'
                         );
                     }
@@ -1394,7 +1391,7 @@ class MsSqlQuery extends DbQuery
                         }
                         break;
                     case SQLSRV_PARAM_INOUT:
-                        if (empty($arg[2]) && empty($arg[3])) {
+                        if (!empty($arg[2]) && !empty($arg[3])) {
                             // Non-empty 'out' SQLSRV_PHPTYPE_*
                             // and non-empty 'in' SQLSRV_SQLTYPE_*.
                             $typed__fully[$i] = true;
