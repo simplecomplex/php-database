@@ -402,7 +402,7 @@ class MsSqlResult extends DbResult
     }
 
     /**
-     * Associative (column-keyed) or numerically indexed array.
+     * Fetch row as associative (column-keyed) or numerically indexed array.
      *
      * @param int $as
      *      Default: ~associative.
@@ -438,7 +438,12 @@ class MsSqlResult extends DbResult
     }
 
     /**
-     * Column-keyed object.
+     * Fetch row as column-keyed object.
+     *
+     * If non-empty arg $class: Custom (non-stdClass) object gets constructed
+     * and populated 'manually', because native Sqlsrv method cannot handle it.
+     * @see sqlsrv_fetch_object()
+     * @see https://github.com/Microsoft/msphpsql/issues/119
      *
      * @param string $class
      *      Optional class name; effective default stdClass.
@@ -460,13 +465,32 @@ class MsSqlResult extends DbResult
                 $this->query->messagePrefix() . ' - can\'t fetch row as object into non-existent class[' . $class . '].'
             );
         }
-        $row = @sqlsrv_fetch_object($this->statement, $class, $args);
+        /**
+         * Custom (non-stdClass) object gets constructed and populated 'manually',
+         * because native Sqlsrv method cannot handle that.
+         * Passing class name arg to sqlsrv_fetch_object() produces segmentation
+         * fault for namespaced class (because namespace\class gets lowercased).
+         * @see sqlsrv_fetch_object()
+         * @see https://github.com/Microsoft/msphpsql/issues/119
+         */
+        //$row = @sqlsrv_fetch_object($this->statement, $class, $args);
+        $row = @sqlsrv_fetch_object($this->statement);
+
         // sqlsrv_fetch_object() implicitly moves to first set.
         if ($this->setIndex < 0) {
             ++$this->setIndex;
         }
         ++$this->rowIndex;
         if ($row || $row === null) {
+            // Custom (non-stdClass) object routine.
+            if ($row && $class && $class != \stdClass::class) {
+                $o = !$args ? new $class() :
+                    new $class(...$args);
+                foreach ($row as $column => $value) {
+                    $o->{$column} = $value;
+                }
+                return $o;
+            }
             return $row;
         }
         $errors = $this->query->client->getErrors();
@@ -569,6 +593,11 @@ class MsSqlResult extends DbResult
     /**
      * Fetch all rows into a list of column-keyed objects.
      *
+     * If non-empty arg $class: Custom (non-stdClass) object gets constructed
+     * and populated 'manually', because native Sqlsrv method cannot handle it.
+     * @see sqlsrv_fetch_object()
+     * @see https://github.com/Microsoft/msphpsql/issues/119
+     *
      * @param string $class
      *      Optional class name; effective default stdClass.
      * @param string $list_by_column
@@ -596,14 +625,33 @@ class MsSqlResult extends DbResult
         }
         $list = [];
         $first = true;
-        while (($row = @sqlsrv_fetch_object($this->statement, $class, $args))) {
+        /**
+         * Custom (non-stdClass) object gets constructed and populated 'manually',
+         * because native Sqlsrv method cannot handle that.
+         * Passing class name arg to sqlsrv_fetch_object() produces segmentation
+         * fault for namespaced class (because namespace\class gets lowercased).
+         * @see sqlsrv_fetch_object()
+         * @see https://github.com/Microsoft/msphpsql/issues/119
+         */
+        //while (($row = @sqlsrv_fetch_object($this->statement, $class, $args))) {
+        $custom_class = $class && $class != \stdClass::class;
+        while (($row = @sqlsrv_fetch_object($this->statement))) {
             // sqlsrv_fetch_object() implicitly moves to first set.
             if ($this->setIndex < 0) {
                 ++$this->setIndex;
             }
             ++$this->rowIndex;
             if (!$list_by_column) {
-                $list[] = $row;
+                if ($custom_class) {
+                    $o = !$args ? new $class() :
+                        new $class(...$args);
+                    foreach ($row as $column => $value) {
+                        $o->{$column} = $value;
+                    }
+                    $list[] = $o;
+                } else {
+                    $list[] = $row;
+                }
             }
             else {
                 if ($first) {
@@ -617,7 +665,16 @@ class MsSqlResult extends DbResult
                         );
                     }
                 }
-                $list[$row->{$key_column}] = $row;
+                if ($custom_class) {
+                    $o = !$args ? new $class() :
+                        new $class(...$args);
+                    foreach ($row as $column => $value) {
+                        $o->{$column} = $value;
+                    }
+                    $list[$row->{$list_by_column}] = $o;
+                } else {
+                    $list[$row->{$list_by_column}] = $row;
+                }
             }
         }
         if ($this->setIndex < 0) {

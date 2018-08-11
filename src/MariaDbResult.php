@@ -438,7 +438,8 @@ class MariaDbResult extends DbResult
                 $this->query->messagePrefix() . ' - can\'t fetch row as object into non-existent class[' . $class . '].'
             );
         }
-        $row = @$this->result->fetch_object($class, $args);
+        $row = !$class || $class == \stdClass::class ? @$this->result->fetch_object() :
+            @$this->result->fetch_object($class, $args ?? []);
         if ($row || $row === null) {
             return $row;
         }
@@ -603,7 +604,9 @@ class MariaDbResult extends DbResult
         }
         $list = [];
         $first = true;
-        while (($row = @$this->result->fetch_object($class, $args))) {
+        while (($row = !$class || $class == \stdClass::class ? @$this->result->fetch_object() :
+            @$this->result->fetch_object($class, $args ?? [])
+        )) {
             ++$this->rowIndex;
             if (!$list_by_column) {
                 $list[] = $row;

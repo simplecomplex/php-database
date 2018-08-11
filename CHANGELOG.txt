@@ -4,6 +4,9 @@ SimpleComplex/Database 1.x, 2018-08-11
   even when none.
 - DbQuery methods validateArguments()/validateArgumentsStringable() protected
   because not generic across DBMSs.
+- Workaround for MsSql fetch-object producing segmentation fault when passed
+  custom (non-stdClass) class name argument.
+- Result tests.
 
 SimpleComplex/Database 1.x, 2018-08-09
 --------------------------------------
