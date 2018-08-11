@@ -604,7 +604,8 @@ class MariaDbResult extends DbResult
         }
         $list = [];
         $first = true;
-        while (($row = !$class || $class == \stdClass::class ? @$this->result->fetch_object() :
+        $custom_class = $class && $class != \stdClass::class;
+        while (($row = !$custom_class ? @$this->result->fetch_object() :
             @$this->result->fetch_object($class, $args ?? [])
         )) {
             ++$this->rowIndex;
