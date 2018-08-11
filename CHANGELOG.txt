@@ -1,3 +1,10 @@
+SimpleComplex/Database 1.x, 2018-08-11
+--------------------------------------
+- Query parameter validation on query failure always reported parameter error,
+  even when none.
+- DbQuery methods validateArguments()/validateArgumentsStringable() protected
+  because not generic across DBMSs.
+
 SimpleComplex/Database 1.x, 2018-08-09
 --------------------------------------
 - MsSql query bugfixes: use simple arguments when simple query,

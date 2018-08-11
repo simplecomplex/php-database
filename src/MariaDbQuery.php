@@ -432,9 +432,9 @@ class MariaDbQuery extends DbQuery
                 );
             }
             else if (($this->validateParams & DbQuery::VALIDATE_PREPARE)) {
-                if (($valid = $this->validateTypes($types)) !== true) {
+                if (($valid_or_msg = $this->validateTypes($types)) !== true) {
                     throw new DbQueryArgumentException(
-                        $this->messagePrefix() . ' - arg $types ' . $valid . '.'
+                        $this->messagePrefix() . ' - arg $types ' . $valid_or_msg . '.'
                     );
                 }
                 // Throws exception on failure.
@@ -693,11 +693,14 @@ class MariaDbQuery extends DbQuery
                     ($this->validateParams & DbQuery::VALIDATE_FAILURE)
                     && !empty($this->arguments['prepared']) && $cls_xcptn != DbConnectionException::class
                 ) {
-                    $msg = $this->validateArguments($this->parameterTypes, $this->arguments['prepared']);
-                    if (!$msg) {
+                    if ((
+                        $valid_or_msg = $this->validateArguments($this->parameterTypes, $this->arguments['prepared'])
+                        ) !== true
+                    ) {
+                        $msg = 'parameter error: ' . $valid_or_msg . '. DBMS error: ';
+                    }
+                    else {
                         $msg = 'no parameter error observed, DBMS error: ';
-                    } else {
-                        $msg = 'parameter error: ' . $msg . '. DBMS error: ';
                     }
                 } else {
                     $msg = 'error: ';
@@ -751,11 +754,13 @@ class MariaDbQuery extends DbQuery
                         && $this->parameterTypes && !empty($this->arguments['simple'])
                         && $cls_xcptn != DbConnectionException::class
                     ) {
-                        $msg = $this->validateArguments($this->parameterTypes, $this->arguments['simple']);
-                        if (!$msg) {
-                            $msg = 'no parameter error observed, DBMS error: ';
+                        if ((
+                            $valid_or_msg = $this->validateArguments($this->parameterTypes, $this->arguments['simple'])
+                            ) !== true
+                        ) {
+                            $msg = 'parameter error: ' . $valid_or_msg . '. DBMS error: ';
                         } else {
-                            $msg = 'parameter error: ' . $msg . '. DBMS error: ';
+                            $msg = 'no parameter error observed, DBMS error: ';
                         }
                     } else {
                         $msg = 'error: ';
@@ -785,11 +790,13 @@ class MariaDbQuery extends DbQuery
                         && $this->parameterTypes && !empty($this->arguments['simple'])
                         && $cls_xcptn != DbConnectionException::class
                     ) {
-                        $msg = $this->validateArguments($this->parameterTypes, $this->arguments['simple']);
-                        if (!$msg) {
-                            $msg = 'no parameter error observed, DBMS error: ';
+                        if ((
+                            $valid_or_msg = $this->validateArguments($this->parameterTypes, $this->arguments['simple'])
+                            ) !== true
+                        ) {
+                            $msg = 'parameter error: ' . $valid_or_msg . '. DBMS error: ';
                         } else {
-                            $msg = 'parameter error: ' . $msg . '. DBMS error: ';
+                            $msg = 'no parameter error observed, DBMS error: ';
                         }
                     } else {
                         $msg = 'error: ';

@@ -226,7 +226,7 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
     const VALIDATE_PREPARE = 2;
 
     /**
-     * Validate query parameters before execution.
+     * Validate query parameters right before execution.
      *
      * Bitmask value.
      */
@@ -234,7 +234,10 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
 
     /**
      * Check for parameter values that are non-stringable object,
-     * before execution.
+     * right before execution.
+     *
+     * Obsolete if VALIDATE_PREPARE or VALIDATE_EXECUTE, or if simple query
+     * using parameters(); always checks if object has toString() method.
      *
      * AUTO_STRINGIFIES_OBJECT:1
      * If the DBMS attempts stringification without __toString() method check
@@ -243,9 +246,6 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
      * AUTO_STRINGIFIES_OBJECT:0
      * If the DBMS doesn't attempt stringification at all, this validation
      * will fail when object (regardless of __toString()).
-     *
-     * Prepared statement only; simple query (using parameter substitution)
-     * always checks if object has toString() method.
      *
      * Bitmask value.
      *
@@ -651,6 +651,263 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
     }
 
     /**
+     * Create arguments type string based on arguments' actual types.
+     *
+     * Only supports string, integer, float, and stringable classes.
+     *
+     * @see DbQuery::AUTO_STRINGIFIES_OBJECT
+     * @see DbQuery::AUTO_STRINGABLE_CLASSES
+     *
+     * @param array $arguments
+     * @param array $skipIndexes
+     *      Skip detecting type of buckets at those indexes, setting underscore
+     *      as mock type char at those indexes in the output type string.
+     *
+     * @return string
+     *
+     * @throws DbQueryArgumentException
+     */
+    public function parameterTypesDetect(array $arguments, array $skipIndexes = []) : string
+    {
+        $types = '';
+        $index = -1;
+        foreach ($arguments as $value) {
+            ++$index;
+            if ($skipIndexes && in_array($index, $skipIndexes)) {
+                $types .= '_';
+            }
+            else {
+                $type = gettype($value);
+                switch ($type) {
+                    case 'string':
+                        // Cannot discern binary from string.
+                        $types .= 's';
+                        break;
+                    case 'integer':
+                        $types .= 'i';
+                        break;
+                    case 'double':
+                    case 'float':
+                        $types .= 'd';
+                        break;
+                    default:
+                        $auto_stringable_object = false;
+                        if ($type == 'object') {
+                            if (static::AUTO_STRINGIFIES_OBJECT && method_exists($value, '__toString')) {
+                                $auto_stringable_object = true;
+                            }
+                            elseif (static::AUTO_STRINGABLE_CLASSES) {
+                                foreach (static::AUTO_STRINGABLE_CLASSES as $class_name) {
+                                    if (is_a($value, $class_name)) {
+                                        $auto_stringable_object = true;
+                                        $types .= 's';
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                        if (!$auto_stringable_object) {
+                            throw new DbQueryArgumentException(
+                                $this->messagePrefix()
+                                . ' - cannot detect parameter type char for arguments index[' . $index
+                                . '], type[' . Utils::getType($value) . '] not supported.'
+                            );
+                        }
+                }
+            }
+        }
+        return $types;
+    }
+
+    /**
+     * Close query statement, and log.
+     *
+     * In reverse order, that is; to secure arguments in log.
+     *
+     * @param string $method
+     *
+     * @return void
+     */
+    protected function closeAndLog(string $method) /*: void*/
+    {
+        // Log before closing, to be able to list arguments.
+        $this->log($method, false, 1);
+        $this->close();
+    }
+
+
+    // Package protected.-------------------------------------------------------
+
+    /**
+     * @internal Package protected.
+     *
+     * @return string
+     */
+    public function messagePrefix() : string
+    {
+        return $this->client->messagePrefix()
+            . (!$this->name ? '' : ('[' . $this->name . ']'))
+            . '[' . $this->__get('id') . ']';
+    }
+
+    /**
+     * Log query self or just the active sql string.
+     *
+     * @param string $method
+     * @param bool $sqlOnly
+     * @param int $wrappers
+     */
+    public function log(string $method, bool $sqlOnly = false, int $wrappers = 0)
+    {
+        $sql_only = $sqlOnly ? true : !Dependency::container()->has('inspect');
+        $this->client->log(
+            $this->messagePrefix() . ' - dump for erring ' . $method . '(), ' . (!$sqlOnly ? 'query' : 'sql') . ':',
+            !$sql_only ? $this : substr(
+                $this->sqlTampered ?? $this->sql,
+                0,
+                static::LOG_SQL_TRUNCATE
+            ),
+            [
+                'wrappers' => $wrappers + 1,
+            ]
+        );
+    }
+
+    /**
+     * Unset external references.
+     *
+     * Before throwing exception and when closing a statement.
+     *
+     * @internal Package protected.
+     *
+     * @return void
+     */
+    public function unsetReferences() /*: void*/
+    {
+        // Prepared statement arguments refer.
+        // If not unset, the point of reference could get messed up.
+        if (isset($this->arguments['prepared'])) {
+            unset($this->arguments['prepared']);
+        }
+    }
+
+
+    // Protected helpers.-------------------------------------------------------
+
+    /**
+     * Substitute sql parameters markers by arguments.
+     *
+     * An $arguments bucket must be integer|float|string|binary.
+     *
+     * Types:
+     * - i: integer.
+     * - d: float (double).
+     * - s: string.
+     * - b: blob.
+     *
+     * @see DbQuery::SQL_PARAMETER
+     *
+     * Protected because not generic across DBMSs; MsSql doesn't use parameter
+     * substitution at all, simple query uses parameter binding like prepared.
+     *
+     * @param array $sqlFragments
+     *      An sql string split by parameter marker.
+     * @param string $types
+     * @param array $arguments
+     *
+     * @return string
+     *
+     * @throws DbQueryArgumentException
+     *      Arg $types length (unless empty) doesn't match number of parameters.
+     *      On $types or $arguments validation failure
+     * @throws \LogicException
+     *      Method called when no parameters to substitute.
+     */
+    protected function substituteParametersByArgs(array $sqlFragments, string $types, array $arguments) : string
+    {
+        $n_params = count($sqlFragments) - 1;
+        if ($n_params < 1) {
+            throw new \LogicException(
+                $this->messagePrefix() . ' - calling this method when no parameters is illegal.'
+            );
+        }
+
+        $tps = $types;
+        if (!$tps) {
+            // Detect types.
+            $tps = $this->parameterTypesDetect($arguments);
+        }
+        elseif (strlen($types) != $n_params) {
+            throw new DbQueryArgumentException(
+                $this->messagePrefix() . ' - arg $types length[' . strlen($types)
+                . '] doesn\'t match sql\'s ?-parameters count[' . $n_params . '].'
+            );
+        }
+        elseif (count($arguments) != $n_params) {
+            throw new DbQueryArgumentException(
+                $this->messagePrefix() . ' - arg $arguments length[' . count($arguments)
+                . '] doesn\'t match sql\'s ?-parameters count[' . $n_params . '].'
+            );
+        }
+        else if (($this->validateParams & DbQuery::VALIDATE_PREPARE)) {
+            if (($valid_or_msg = $this->validateTypes($types)) !== true) {
+                throw new DbQueryArgumentException(
+                    $this->messagePrefix() . ' - arg $types ' . $valid_or_msg . '.'
+                );
+            }
+            // Throws exception on validation failure.
+            $this->validateArguments($types, $arguments, 'prepare');
+        }
+
+        // Mend that arguments array may not be numerically indexed,
+        // nor correctly indexed.
+        $args = array_values($arguments);
+
+        $sql_with_args = '';
+        for ($i = 0; $i < $n_params; ++$i) {
+            $value = $args[$i];
+            // Validate always; could be hazardous on invalid value.
+            if (!is_scalar($value) || is_bool($value)) {
+                if (!is_object($value) || !method_exists($value, '__toString')) {
+                    throw new DbQueryArgumentException(
+                        $this->messagePrefix() . ' - arg $arguments index[' . $i . '] type[' . Utils::getType($value)
+                        . '] is not integer, float, string or object having __toString() method.'
+                    );
+                }
+            }
+            switch ($tps{$i}) {
+                case 's':
+                case 'b':
+                    $value = "'" . $this->escapeString('' . $value) . "'";
+                    break;
+                case 'i':
+                case 'd':
+                    break;
+                default:
+                    if (in_array($tps{$i}, static::PARAMETER_TYPE_CHARS)) {
+                        // Unlikely if previous validateArguments().
+                        throw new DbQueryArgumentException(
+                            $this->messagePrefix()
+                            . ' - arg $types[' . $types . '] index[' . $i . '] char[' . $tps{$i} . '] is not '
+                            . join('|', static::PARAMETER_TYPE_CHARS) . '.'
+                        );
+                    }
+            }
+            $sql_with_args .= $sqlFragments[$i] . $value;
+        }
+
+        // Record types and arguments for parameter validation before execution
+        // and/or on query failure.
+        if ($this->validateParams) {
+            $this->parameterTypes = $tps;
+            unset($this->arguments['simple']);
+            $this->arguments['simple'] =& $args;
+        }
+
+        return $sql_with_args . $sqlFragments[$i];
+    }
+
+    /**
      * Validate that arguments matches types.
      *
      * Loose typings:
@@ -660,6 +917,11 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
      *
      * @see DbQuery::PARAMETER_TYPE_CHARS
      * @see DbQuery::VALIDATE_PARAMS
+     *
+     * Protected because not generic across DBMSs; MsSql uses native type
+     * qualifying arrays for types+arguments.
+     * Use option validate_params:VALIDATE_PREPARE instead of calling this
+     * directly.
      *
      * @param string $types
      * @param array $arguments
@@ -676,7 +938,7 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
      *      Unconditionally if $types and $arguments differ in length.
      *      Unconditionally if a $types char is unsupported.
      */
-    public function validateArguments(string $types, array $arguments, string $errorContext = '')
+    protected function validateArguments(string $types, array $arguments, string $errorContext = '')
     {
         if (strlen($types) != count($arguments)) {
             return $this->messagePrefix() . ' - arg $types length[' . strlen($types)
@@ -793,6 +1055,12 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
      * Validate that string|binary arguments aren't non-stringable object.
      *
      * @see DbQuery::VALIDATE_PARAMS
+     * @see DbQuery::VALIDATE_STRINGABLE_EXEC
+     *
+     * Protected because not generic across DBMSs; MsSql uses native type
+     * qualifying arrays for types+arguments.
+     * Use option validate_params:VALIDATE_PREPARE instead of calling this
+     * directly.
      *
      * @param string $types
      * @param array $arguments
@@ -808,7 +1076,7 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
      *      If validation failure and non-empty arg $errorContext.
      *      Unconditionally if $types and $arguments differ in length.
      */
-    public function validateArgumentsStringable(string $types, array $arguments, string $errorContext = '')
+    protected function validateArgumentsStringable(string $types, array $arguments, string $errorContext = '')
     {
         if (strlen($types) != count($arguments)) {
             return $this->messagePrefix() . ' - arg $types length[' . strlen($types)
@@ -865,257 +1133,6 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
         }
 
         return true;
-    }
-
-    /**
-     * Create arguments type string based on arguments' actual types.
-     *
-     * Only supports string, integer, float, and stringable classes.
-     *
-     * @see DbQuery::AUTO_STRINGIFIES_OBJECT
-     * @see DbQuery::AUTO_STRINGABLE_CLASSES
-     *
-     * @param array $arguments
-     * @param array $skipIndexes
-     *      Skip detecting type of buckets at those indexes, setting underscore
-     *      as mock type char at those indexes in the output type string.
-     *
-     * @return string
-     *
-     * @throws DbQueryArgumentException
-     */
-    public function parameterTypesDetect(array $arguments, array $skipIndexes = []) : string
-    {
-        $types = '';
-        $index = -1;
-        foreach ($arguments as $value) {
-            ++$index;
-            if ($skipIndexes && in_array($index, $skipIndexes)) {
-                $types .= '_';
-            }
-            else {
-                $type = gettype($value);
-                switch ($type) {
-                    case 'string':
-                        // Cannot discern binary from string.
-                        $types .= 's';
-                        break;
-                    case 'integer':
-                        $types .= 'i';
-                        break;
-                    case 'double':
-                    case 'float':
-                        $types .= 'd';
-                        break;
-                    default:
-                        $auto_stringable_object = false;
-                        if ($type == 'object') {
-                            if (static::AUTO_STRINGIFIES_OBJECT && method_exists($value, '__toString')) {
-                                $auto_stringable_object = true;
-                            }
-                            elseif (static::AUTO_STRINGABLE_CLASSES) {
-                                foreach (static::AUTO_STRINGABLE_CLASSES as $class_name) {
-                                    if (is_a($value, $class_name)) {
-                                        $auto_stringable_object = true;
-                                        $types .= 's';
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                        if (!$auto_stringable_object) {
-                            throw new DbQueryArgumentException(
-                                $this->messagePrefix()
-                                . ' - cannot detect parameter type char for arguments index[' . $index
-                                . '], type[' . Utils::getType($value) . '] not supported.'
-                            );
-                        }
-                }
-            }
-        }
-        return $types;
-    }
-
-    /**
-     * Substitute sql parameters markers by arguments.
-     *
-     * An $arguments bucket must be integer|float|string|binary.
-     *
-     * Types:
-     * - i: integer.
-     * - d: float (double).
-     * - s: string.
-     * - b: blob.
-     *
-     * @see DbQuery::SQL_PARAMETER
-     *
-     * @param array $sqlFragments
-     *      An sql string split by parameter marker.
-     * @param string $types
-     * @param array $arguments
-     *
-     * @return string
-     *
-     * @throws DbQueryArgumentException
-     *      Arg $types length (unless empty) doesn't match number of parameters.
-     *      On $types or $arguments validation failure
-     * @throws \LogicException
-     *      Method called when no parameters to substitute.
-     */
-    protected function substituteParametersByArgs(array $sqlFragments, string $types, array $arguments) : string
-    {
-        $n_params = count($sqlFragments) - 1;
-        if ($n_params < 1) {
-            throw new \LogicException(
-                $this->messagePrefix() . ' - calling this method when no parameters is illegal.'
-            );
-        }
-
-        $tps = $types;
-        if (!$tps) {
-            // Detect types.
-            $tps = $this->parameterTypesDetect($arguments);
-        }
-        elseif (strlen($types) != $n_params) {
-            throw new DbQueryArgumentException(
-                $this->messagePrefix() . ' - arg $types length[' . strlen($types)
-                . '] doesn\'t match sql\'s ?-parameters count[' . $n_params . '].'
-            );
-        }
-        elseif (count($arguments) != $n_params) {
-            throw new DbQueryArgumentException(
-                $this->messagePrefix() . ' - arg $arguments length[' . count($arguments)
-                . '] doesn\'t match sql\'s ?-parameters count[' . $n_params . '].'
-            );
-        }
-        else if (($this->validateParams & DbQuery::VALIDATE_PREPARE)) {
-            if (($valid = $this->validateTypes($types)) !== true) {
-                throw new DbQueryArgumentException(
-                    $this->messagePrefix() . ' - arg $types ' . $valid . '.'
-                );
-            }
-            // Throws exception on validation failure.
-            $this->validateArguments($types, $arguments, 'prepare');
-        }
-
-        // Mend that arguments array may not be numerically indexed,
-        // nor correctly indexed.
-        $args = array_values($arguments);
-
-        $sql_with_args = '';
-        for ($i = 0; $i < $n_params; ++$i) {
-            $value = $args[$i];
-            // Validate always; could be hazardous on invalid value.
-            if (!is_scalar($value) || is_bool($value)) {
-                if (!is_object($value) || !method_exists($value, '__toString')) {
-                    throw new DbQueryArgumentException(
-                        $this->messagePrefix() . ' - arg $arguments index[' . $i . '] type[' . Utils::getType($value)
-                        . '] is not integer, float, string or object having __toString() method.'
-                    );
-                }
-            }
-            switch ($tps{$i}) {
-                case 's':
-                case 'b':
-                    $value = "'" . $this->escapeString('' . $value) . "'";
-                    break;
-                case 'i':
-                case 'd':
-                    break;
-                default:
-                    if (in_array($tps{$i}, static::PARAMETER_TYPE_CHARS)) {
-                        // Unlikely if previous validateArguments().
-                        throw new DbQueryArgumentException(
-                            $this->messagePrefix()
-                            . ' - arg $types[' . $types . '] index[' . $i . '] char[' . $tps{$i} . '] is not '
-                            . join('|', static::PARAMETER_TYPE_CHARS) . '.'
-                        );
-                    }
-            }
-            $sql_with_args .= $sqlFragments[$i] . $value;
-        }
-
-        // Record types and arguments for parameter validation before execution
-        // and/or on query failure.
-        if ($this->validateParams) {
-            $this->parameterTypes = $tps;
-            unset($this->arguments['simple']);
-            $this->arguments['simple'] =& $args;
-        }
-
-        return $sql_with_args . $sqlFragments[$i];
-    }
-
-    /**
-     * Close query statement, and log.
-     *
-     * In reverse order, that is; to secure arguments in log.
-     *
-     * @param string $method
-     *
-     * @return void
-     */
-    protected function closeAndLog(string $method) /*: void*/
-    {
-        // Log before closing, to be able to list arguments.
-        $this->log($method, false, 1);
-        $this->close();
-    }
-
-
-    // Package protected.-------------------------------------------------------
-
-    /**
-     * @internal Package protected.
-     *
-     * @return string
-     */
-    public function messagePrefix() : string
-    {
-        return $this->client->messagePrefix()
-            . (!$this->name ? '' : ('[' . $this->name . ']'))
-            . '[' . $this->__get('id') . ']';
-    }
-
-    /**
-     * Log query self or just the active sql string.
-     *
-     * @param string $method
-     * @param bool $sqlOnly
-     * @param int $wrappers
-     */
-    public function log(string $method, bool $sqlOnly = false, int $wrappers = 0)
-    {
-        $sql_only = $sqlOnly ? true : !Dependency::container()->has('inspect');
-        $this->client->log(
-            $this->messagePrefix() . ' - dump for erring ' . $method . '(), ' . (!$sqlOnly ? 'query' : 'sql') . ':',
-            !$sql_only ? $this : substr(
-                $this->sqlTampered ?? $this->sql,
-                0,
-                static::LOG_SQL_TRUNCATE
-            ),
-            [
-                'wrappers' => $wrappers + 1,
-            ]
-        );
-    }
-
-    /**
-     * Unset external references.
-     *
-     * Before throwing exception and when closing a statement.
-     *
-     * @internal Package protected.
-     *
-     * @return void
-     */
-    public function unsetReferences() /*: void*/
-    {
-        // Prepared statement arguments refer.
-        // If not unset, the point of reference could get messed up.
-        if (isset($this->arguments['prepared'])) {
-            unset($this->arguments['prepared']);
-        }
     }
 
 

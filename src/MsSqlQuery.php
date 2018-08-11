@@ -595,11 +595,11 @@ class MsSqlQuery extends DbQuery
                     ($this->validateParams & DbQuery::VALIDATE_FAILURE)
                     && !empty($this->arguments['prepared']) && $cls_xcptn != DbConnectionException::class
                 ) {
-                    $msg = $this->validateArgumentsNativeType($this->arguments['prepared']);
-                    if (!$msg) {
+                    if (($valid_or_msg = $this->validateArgumentsNativeType($this->arguments['prepared'])) !== true) {
+                        $msg = 'parameter error: ' . $valid_or_msg . '. DBMS error: ';
+                    }
+                    else {
                         $msg = 'no parameter error observed, DBMS error: ';
-                    } else {
-                        $msg = 'parameter error: ' . $msg . '. DBMS error: ';
                     }
                 } else {
                     $msg = 'error: ';
@@ -654,11 +654,11 @@ class MsSqlQuery extends DbQuery
                     ($this->validateParams & DbQuery::VALIDATE_FAILURE)
                     && !empty($this->arguments['simple']) && $cls_xcptn != DbConnectionException::class
                 ) {
-                    $msg = $this->validateArgumentsNativeType($this->arguments['simple']);
-                    if (!$msg) {
+                    if (($valid_or_msg = $this->validateArgumentsNativeType($this->arguments['simple'])) !== true) {
+                        $msg = 'parameter error: ' . $valid_or_msg . '. DBMS error: ';
+                    }
+                    else {
                         $msg = 'no parameter error observed, DBMS error: ';
-                    } else {
-                        $msg = 'parameter error: ' . $msg . '. DBMS error: ';
                     }
                 } else {
                     $msg = 'error: ';
@@ -726,7 +726,7 @@ class MsSqlQuery extends DbQuery
     }
 
 
-    //  Helpers.----------------------------------------------------------------
+    // Helpers.-----------------------------------------------------------------
 
     /**
      * Translate a type string char to native 'in' SQLSRV_SQLTYPE_*
@@ -734,8 +734,8 @@ class MsSqlQuery extends DbQuery
      *
      * @param string $direction
      *      Values: in|out.
-     * @param mixed $value
      * @param string $types
+     * @param mixed $value
      * @param int $index
      *
      * @return int
@@ -745,7 +745,7 @@ class MsSqlQuery extends DbQuery
      *      Invalid type char.
      *      Integer too large/small for SQL Server bigint.
      */
-    public function nativeTypeFromTypeString(string $direction, $value, string $types, int $index)
+    public function nativeTypeFromTypeString(string $direction, string $types, $value, int $index)
     {
         if ($direction != 'in' && $direction != 'out') {
             throw new \InvalidArgumentException(
@@ -956,6 +956,286 @@ class MsSqlQuery extends DbQuery
         return '';
     }
 
+
+    // Protected helpers.-------------------------------------------------------
+
+    /**
+     * Sets instance var $arguments['prepared'] or $arguments['simple'].
+     *
+     * @param string $types
+     * @param &$arguments
+     *      By reference, for prepared statement's sake.
+     *
+     * @return void
+     *      Number of parameters/arguments.
+     *
+     * @throws DbQueryArgumentException
+     */
+    protected function adaptArguments(string $types, array &$arguments) /*: void*/
+    {
+        $n_params = count($arguments);
+        if (!$n_params) {
+            return;
+        }
+
+        // Use buckets arg $arguments directly if all args are type qualified.
+        //
+        // Otherwise arg $types - or actual type detection - for those buckets
+        // that aren't type qualifying arrays.
+
+        $all_fully_typed = true;
+        // List of typed buckets; key is index, value is (bool) fully typed.
+        $typed__fully = [];
+        /**
+         * Type qualifying array argument:
+         * - 0: (mixed) value
+         * - 1: (int|null) SQLSRV_PARAM_IN|SQLSRV_PARAM_INOUT|null; null ~ SQLSRV_PARAM_IN
+         * - 2: (int|null) SQLSRV_PHPTYPE_*; out type
+         * - 3: (int|null) SQLSRV_SQLTYPE_*; in type
+         * @see http://php.net/manual/en/function.sqlsrv-prepare.php
+         */
+        $i = -1;
+        foreach ($arguments as $arg) {
+            ++$i;
+            if (!is_array($arg)) {
+                // Argumment is arg value only.
+                $all_fully_typed = false;
+            }
+            else {
+                $count = count($arg);
+                // An 'out' parameter must have 3th bucket,
+                // containing SQLSRV_PHPTYPE_* constant.
+                // An 'in' or 'inout' parameter must have 4th bucket,
+                // containing SQLSRV_SQLTYPE_* constant.
+                if (!$count) {
+                    throw new DbQueryArgumentException(
+                        $this->messagePrefix() . ' - arg $arguments bucket ' . $i . ' is empty array.'
+                    );
+                }
+                if ($count == 1) {
+                    // 0: Value only.
+                    // 1: SQLSRV_PARAM_IN|SQLSRV_PARAM_INOUT|SQLSRV_PARAM_OUT.
+                    $typed__fully[$i] = false;
+                    $all_fully_typed = false;
+                }
+                if (!isset($arg[1])) {
+                    $direction = SQLSRV_PARAM_IN;
+                }
+                else {
+                    $direction = $arg[1];
+                    if (
+                        $direction !== SQLSRV_PARAM_IN && $direction !== SQLSRV_PARAM_INOUT
+                        && $direction !== SQLSRV_PARAM_OUT
+                    ) {
+                        throw new DbQueryArgumentException(
+                            $this->messagePrefix() . ' - arg $arguments direction bucket at index['
+                            . $i . '][1] type[' . Utils::getType($arg[1])
+                            . '] is not int SQLSRV_PARAM_IN|SQLSRV_PARAM_INOUT|SQLSRV_PARAM_OUT or null.'
+                        );
+                    }
+                }
+                switch ($direction) {
+                    case SQLSRV_PARAM_IN:
+                        if (!empty($arg[3])) {
+                            // Non-empty 'in' SQLSRV_SQLTYPE_*.
+                            $typed__fully[$i] = true;
+                        } else {
+                            $typed__fully[$i] = $all_fully_typed = false;
+                        }
+                        break;
+                    case SQLSRV_PARAM_INOUT:
+                        if (!empty($arg[2]) && !empty($arg[3])) {
+                            // Non-empty 'out' SQLSRV_PHPTYPE_*
+                            // and non-empty 'in' SQLSRV_SQLTYPE_*.
+                            $typed__fully[$i] = true;
+                        } else {
+                            $typed__fully[$i] = $all_fully_typed = false;
+                        }
+                        break;
+                    case SQLSRV_PARAM_OUT:
+                        if (!empty($arg[2])) {
+                            // Non-empty 'out' SQLSRV_PHPTYPE_*
+                            $typed__fully[$i] = true;
+                        } else {
+                            $typed__fully[$i] = $all_fully_typed = false;
+                        }
+                        break;
+                }
+            }
+        }
+
+        // All arguments are fully type qualified - stop here.------------------
+        if ($all_fully_typed) {
+            if (($this->validateParams & DbQuery::VALIDATE_EXECUTE)) {
+                // Throws exception on validation failure
+                $this->validateArgumentsNativeType($arguments, [], 'prepare');
+            }
+            if ($this->isPreparedStatement) {
+                // Support assoc array; sqlsrv_prepare() doesn't.
+                // And prevent de-referencing when using an arguments list whose
+                // value buckets aren't set as &$value.
+                $args = [];
+                $i = -1;
+                foreach ($arguments as &$arg) {
+                    $args[] = $arg;
+                    $args[++$i][0] =& $arg[0];
+                }
+                unset($arg);
+                $this->arguments['prepared'] =& $args;
+            }
+            // Simple statement; don't refer.
+            // Support assoc array; sqlsrv_query() doesn't.
+            else {
+                $this->arguments['simple'] = array_values($arguments);
+            }
+
+            return;
+        }
+
+        // Some arguments aren't fully type qualified.--------------------------
+        // Use arg $types to establish types of args that aren't arrays.
+        $tps = $types;
+        if (!$tps) {
+            // Detect types, except of buckets that are type qualified array.
+            $tps = $this->parameterTypesDetect($arguments, array_keys($typed__fully));
+        }
+        elseif (strlen($types) != $n_params) {
+            throw new DbQueryArgumentException(
+                $this->messagePrefix() . ' - arg $types length[' . strlen($types)
+                . '] doesn\'t match sql\'s ?-parameters count[' . $n_params . '].'
+            );
+        }
+        /**
+         * Validate only $types, here;
+         * checks by validateArgumentsNativeType() later, if required.
+         * @see MsSqlQuery::validateArgumentsNativeType()
+         */
+        elseif (
+            ($this->validateParams & DbQuery::VALIDATE_PREPARE)
+            && ($valid_or_msg = $this->validateTypes($types)) !== true
+        ) {
+            throw new DbQueryArgumentException(
+                $this->messagePrefix() . ' - arg $types ' . $valid_or_msg . '.'
+            );
+        }
+
+        $is_prep_stat = $this->isPreparedStatement;
+        $typed_args = [];
+        $validation_skip_indexes = [];
+        $i = -1;
+        foreach ($arguments as &$arg) {
+            ++$i;
+            // Not array.
+            if (!isset($typed__fully[$i])) {
+                // Argumment is arg value only.
+                // Use type char and perhaps value.
+                $typed_args[] = [
+                    null,
+                    SQLSRV_PARAM_IN,
+                    null,
+                    $this->nativeTypeFromTypeString('in', $tps, $arg, $i),
+                ];
+                // Pass.
+                if ($is_prep_stat) {
+                    $typed_args[$i][0] = &$arg;
+                } else {
+                    $typed_args[$i][0] = $arg;
+                }
+            }
+            // Array.
+            else {
+                if ($typed__fully[$i]) {
+                    $typed_args[] = [
+                        null,
+                        $arg[1],
+                        $arg[2],
+                        $arg[3] ?? null,
+                    ];
+                }
+                else {
+                    // An 'out' parameter must have 3th bucket,
+                    // containing SQLSRV_PHPTYPE_* constant.
+                    // An 'in' or 'inout' parameter must have 4th bucket,
+                    // containing SQLSRV_SQLTYPE_* constant.
+                    if (count($arg) == 1) {
+                        // 0: Value only.
+                        $typed_args[] = [
+                            null,
+                            SQLSRV_PARAM_IN,
+                            null,
+                            $this->nativeTypeFromActualType('in', $arg[0], $i),
+                        ];
+                        // Don't validate typed established from actual type.
+                        $validation_skip_indexes[] = $i;
+                    }
+                    else {
+                        $out_type = $arg[2] ?? null;
+                        $in_type = $arg[3] ?? null;
+                        switch ($arg[1]) {
+                            case SQLSRV_PARAM_IN:
+                                if (!$in_type) {
+                                    $in_type = $this->nativeTypeFromActualType('in', $arg[0], $i);
+                                    $validation_skip_indexes[] = $i;
+                                }
+                                break;
+                            case SQLSRV_PARAM_INOUT:
+                                if (!$out_type) {
+                                    $out_type = $this->nativeTypeFromActualType('out', $arg[0], $i);
+                                    if (!$in_type) {
+                                        $validation_skip_indexes[] = $i;
+                                    }
+                                }
+                                if (!$in_type) {
+                                    $in_type = $this->nativeTypeFromActualType('in', $arg[0], $i);
+                                }
+                                break;
+                            case SQLSRV_PARAM_OUT:
+                                if (!$out_type) {
+                                    $out_type = $this->nativeTypeFromActualType('out', $arg[0], $i);
+                                    $validation_skip_indexes[] = $i;
+                                }
+                                break;
+                        }
+                        $typed_args[] = [
+                            null,
+                            $arg[1],
+                            $out_type,
+                            $in_type,
+                        ];
+                    }
+                }
+                // Pass.
+                if ($is_prep_stat) {
+                    $typed_args[$i][0] = &$arg[0];
+                } else {
+                    $typed_args[$i][0] = $arg[0];
+                }
+            }
+        }
+        // Iteration ref.
+        unset($arg);
+
+        if (
+            ($this->validateParams & DbQuery::VALIDATE_PREPARE)
+            && (count($validation_skip_indexes) < $n_params)
+        ) {
+            // Throws exception on validation failure
+            $this->validateArgumentsNativeType($typed_args, $validation_skip_indexes, 'prepare');
+        }
+
+        if ($this->isPreparedStatement) {
+            $this->arguments['prepared'] =& $typed_args;
+        } else {
+            // If reusable.
+            unset($this->arguments['simple']);
+            // Don't refer; the prospect of a slight performance gain isn't
+            // worth the risk.
+            // A simple query's arguments shan't refer to the outside;
+            // new arguments list before every execute().
+            $this->arguments['simple'] = $typed_args;
+        }
+    }
+
     /**
      * Validate that arguments matches native types.
      *
@@ -985,7 +1265,7 @@ class MsSqlQuery extends DbQuery
      * @throws DbQueryArgumentException
      *      If validation failure and non-empty arg $errorContext.
      */
-    public function validateArgumentsNativeType(array $arguments, array $skipIndices = [], string $errorContext = '') {
+    protected function validateArgumentsNativeType(array $arguments, array $skipIndices = [], string $errorContext = '') {
         $native = $this->nativeTypes();
 
         if (!$this->validate) {
@@ -1304,282 +1584,5 @@ class MsSqlQuery extends DbQuery
         }
 
         return true;
-    }
-
-    /**
-     * Sets instance var $arguments['prepared'] or $arguments['simple'].
-     *
-     * @param string $types
-     * @param &$arguments
-     *      By reference, for prepared statement's sake.
-     *
-     * @return void
-     *      Number of parameters/arguments.
-     *
-     * @throws DbQueryArgumentException
-     */
-    protected function adaptArguments(string $types, array &$arguments) /*: void*/
-    {
-        $n_params = count($arguments);
-        if (!$n_params) {
-            return;
-        }
-
-        // Use buckets arg $arguments directly if all args are type qualified.
-        //
-        // Otherwise arg $types - or actual type detection - for those buckets
-        // that aren't type qualifying arrays.
-
-        $all_fully_typed = true;
-        // List of typed buckets; key is index, value is (bool) fully typed.
-        $typed__fully = [];
-        /**
-         * Type qualifying array argument:
-         * - 0: (mixed) value
-         * - 1: (int|null) SQLSRV_PARAM_IN|SQLSRV_PARAM_INOUT|null; null ~ SQLSRV_PARAM_IN
-         * - 2: (int|null) SQLSRV_PHPTYPE_*; out type
-         * - 3: (int|null) SQLSRV_SQLTYPE_*; in type
-         * @see http://php.net/manual/en/function.sqlsrv-prepare.php
-         */
-        $i = -1;
-        foreach ($arguments as $arg) {
-            ++$i;
-            if (!is_array($arg)) {
-                // Argumment is arg value only.
-                $all_fully_typed = false;
-            }
-            else {
-                $count = count($arg);
-                // An 'out' parameter must have 3th bucket,
-                // containing SQLSRV_PHPTYPE_* constant.
-                // An 'in' or 'inout' parameter must have 4th bucket,
-                // containing SQLSRV_SQLTYPE_* constant.
-                if (!$count) {
-                    throw new DbQueryArgumentException(
-                        $this->messagePrefix() . ' - arg $arguments bucket ' . $i . ' is empty array.'
-                    );
-                }
-                if ($count == 1) {
-                    // 0: Value only.
-                    // 1: SQLSRV_PARAM_IN|SQLSRV_PARAM_INOUT|SQLSRV_PARAM_OUT.
-                    $typed__fully[$i] = false;
-                    $all_fully_typed = false;
-                }
-                if (!isset($arg[1])) {
-                    $direction = SQLSRV_PARAM_IN;
-                }
-                else {
-                    $direction = $arg[1];
-                    if (
-                        $direction !== SQLSRV_PARAM_IN && $direction !== SQLSRV_PARAM_INOUT
-                        && $direction !== SQLSRV_PARAM_OUT
-                    ) {
-                        throw new DbQueryArgumentException(
-                            $this->messagePrefix() . ' - arg $arguments direction bucket at index['
-                            . $i . '][1] type[' . Utils::getType($arg[1])
-                            . '] is not int SQLSRV_PARAM_IN|SQLSRV_PARAM_INOUT|SQLSRV_PARAM_OUT or null.'
-                        );
-                    }
-                }
-                switch ($direction) {
-                    case SQLSRV_PARAM_IN:
-                        if (!empty($arg[3])) {
-                            // Non-empty 'in' SQLSRV_SQLTYPE_*.
-                            $typed__fully[$i] = true;
-                        } else {
-                            $typed__fully[$i] = $all_fully_typed = false;
-                        }
-                        break;
-                    case SQLSRV_PARAM_INOUT:
-                        if (!empty($arg[2]) && !empty($arg[3])) {
-                            // Non-empty 'out' SQLSRV_PHPTYPE_*
-                            // and non-empty 'in' SQLSRV_SQLTYPE_*.
-                            $typed__fully[$i] = true;
-                        } else {
-                            $typed__fully[$i] = $all_fully_typed = false;
-                        }
-                        break;
-                    case SQLSRV_PARAM_OUT:
-                        if (!empty($arg[2])) {
-                            // Non-empty 'out' SQLSRV_PHPTYPE_*
-                            $typed__fully[$i] = true;
-                        } else {
-                            $typed__fully[$i] = $all_fully_typed = false;
-                        }
-                        break;
-                }
-            }
-        }
-
-        // All arguments are fully type qualified - stop here.------------------
-        if ($all_fully_typed) {
-            if (($this->validateParams & DbQuery::VALIDATE_EXECUTE)) {
-                // Throws exception on validation failure
-                $this->validateArgumentsNativeType($arguments, [], 'prepare');
-            }
-            if ($this->isPreparedStatement) {
-                // Support assoc array; sqlsrv_prepare() doesn't.
-                // And prevent de-referencing when using an arguments list whose
-                // value buckets aren't set as &$value.
-                $args = [];
-                $i = -1;
-                foreach ($arguments as &$arg) {
-                    $args[] = $arg;
-                    $args[++$i][0] =& $arg[0];
-                }
-                unset($arg);
-                $this->arguments['prepared'] =& $args;
-            }
-            // Simple statement; don't refer.
-            // Support assoc array; sqlsrv_query() doesn't.
-            else {
-                $this->arguments['simple'] = array_values($arguments);
-            }
-
-            return;
-        }
-
-        // Some arguments aren't fully type qualified.--------------------------
-        // Use arg $types to establish types of args that aren't arrays.
-        $tps = $types;
-        if (!$tps) {
-            // Detect types, except of buckets that are type qualified array.
-            $tps = $this->parameterTypesDetect($arguments, array_keys($typed__fully));
-        }
-        elseif (strlen($types) != $n_params) {
-            throw new DbQueryArgumentException(
-                $this->messagePrefix() . ' - arg $types length[' . strlen($types)
-                . '] doesn\'t match sql\'s ?-parameters count[' . $n_params . '].'
-            );
-        }
-        /**
-         * Validate only $types, here;
-         * checks by validateArgumentsNativeType() later, if required.
-         * @see MsSqlQuery::validateArgumentsNativeType()
-         */
-        elseif (
-            ($this->validateParams & DbQuery::VALIDATE_PREPARE)
-            && ($valid = $this->validateTypes($types)) !== true
-        ) {
-            throw new DbQueryArgumentException(
-                $this->messagePrefix() . ' - arg $types ' . $valid . '.'
-            );
-        }
-
-        $is_prep_stat = $this->isPreparedStatement;
-        $typed_args = [];
-        $validation_skip_indexes = [];
-        $i = -1;
-        foreach ($arguments as &$arg) {
-            ++$i;
-            // Not array.
-            if (!isset($typed__fully[$i])) {
-                // Argumment is arg value only.
-                // Use type char and perhaps value.
-                $typed_args[] = [
-                    null,
-                    SQLSRV_PARAM_IN,
-                    null,
-                    $this->nativeTypeFromTypeString('in', $arg, $tps, $i),
-                ];
-                // Pass.
-                if ($is_prep_stat) {
-                    $typed_args[$i][0] = &$arg;
-                } else {
-                    $typed_args[$i][0] = $arg;
-                }
-            }
-            // Array.
-            else {
-                if ($typed__fully[$i]) {
-                    $typed_args[] = [
-                        null,
-                        $arg[1],
-                        $arg[2],
-                        $arg[3] ?? null,
-                    ];
-                }
-                else {
-                    // An 'out' parameter must have 3th bucket,
-                    // containing SQLSRV_PHPTYPE_* constant.
-                    // An 'in' or 'inout' parameter must have 4th bucket,
-                    // containing SQLSRV_SQLTYPE_* constant.
-                    if (count($arg) == 1) {
-                        // 0: Value only.
-                        $typed_args[] = [
-                            null,
-                            SQLSRV_PARAM_IN,
-                            null,
-                            $this->nativeTypeFromActualType('in', $arg[0], $i),
-                        ];
-                        // Don't validate typed established from actual type.
-                        $validation_skip_indexes[] = $i;
-                    }
-                    else {
-                        $out_type = $arg[2] ?? null;
-                        $in_type = $arg[3] ?? null;
-                        switch ($arg[1]) {
-                            case SQLSRV_PARAM_IN:
-                                if (!$in_type) {
-                                    $in_type = $this->nativeTypeFromActualType('in', $arg[0], $i);
-                                    $validation_skip_indexes[] = $i;
-                                }
-                                break;
-                            case SQLSRV_PARAM_INOUT:
-                                if (!$out_type) {
-                                    $out_type = $this->nativeTypeFromActualType('out', $arg[0], $i);
-                                    if (!$in_type) {
-                                        $validation_skip_indexes[] = $i;
-                                    }
-                                }
-                                if (!$in_type) {
-                                    $in_type = $this->nativeTypeFromActualType('in', $arg[0], $i);
-                                }
-                                break;
-                            case SQLSRV_PARAM_OUT:
-                                if (!$out_type) {
-                                    $out_type = $this->nativeTypeFromActualType('out', $arg[0], $i);
-                                    $validation_skip_indexes[] = $i;
-                                }
-                                break;
-                        }
-                        $typed_args[] = [
-                            null,
-                            $arg[1],
-                            $out_type,
-                            $in_type,
-                        ];
-                    }
-                }
-                // Pass.
-                if ($is_prep_stat) {
-                    $typed_args[$i][0] = &$arg[0];
-                } else {
-                    $typed_args[$i][0] = $arg[0];
-                }
-            }
-        }
-        // Iteration ref.
-        unset($arg);
-
-        if (
-            ($this->validateParams & DbQuery::VALIDATE_PREPARE)
-            && (count($validation_skip_indexes) < $n_params)
-        ) {
-            // Throws exception on validation failure
-            $this->validateArgumentsNativeType($typed_args, $validation_skip_indexes, 'prepare');
-        }
-        
-        if ($this->isPreparedStatement) {
-            $this->arguments['prepared'] =& $typed_args;
-        } else {
-            // If reusable.
-            unset($this->arguments['simple']);
-            // Don't refer; the prospect of a slight performance gain isn't
-            // worth the risk.
-            // A simple query's arguments shan't refer to the outside;
-            // new arguments list before every execute().
-            $this->arguments['simple'] = $typed_args;
-        }
     }
 }

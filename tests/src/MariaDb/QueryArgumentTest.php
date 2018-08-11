@@ -440,4 +440,41 @@ class QueryArgumentTest extends TestCase
         $this->assertInstanceOf(MariaDbResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
     }
+
+    /**
+     * @see ClientTest::testInstantiation()
+     *
+     * @expectedException \SimpleComplex\Database\Exception\DbQueryException
+     */
+    public function testSimpleQueryValidateFailureNone()
+    {
+        $client = (new ClientTest())->testInstantiation();
+
+        $query = $client->query(
+            'INSERT INTO non_existent (_0_int, _1_float, _2_decimal, _3_varchar, _4_blob, _5_date, _6_datetime)
+            VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [
+                'validate_params' => DbQuery::VALIDATE_FAILURE,
+                'sql_minify' => true,
+                'affected_rows' => true,
+            ]
+        );
+
+        $types = 'idssbss';
+
+        $time = new Time('2001-01-01T00:00:00+01:00');
+        $args = [
+            '_0_int' => 1,
+            '_1_float' => 1.0,
+            '_2_decimal' => '2.0',
+            '_3_varchar' => 'simple validate failure',
+            '_4_blob' => sprintf("%08d", decbin(4)),
+            '_5_date' => $time->getDateISOlocal(),
+            '_6_datetime' => $time->getDateISOlocal(),
+        ];
+        TestHelper::queryParameters($query, $types, $args);
+        $result = TestHelper::queryExecute($query);
+        $this->assertInstanceOf(MariaDbResult::class, $result);
+        $this->assertSame(1, $result->affectedRows());
+    }
 }
