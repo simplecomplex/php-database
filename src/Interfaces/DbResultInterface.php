@@ -143,6 +143,16 @@ interface DbResultInterface
     public function nextSet() : bool;
 
     /**
+     * Traverse all remaining result sets.
+     *
+     * In some case a DBMS may fail to reveal error(s)
+     * until all sets have being accessed.
+     *
+     * @return void
+     */
+    public function depleteSets() /*: void*/;
+
+    /**
      * Go to next row in the result set.
      *
      * @return bool
@@ -152,6 +162,23 @@ interface DbResultInterface
      * @throws \Throwable
      */
     public function nextRow() : bool;
+
+    /**
+     * Traverse all remaining rows in current result set.
+     *
+     * In some case a DBMS may fail to release resources
+     * until all rows have been traversed.
+     *
+     * @return void
+     */
+    public function depleteRows() /*: void*/;
+
+    /**
+     * Traverse all remaining result sets and rows.
+     *
+     * @return void
+     */
+    public function depleteAll() /*: void*/;
 
     /**
      * @return void

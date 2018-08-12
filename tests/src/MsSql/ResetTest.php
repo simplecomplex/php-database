@@ -107,13 +107,8 @@ REFERENCES parent(id)
         /** @var MsSqlResult $result */
         $result = $query->execute();
         $this->assertInstanceOf(MsSqlResult::class, $result);
-
-        while (($success = $result->nextSet())) {
-            $this->assertSame(
-                true,
-                $success
-            );
-        }
+        // Traversing all result sets is obsolete when using MsSql, but anyway.
+        TestHelper::logOnError('traverse all result sets', $result, 'depleteSets');
     }
 
     /**
@@ -147,13 +142,8 @@ REFERENCES parent(id)
         /** @var MsSqlResult $result */
         $result = $query->execute();
         $this->assertInstanceOf(MsSqlResult::class, $result);
-
-        while (($success = $result->nextSet())) {
-            $this->assertSame(
-                true,
-                $success
-            );
-        }
+        // Traversing all result sets is obsolete when using MsSql, but anyway.
+        TestHelper::logOnError('traverse all result sets', $result, 'depleteSets');
 
         return $client;
     }
@@ -189,13 +179,8 @@ REFERENCES parent(id)
         /** @var MsSqlResult $result */
         $result = $query->execute();
         $this->assertInstanceOf(MsSqlResult::class, $result);
-
-        while (($success = $result->nextSet())) {
-            $this->assertSame(
-                true,
-                $success
-            );
-        }
+        // Traversing all result sets is obsolete when using MsSql, but anyway.
+        TestHelper::logOnError('traverse all result sets', $result, 'depleteSets');
 
         return $client;
     }

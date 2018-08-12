@@ -88,9 +88,9 @@ class QueryArgumentTest extends TestCase
             &$_5_date,
             &$_6_datetime,
         ];
-        TestHelper::queryPrepare($query, $types, $args);
+        TestHelper::queryPrepareLogOnError($query, $types, $args);
         /** @var MariaDbResult $result */
-        $result = TestHelper::queryExecute($query);
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
         $this->assertInstanceOf(MariaDbResult::class, $result);
         $affected_rows = $result->affectedRows();
         $this->assertInternalType('int', $affected_rows);
@@ -99,7 +99,7 @@ class QueryArgumentTest extends TestCase
         $_1_float = 1.1;
         $_2_decimal = '2.2';
         $_3_varchar = 'arguments referred 2';
-        $result = TestHelper::queryExecute($query);
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
         $this->assertInstanceOf(MariaDbResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
     }
@@ -135,14 +135,14 @@ class QueryArgumentTest extends TestCase
             $time->getDateISOlocal(),
             '' . $time,
         ];
-        TestHelper::queryPrepare($query, $types, $args);
-        $result = TestHelper::queryExecute($query);
+        TestHelper::queryPrepareLogOnError($query, $types, $args);
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
         $this->assertInstanceOf(MariaDbResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
 
         $args[1] = 1.1;
         $args[2] = '2.2';
-        $result = TestHelper::queryExecute($query);
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
         $this->assertInstanceOf(MariaDbResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
     }
@@ -179,14 +179,14 @@ class QueryArgumentTest extends TestCase
             // This doesn't work when called outside phpunit context.
             '_6_datetime' => '' . $time,
         ];
-        TestHelper::queryPrepare($query, $types, $args);
-        $result = TestHelper::queryExecute($query);
+        TestHelper::queryPrepareLogOnError($query, $types, $args);
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
         $this->assertInstanceOf(MariaDbResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
 
         $args['_1_float'] = 1.1;
         $args['_2_decimal'] = '2.2';
-        $result = TestHelper::queryExecute($query);
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
         $this->assertInstanceOf(MariaDbResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
     }
@@ -225,8 +225,8 @@ class QueryArgumentTest extends TestCase
             '_6_datetime' => '' . $time,
             '_7_text' => '',
         ];
-        TestHelper::queryPrepare($query, $types, $args);
-        $result = TestHelper::queryExecute($query);
+        TestHelper::queryPrepareLogOnError($query, $types, $args);
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
         $this->assertInstanceOf(MariaDbResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
 
@@ -247,8 +247,8 @@ class QueryArgumentTest extends TestCase
         $args['_6_datetime'] = new \DateTime('2000-01-01');
         // Yes, MySQLi attempts to stringify object.
         $args['_7_text'] = new Stringable('stringable');
-
-        $result = TestHelper::queryExecute($query);
+        
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
         $this->assertInstanceOf(MariaDbResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
     }
@@ -284,8 +284,8 @@ class QueryArgumentTest extends TestCase
             '_5_date' => $time->getDateISOlocal(),
             '_6_datetime' => '' . $time,
         ];
-        TestHelper::queryPrepare($query, $types, $args);
-        $result = TestHelper::queryExecute($query);
+        TestHelper::queryPrepareLogOnError($query, $types, $args);
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
         $this->assertInstanceOf(MariaDbResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
     }
@@ -339,8 +339,8 @@ class QueryArgumentTest extends TestCase
             // Yes, MySQLi attempts to stringify object.
             '_7_text' => new Stringable('simple stringable'),
         ];
-        TestHelper::queryParameters($query, $types, $args);
-        $result = TestHelper::queryExecute($query);
+        TestHelper::queryParametersLogOnError($query, $types, $args);
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
         $this->assertInstanceOf(MariaDbResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
     }
@@ -375,15 +375,15 @@ class QueryArgumentTest extends TestCase
             '_5_date' => $time->getDateISOlocal(),
             '_6_datetime' => $time->getDateISOlocal(),
         ];
-        TestHelper::queryParameters($query, $types, $args);
-        $result = TestHelper::queryExecute($query);
+        TestHelper::queryParametersLogOnError($query, $types, $args);
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
         $this->assertInstanceOf(MariaDbResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
 
         $args['_1_float'] = 1.1;
         $args['_2_decimal'] = '2.2';
-        TestHelper::queryParameters($query, $types, $args);
-        $result = TestHelper::queryExecute($query);
+        TestHelper::queryParametersLogOnError($query, $types, $args);
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
         $this->assertInstanceOf(MariaDbResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
     }
@@ -419,8 +419,8 @@ class QueryArgumentTest extends TestCase
             '_5_date' => $time->getDateISOlocal(),
             '_6_datetime' => $time->getDateISOlocal(),
         ];
-        TestHelper::queryParameters($query, $types, $args);
-        $result = TestHelper::queryExecute($query);
+        TestHelper::queryParametersLogOnError($query, $types, $args);
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
         $this->assertInstanceOf(MariaDbResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
     }

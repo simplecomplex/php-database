@@ -90,9 +90,9 @@ class QueryArgumentTest extends TestCase
             &$_6_datetime,
             &$_7_nvarchar,
         ];
-        TestHelper::queryPrepare($query, $types, $args);
+        TestHelper::queryPrepareLogOnError($query, $types, $args);
         /** @var MsSqlResult $result */
-        $result = TestHelper::queryExecute($query);
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
         $this->assertInstanceOf(MsSqlResult::class, $result);
         $affected_rows = $result->affectedRows();
         $this->assertInternalType('int', $affected_rows);
@@ -101,7 +101,7 @@ class QueryArgumentTest extends TestCase
         $_1_float = 1.1;
         $_2_decimal = '2.2';
         $_3_varchar = 'arguments referred 2';
-        $result = TestHelper::queryExecute($query);
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
         $this->assertInstanceOf(MsSqlResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
     }
@@ -139,14 +139,14 @@ class QueryArgumentTest extends TestCase
             '' . $time,
             'n varchar',
         ];
-        TestHelper::queryPrepare($query, $types, $args);
-        $result = TestHelper::queryExecute($query);
+        TestHelper::queryPrepareLogOnError($query, $types, $args);
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
         $this->assertInstanceOf(MsSqlResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
 
         $args[1] = 1.1;
         $args[2] = '2.2';
-        $result = TestHelper::queryExecute($query);
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
         $this->assertInstanceOf(MsSqlResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
     }
@@ -184,14 +184,14 @@ class QueryArgumentTest extends TestCase
             '_6_datetime' => '' . $time,
             '_7_nvarchar' => 'n varchar',
         ];
-        TestHelper::queryPrepare($query, $types, $args);
-        $result = TestHelper::queryExecute($query);
+        TestHelper::queryPrepareLogOnError($query, $types, $args);
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
         $this->assertInstanceOf(MsSqlResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
 
         $args['_1_float'] = 1.1;
         $args['_2_decimal'] = 2.2;
-        $result = TestHelper::queryExecute($query);
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
         $this->assertInstanceOf(MsSqlResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
     }
@@ -234,8 +234,8 @@ class QueryArgumentTest extends TestCase
 
             '_7_nvarchar' => new \DateTime('2000-01-01'), //'stringable', //new Stringable('stringable'),
         ];
-        TestHelper::queryPrepare($query, $types, $args);
-        $result = TestHelper::queryExecute($query);
+        TestHelper::queryPrepareLogOnError($query, $types, $args);
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
         $this->assertInstanceOf(MsSqlResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
 
@@ -255,7 +255,7 @@ class QueryArgumentTest extends TestCase
          */
         $args['_7_nvarchar'] = new Stringable('stringable');
 
-        $result = TestHelper::queryExecute($query);
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
         $this->assertInstanceOf(MsSqlResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
     }
@@ -343,14 +343,14 @@ class QueryArgumentTest extends TestCase
                 SQLSRV_SQLTYPE_NVARCHAR('max'),
             ],
         ];
-        TestHelper::queryPrepare($query, $types, $args);
-        $result = TestHelper::queryExecute($query);
+        TestHelper::queryPrepareLogOnError($query, $types, $args);
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
         $this->assertInstanceOf(MsSqlResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
 
         $_1_float = 1.1;
         $_2_decimal = '2.2';
-        $result = TestHelper::queryExecute($query);
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
         $this->assertInstanceOf(MsSqlResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
     }
@@ -429,14 +429,14 @@ class QueryArgumentTest extends TestCase
                 SQLSRV_SQLTYPE_NVARCHAR('max'),
             ],
         ];
-        TestHelper::queryPrepare($query, $types, $args);
-        $result = TestHelper::queryExecute($query);
+        TestHelper::queryPrepareLogOnError($query, $types, $args);
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
         $this->assertInstanceOf(MsSqlResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
 
         $args[1][0] = 1.1;
         $args[2][0] = '2.2';
-        $result = TestHelper::queryExecute($query);
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
         $this->assertInstanceOf(MsSqlResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
     }
@@ -515,14 +515,14 @@ class QueryArgumentTest extends TestCase
                 SQLSRV_SQLTYPE_NVARCHAR('max'),
             ],
         ];
-        TestHelper::queryPrepare($query, $types, $args);
-        $result = TestHelper::queryExecute($query);
+        TestHelper::queryPrepareLogOnError($query, $types, $args);
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
         $this->assertInstanceOf(MsSqlResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
 
         $args['_1_float'][0] = 1.1;
         $args['_2_decimal'][0] ='2.2';
-        $result = TestHelper::queryExecute($query);
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
         $this->assertInstanceOf(MsSqlResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
     }
@@ -565,8 +565,8 @@ class QueryArgumentTest extends TestCase
             '_6_datetime' => $time,
             '_7_nvarchar' => 'n varchar',
         ];
-        TestHelper::queryPrepare($query, $types, $args);
-        $result = TestHelper::queryExecute($query);
+        TestHelper::queryPrepareLogOnError($query, $types, $args);
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
         $this->assertInstanceOf(MsSqlResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
     }
@@ -617,11 +617,11 @@ class QueryArgumentTest extends TestCase
             ],
             '_7_nvarchar' => 'n varchar',
         ];
-        TestHelper::queryPrepare($query, $types, $args);
+        TestHelper::queryPrepareLogOnError($query, $types, $args);
 
         //TestHelper::logVariable(__FUNCTION__ . ' query', $query);
 
-        $result = TestHelper::queryExecute($query);
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
         $this->assertInstanceOf(MsSqlResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
     }
@@ -722,8 +722,8 @@ class QueryArgumentTest extends TestCase
                 SQLSRV_SQLTYPE_UNIQUEIDENTIFIER,
             ],
         ];
-        TestHelper::queryPrepare($query, $types, $args);
-        $result = TestHelper::queryExecute($query);
+        TestHelper::queryPrepareLogOnError($query, $types, $args);
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
         $this->assertInstanceOf(MsSqlResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
 
@@ -736,7 +736,7 @@ class QueryArgumentTest extends TestCase
         //$args['_5_date'][0] = 'cykel';
         $args['_6_datetime'][0] = $time->getDateISOlocal();
         $args['_8_bit'][0] = true;
-        $result = TestHelper::queryExecute($query);
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
         $this->assertInstanceOf(MsSqlResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
     }
@@ -792,8 +792,8 @@ class QueryArgumentTest extends TestCase
              */
             '_7_nvarchar' => new Stringable('simple stringable'),
         ];
-        TestHelper::queryParameters($query, $types, $args);
-        $result = TestHelper::queryExecute($query);
+        TestHelper::queryParametersLogOnError($query, $types, $args);
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
         $this->assertInstanceOf(MsSqlResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
     }
@@ -829,15 +829,15 @@ class QueryArgumentTest extends TestCase
             '_6_datetime' => $time,
             '_7_nvarchar' => 'whatever',
         ];
-        TestHelper::queryParameters($query, $types, $args);
-        $result = TestHelper::queryExecute($query);
+        TestHelper::queryParametersLogOnError($query, $types, $args);
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
         $this->assertInstanceOf(MsSqlResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
 
         $args['_1_float'] = 1.1;
         $args['_2_decimal'] = '2.2';
-        TestHelper::queryParameters($query, $types, $args);
-        $result = TestHelper::queryExecute($query);
+        TestHelper::queryParametersLogOnError($query, $types, $args);
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
         $this->assertInstanceOf(MsSqlResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
     }
@@ -874,8 +874,8 @@ class QueryArgumentTest extends TestCase
             '_6_datetime' => $time,
             '_7_nvarchar' => 'whatever',
         ];
-        TestHelper::queryParameters($query, $types, $args);
-        $result = TestHelper::queryExecute($query);
+        TestHelper::queryParametersLogOnError($query, $types, $args);
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
         $this->assertInstanceOf(MsSqlResult::class, $result);
         $this->assertSame(1, $result->affectedRows());
     }

@@ -73,6 +73,50 @@ abstract class DbResult extends Explorable implements DbResultInterface
      */
     protected $rowIndex = -1;
 
+    /**
+     * Traverse all remaining result sets.
+     *
+     * Errors of a query returning multiple result sets may not surface until
+     * all sets have being accessed.
+     *
+     * MariaDb: A 'must' when using MariaDb multi-query.
+     *
+     * MsSql: Apparantly obsolete.
+     *
+     * @return void
+     */
+    public function depleteSets() /*: void*/
+    {
+        while ($this->nextSet()) {}
+    }
+
+    /**
+     * Traverse all remaining rows in current result set.
+     *
+     * MariaDb may fail to release resources until all rows
+     * have been traversed.
+     * @see https://bugs.mysql.com/bug.php?id=42929
+     *
+     * @return void
+     */
+    public function depleteRows() /*: void*/
+    {
+        while ($this->nextRow()) {}
+    }
+
+    /**
+     * Traverse all remaining result sets and rows.
+     *
+     * @return void
+     */
+    public function depleteAll() /*: void*/
+    {
+        while ($this->nextRow()) {}
+        while ($this->nextSet()) {
+            while ($this->nextRow()) {}
+        }
+    }
+
 
     // Helpers.-----------------------------------------------------------------
 

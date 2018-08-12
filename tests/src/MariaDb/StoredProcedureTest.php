@@ -79,8 +79,8 @@ class StoredProcedureTest extends TestCase
             '_6_datetime' => $time->getDateISOlocal(),
             '_7_text' => 'MySQLi is not convincing',
         ];
-        TestHelper::queryPrepare($query, $types, $args);
-        $result = TestHelper::queryExecute($query);
+        TestHelper::queryPrepareLogOnError($query, $types, $args);
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
         $this->assertInstanceOf(MariaDbResult::class, $result);
 
         $this->assertSame(1, $result->affectedRows());
@@ -115,8 +115,8 @@ class StoredProcedureTest extends TestCase
             '_6_datetime' => $time->getDateISOlocal(),
             '_7_text' => 'MySQLi is not convincing',
         ];
-        TestHelper::queryPrepare($query, $types, $args);
-        $result = TestHelper::queryExecute($query);
+        TestHelper::queryPrepareLogOnError($query, $types, $args);
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
         $this->assertInstanceOf(MariaDbResult::class, $result);
 
         //$this->assertSame(1, $result->affectedRows());
@@ -157,8 +157,8 @@ class StoredProcedureTest extends TestCase
             '_6_datetime' => $time->getDateISOlocal(),
             '_7_text' => 'MySQLi is not convincing',
         ];
-        TestHelper::queryPrepare($query, $types, $args);
-        $result = TestHelper::queryExecute($query);
+        TestHelper::queryPrepareLogOnError($query, $types, $args);
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
         $this->assertInstanceOf(MariaDbResult::class, $result);
 
         //$this->assertSame(1, $result->affectedRows());

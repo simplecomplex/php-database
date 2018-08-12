@@ -78,9 +78,9 @@ class ResultTest extends TestCase
             '_6_datetime' => $time,
             '_7_nvarchar' => 'n varchar',
         ];
-        TestHelper::queryPrepare($query, $types, $args);
+        TestHelper::queryPrepareLogOnError($query, $types, $args);
 
-        $result = TestHelper::queryExecute($query);
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
         $this->assertInstanceOf(MsSqlResult::class, $result);
         $insert_id = $result->insertId('i');
         $this->assertInternalType('int', $insert_id);
@@ -90,7 +90,7 @@ class ResultTest extends TestCase
         $args['_1_float'] = 2.2;
         $args['_2_decimal'] = '3.3';
         $args['_3_varchar'] = 'insert id as float';
-        $result = TestHelper::queryExecute($query);
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
         $this->assertInstanceOf(MsSqlResult::class, $result);
         $insert_id = $result->insertId('d');
         $this->assertInternalType('float', $insert_id);
@@ -100,7 +100,7 @@ class ResultTest extends TestCase
         $args['_1_float'] = 3.3;
         $args['_2_decimal'] = '4.4';
         $args['_3_varchar'] = 'insert id as string';
-        $result = TestHelper::queryExecute($query);
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
         $this->assertInstanceOf(MsSqlResult::class, $result);
         $insert_id = $result->insertId('s');
         $this->assertInternalType('string', $insert_id);
@@ -123,15 +123,15 @@ class ResultTest extends TestCase
                 'sql_minify' => true,
             ]
         );
-        TestHelper::queryPrepare($query);
+        TestHelper::queryPrepareLogOnError($query);
 
-        $result = TestHelper::queryExecute($query);
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
         $this->assertInstanceOf(MsSqlResult::class, $result);
         $column_by_index = $result->fetchColumn(4);
         $this->assertInternalType('string', $column_by_index);
         $this->assertNotEmpty($column_by_index);
 
-        $result = TestHelper::queryExecute($query);
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
         $this->assertInstanceOf(MsSqlResult::class, $result);
         $column_by_name = $result->fetchColumn(0, '_3_varchar');
         $this->assertInternalType('string', $column_by_name);
@@ -150,15 +150,15 @@ class ResultTest extends TestCase
                 'sql_minify' => true,
             ]
         );
-        TestHelper::queryPrepare($query);
+        TestHelper::queryPrepareLogOnError($query);
 
-        $result = TestHelper::queryExecute($query);
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
         $this->assertInstanceOf(MsSqlResult::class, $result);
         $column_by_index = $result->fetchColumn(4);
         $this->assertInternalType('string', $column_by_index);
         $this->assertNotEmpty($column_by_index);
 
-        $result = TestHelper::queryExecute($query);
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
         $this->assertInstanceOf(MsSqlResult::class, $result);
         $column_by_name = $result->fetchColumn(0, '_3_varchar');
         $this->assertInternalType('string', $column_by_name);
@@ -182,9 +182,9 @@ class ResultTest extends TestCase
                 'sql_minify' => true,
             ]
         );
-        TestHelper::queryPrepare($query);
+        TestHelper::queryPrepareLogOnError($query);
 
-        $result = TestHelper::queryExecute($query);
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
         $this->assertInstanceOf(MsSqlResult::class, $result);
         $fetch_assoc = $result->fetchArray();
         $this->assertInternalType('array', $fetch_assoc);
@@ -205,15 +205,15 @@ class ResultTest extends TestCase
                 'sql_minify' => true,
             ]
         );
-        TestHelper::queryPrepare($query);
+        TestHelper::queryPrepareLogOnError($query);
 
-        $result = TestHelper::queryExecute($query);
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
         $this->assertInstanceOf(MsSqlResult::class, $result);
         $fetch_assoc = $result->fetchAllArrays();
         $this->assertInternalType('array', $fetch_assoc);
         $this->assertNotEmpty($fetch_assoc);
 
-        $result = TestHelper::queryExecute($query);
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
         $this->assertInstanceOf(MsSqlResult::class, $result);
         $fetch_num = $result->fetchAllArrays(DbResult::FETCH_NUMERIC);
         $this->assertInternalType('array', $fetch_num);
@@ -239,9 +239,9 @@ class ResultTest extends TestCase
                 'sql_minify' => true,
             ]
         );
-        TestHelper::queryPrepare($query);
+        TestHelper::queryPrepareLogOnError($query);
 
-        $result = TestHelper::queryExecute($query);
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
         $this->assertInstanceOf(MsSqlResult::class, $result);
         $fetch_assoc = $result->fetchAllArrays(DbResult::FETCH_ASSOC, '_3_varchar');
         $this->assertInternalType('array', $fetch_assoc);
@@ -249,7 +249,7 @@ class ResultTest extends TestCase
 
         //TestHelper::logVariable('fetch all arrays assoc+list by column', $fetch_assoc);
 
-        $result = TestHelper::queryExecute($query);
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
         $this->assertInstanceOf(MsSqlResult::class, $result);
         /**
          * Non-empty arg $list_by_column when arg $as is FETCH_NUMERIC.
@@ -273,10 +273,10 @@ class ResultTest extends TestCase
                 'sql_minify' => true,
             ]
         );
-        TestHelper::queryPrepare($query);
+        TestHelper::queryPrepareLogOnError($query);
 
         /** @var MsSqlResult $result */
-        $result = TestHelper::queryExecute($query);
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
         $this->assertInstanceOf(MsSqlResult::class, $result);
         $fetch_object = $result->fetchObject();
         $this->assertInstanceOf(\stdClass::class, $fetch_object);
@@ -297,21 +297,21 @@ class ResultTest extends TestCase
                 'sql_minify' => true,
             ]
         );
-        TestHelper::queryPrepare($query);
+        TestHelper::queryPrepareLogOnError($query);
 
-        $result = TestHelper::queryExecute($query);
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
         $this->assertInstanceOf(MsSqlResult::class, $result);
         $fetch_object = $result->fetchAllObjects();
         $this->assertInternalType('array', $fetch_object);
         $this->assertNotEmpty($fetch_object);
 
-        $result = TestHelper::queryExecute($query);
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
         $this->assertInstanceOf(MsSqlResult::class, $result);
         $fetch_typed = $result->fetchAllObjects(Typish::class);
         $this->assertInternalType('array', $fetch_typed);
         $this->assertNotEmpty($fetch_typed);
 
-        $result = TestHelper::queryExecute($query);
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
         $this->assertInstanceOf(MsSqlResult::class, $result);
         $fetch_typed_w_args = $result->fetchAllObjects(Typish::class, '_3_varchar', ['hello']);
         $this->assertInternalType('array', $fetch_typed_w_args);

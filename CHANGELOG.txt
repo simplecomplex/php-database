@@ -1,3 +1,10 @@
+SimpleComplex/Database 1.x, 2018-08-12
+--------------------------------------
+- Result methods for depleting/traversing all sets and rows.
+- MsSql more query error codes mapped.
+- Tests use TestHelper's method for circumventing phpunit's propensity
+  to consume all exceptions.
+
 SimpleComplex/Database 1.x, 2018-08-11
 --------------------------------------
 - Query parameter validation on query failure always reported parameter error,

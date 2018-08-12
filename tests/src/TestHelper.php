@@ -10,8 +10,8 @@ declare(strict_types=1);
 namespace SimpleComplex\Tests\Database;
 
 use SimpleComplex\Database\Interfaces\DbQueryInterface;
-use SimpleComplex\Database\Interfaces\DbResultInterface;
 use SimpleComplex\Database\DbQuery;
+use SimpleComplex\Database\DbResult;
 
 /**
  * phpunit test helper.
@@ -28,11 +28,9 @@ class TestHelper extends \SimpleComplex\Tests\Utils\TestHelper
     const PATH_TESTS = 'simplecomplex/database/tests/src';
 
     /**
-     * A means of accessing exceptions, circumventing phpunits'
-     * propensity to consume exceptions.
+     * Query prepare(), log on error.
      *
-     * Logs trace on exception, and re-throws to accommodate
-     * (at)expectedException annotation.
+     * @see \SimpleComplex\Tests\Utils\TestHelper::logOnError()
      *
      * @param DbQueryInterface|DbQuery $query
      * @param string $types
@@ -41,7 +39,7 @@ class TestHelper extends \SimpleComplex\Tests\Utils\TestHelper
      * @throws \Throwable
      *      Re-throws query execution failure.
      */
-    public static function queryPrepare(DbQuery $query, string $types = '', array &$arguments = [])
+    public static function queryPrepareLogOnError(DbQuery $query, string $types = '', array &$arguments = [])
     {
         try {
             $query->prepare($types, $arguments);
@@ -52,11 +50,9 @@ class TestHelper extends \SimpleComplex\Tests\Utils\TestHelper
     }
 
     /**
-     * A means of accessing exceptions, circumventing phpunits'
-     * propensity to consume exceptions.
+     * Query parameters(), log on error.
      *
-     * Logs trace on exception, and re-throws to accommodate
-     * (at)expectedException annotation.
+     * @see \SimpleComplex\Tests\Utils\TestHelper::logOnError()
      *
      * @param DbQueryInterface|DbQuery $query
      * @param string $types
@@ -65,36 +61,12 @@ class TestHelper extends \SimpleComplex\Tests\Utils\TestHelper
      * @throws \Throwable
      *      Re-throws query execution failure.
      */
-    public static function queryParameters(DbQuery $query, string $types = '', array &$arguments = [])
+    public static function queryParametersLogOnError(DbQuery $query, string $types = '', array &$arguments = [])
     {
         try {
             $query->parameters($types, $arguments);
         } catch (\Throwable $xcptn) {
             static::logTrace('query parameters', $xcptn);
-            throw $xcptn;
-        }
-    }
-
-    /**
-     * A means of accessing exceptions, circumventing phpunits'
-     * propensity to consume exceptions.
-     *
-     * Logs trace on exception, and re-throws to accommodate
-     * (at)expectedException annotation.
-     *
-     * @param DbQueryInterface|DbQuery $query
-     *
-     * @return DbResultInterface|null
-     *
-     * @throws \Throwable
-     *      Re-throws query execution failure.
-     */
-    public static function queryExecute(DbQuery $query)
-    {
-        try {
-            return $query->execute();
-        } catch (\Throwable $xcptn) {
-            static::logTrace('query execute', $xcptn);
             throw $xcptn;
         }
     }
