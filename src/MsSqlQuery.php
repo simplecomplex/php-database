@@ -1268,10 +1268,6 @@ class MsSqlQuery extends DbQuery
     protected function validateArgumentsNativeType(array $arguments, array $skipIndices = [], string $errorContext = '') {
         $native = $this->nativeTypes();
 
-        if (!$this->validate) {
-            $this->validate = Validate::getInstance();
-        }
-
         $invalids = [];
         $index = -1;
         foreach ($arguments as $arg) {

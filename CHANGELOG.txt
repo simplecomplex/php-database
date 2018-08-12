@@ -4,6 +4,8 @@ SimpleComplex/Database 1.x, 2018-08-12
 - MsSql more query error codes mapped.
 - Tests use TestHelper's method for circumventing phpunit's propensity
   to consume all exceptions.
+- Secure that overriding Validate (if such) gets used.
+- Release 1.0.
 
 SimpleComplex/Database 1.x, 2018-08-11
 --------------------------------------

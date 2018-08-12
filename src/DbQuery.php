@@ -422,8 +422,13 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
             $this->sql = $this->sqlMinify($sql);
         }
 
-        $this->validateParams = isset($options['validate_params']) ? (int) $options['validate_params'] :
-            static::VALIDATE_PARAMS;
+        if (($this->validateParams = isset($options['validate_params']) ? (int) $options['validate_params'] :
+            static::VALIDATE_PARAMS
+        )) {
+            // Secure that overriding Validate (if such) gets used.
+            $container = Dependency::container();
+            $this->validate = $container->has('validate') ? $container->get('validate') : Validate::getInstance();
+        }
 
         if ($options) {
             $specifics = array_diff(array_keys($options), static::OPTIONS_GENERIC);
@@ -944,9 +949,6 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
             return $this->messagePrefix() . ' - arg $types length[' . strlen($types)
                 . '] doesn\'t match arg $arguments length[' . count($arguments) . ']';
         }
-        if (!$this->validate) {
-            $this->validate = Validate::getInstance();
-        }
         $invalids = [];
         $i = -1;
         foreach ($arguments as $value) {
@@ -1081,9 +1083,6 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
         if (strlen($types) != count($arguments)) {
             return $this->messagePrefix() . ' - arg $types length[' . strlen($types)
                 . '] doesn\'t match arg $arguments length[' . count($arguments) . ']';
-        }
-        if (!$this->validate) {
-            $this->validate = Validate::getInstance();
         }
         $invalids = [];
         $i = -1;
