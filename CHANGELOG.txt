@@ -1,3 +1,8 @@
+SimpleComplex/Database 1.x, 2018-08-18
+--------------------------------------
+- Query option sql_minify remove multi-line comment, and trim leading/trailing
+  space chars.
+
 SimpleComplex/Database 1.x, 2018-08-12
 --------------------------------------
 - Result methods for depleting/traversing all sets and rows.

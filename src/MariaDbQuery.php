@@ -168,6 +168,10 @@ class MariaDbQuery extends DbQuery
     /**
      * Auto-detect multi-query; check for semicolon in sql.
      *
+     * Do turn off multi-query detection when creating stored procedure;
+     * may well contain statement-terminating semicolons, which shan't
+     * be interpreted as query separator.
+     *
      * BEWARE of using literal parameter values in arg $sql; a value containing
      * semicolon _will_ trigger multi-query auto-detection.
      * Do stick to passing all parameter values to prepare() or parameters().

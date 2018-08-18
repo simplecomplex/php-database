@@ -124,7 +124,6 @@ class ResetTest extends TestCase
         $sql = file_get_contents($file_path);
         /** @var MariaDbQuery $query */
         $query = $client->query($sql, [
-                //'detect_multi' => false,
                 'sql_minify' => false,
             ]);
         /** @var MariaDbResult $result */
@@ -138,6 +137,9 @@ class ResetTest extends TestCase
         $sql = file_get_contents($file_path);
         /** @var MariaDbQuery $query */
         $query = $client->query($sql, [
+            // Don't interpretate semicolon as query separator;
+            // stored procedure may well contain statement terminating
+            // semicolons.
             'detect_multi' => false,
             'sql_minify' => false,
         ]);
@@ -149,6 +151,9 @@ class ResetTest extends TestCase
         $sql = file_get_contents($file_path);
         /** @var MariaDbQuery $query */
         $query = $client->query($sql, [
+            // Don't interpretate semicolon as query separator;
+            // stored procedure may well contain statement terminating
+            // semicolons.
             'detect_multi' => false,
             'sql_minify' => false,
         ]);
@@ -160,6 +165,9 @@ class ResetTest extends TestCase
         $sql = file_get_contents($file_path);
         /** @var MariaDbQuery $query */
         $query = $client->query($sql, [
+            // Don't interpretate semicolon as query separator;
+            // stored procedure may well contain statement terminating
+            // semicolons.
             'detect_multi' => false,
             'sql_minify' => false,
         ]);

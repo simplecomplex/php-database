@@ -565,8 +565,10 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
      * Transformations:
      * - remove carriage return
      * - remove leading line space
-     * - remove line comment, except first line as comment
+     * - remove line comment
+     * - remove multi-line comment
      * - convert newline to single space
+     * - trim leading/trailing space chars
      *
      * @param string $sql
      *
@@ -575,20 +577,31 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
     public function sqlMinify(string $sql) : string
     {
         return
-            // Convert newline to space.
-            str_replace(
-                "\n",
-                ' ',
-                // remove line comment, except first line as comment.
-                preg_replace(
-                    '/\n\-\-[^\n]*/',
-                    '',
-                    // Remove leading line space.
+            trim(
+                // Convert newline to space.
+                str_replace(
+                    "\n",
+                    ' ',
+                    // Remove multi-line /* */ comment.
                     preg_replace(
-                        '/\n[ ]+/',
-                        "\n",
-                        // Remove carriage return.
-                        str_replace("\r", '', $sql)
+                        '/\n\/\*[^\*]*\*\//',
+                        // Space because comment may be placed inside
+                        // a statement.
+                        ' ',
+                        // Remove line comment.
+                        preg_replace(
+                            '/\n\-\-[^\n]*/',
+                            '',
+                            // Remove leading line space.
+                            preg_replace(
+                                '/\n[ ]+/',
+                                "\n",
+                                // Prefix newline to avoid looking for
+                                // 'beginning of all'.
+                                // Remove carriage return.
+                                str_replace("\r", '', "\n" . $sql)
+                            )
+                        )
                     )
                 )
             );
