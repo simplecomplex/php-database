@@ -9,9 +9,9 @@ declare(strict_types=1);
 
 namespace SimpleComplex\Tests\Database;
 
+use SimpleComplex\Database\Interfaces\DbClientInterface;
 use SimpleComplex\Database\Interfaces\DbQueryInterface;
 use SimpleComplex\Database\DbQuery;
-use SimpleComplex\Database\DbResult;
 
 /**
  * phpunit test helper.
@@ -26,6 +26,31 @@ class TestHelper extends \SimpleComplex\Tests\Utils\TestHelper
      * @var string
      */
     const PATH_TESTS = 'simplecomplex/database/tests/src';
+
+    /**
+     * Client query(), log on error.
+     *
+     * @see \SimpleComplex\Tests\Utils\TestHelper::logOnError()
+     *
+     * @param DbClientInterface $client
+     * @param string $sql
+     * @param array $options
+     *
+     * @return DbQueryInterface
+     *
+     * @throws \Throwable
+     *      Re-throws query execution failure.
+     */
+    public static function clientQueryLogOnError(
+        DbClientInterface $client, string $sql, array $options = []
+    ) : DbQueryInterface {
+        try {
+            return $client->query($sql, $options);
+        } catch (\Throwable $xcptn) {
+            static::logTrace('client query', $xcptn);
+            throw $xcptn;
+        }
+    }
 
     /**
      * Query prepare(), log on error.

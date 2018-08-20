@@ -285,7 +285,8 @@ class MariaDbClient extends DbClient
             $cls_xcptn = $this->errorsToException($errors);
             throw new $cls_xcptn(
                 $this->messagePrefix() . ' - failed to start transaction, error: '
-                . $this->errorsToString($errors) . '.'
+                . $this->errorsToString($errors) . '.',
+                $errors && reset($errors) ? key($errors) : 0
             );
         }
         $this->transactionStarted = true;
@@ -318,7 +319,8 @@ class MariaDbClient extends DbClient
                 $errors = $this->getErrors();
                 $cls_xcptn = $this->errorsToException($errors);
                 throw new $cls_xcptn(
-                    $this->messagePrefix() . $msg . $this->errorsToString($errors) . '.'
+                    $this->messagePrefix() . $msg . $this->errorsToString($errors) . '.',
+                    $errors && reset($errors) ? key($errors) : 0
                 );
             }
             $this->transactionStarted = false;
@@ -352,7 +354,8 @@ class MariaDbClient extends DbClient
                 $errors = $this->getErrors();
                 $cls_xcptn = $this->errorsToException($errors);
                 throw new $cls_xcptn(
-                    $this->messagePrefix() . $msg . $this->errorsToString($errors) . '.'
+                    $this->messagePrefix() . $msg . $this->errorsToString($errors) . '.',
+                    $errors && reset($errors) ? key($errors) : 0
                 );
             }
             $this->transactionStarted = false;

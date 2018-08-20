@@ -10,7 +10,6 @@ declare(strict_types=1);
 namespace SimpleComplex\Database;
 
 use SimpleComplex\Utils\Utils;
-use SimpleComplex\Validate\Validate;
 
 use SimpleComplex\Database\Interfaces\DbClientInterface;
 use SimpleComplex\Database\Interfaces\DbQueryInterface;
@@ -608,7 +607,8 @@ class MsSqlQuery extends DbQuery
                 $this->unsetReferences();
                 throw new $cls_xcptn(
                     $this->messagePrefix() . ' - failed execution[' . $this->nExecution . '] of prepared statement, '
-                        . $msg . $this->client->errorsToString($errors) . '.'
+                        . $msg . $this->client->errorsToString($errors) . '.',
+                    $errors && reset($errors) ? key($errors) : 0
                 );
             }
         }
@@ -665,7 +665,8 @@ class MsSqlQuery extends DbQuery
                 }
                 throw new $cls_xcptn(
                     $this->messagePrefix() . ' - failed executing simple query, '
-                        . $msg . $this->client->errorsToString($errors) . '.'
+                        . $msg . $this->client->errorsToString($errors) . '.',
+                    $errors && reset($errors) ? key($errors) : 0
                 );
             }
             $this->statementClosed = false;

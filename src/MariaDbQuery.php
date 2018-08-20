@@ -713,7 +713,8 @@ class MariaDbQuery extends DbQuery
                 $this->unsetReferences();
                 throw new $cls_xcptn(
                     $this->messagePrefix() . ' - failed execution[' . $this->nExecution . '] of prepared statement, '
-                    . $msg . $this->client->errorsToString($errors) . '.'
+                    . $msg . $this->client->errorsToString($errors) . '.',
+                    $errors && reset($errors) ? key($errors) : 0
                 );
             }
         }
@@ -771,7 +772,8 @@ class MariaDbQuery extends DbQuery
                     }
                     throw new $cls_xcptn(
                         $this->messagePrefix() . ' - failed executing multi-query, '
-                        . $msg . $this->client->errorsToString($errors) . '.'
+                        . $msg . $this->client->errorsToString($errors) . '.',
+                        $errors && reset($errors) ? key($errors) : 0
                     );
                 }
             }
@@ -807,7 +809,8 @@ class MariaDbQuery extends DbQuery
                     }
                     throw new $cls_xcptn(
                         $this->messagePrefix() . ' - failed executing simple query, '
-                        . $msg . $this->client->errorsToString($errors) . '.'
+                        . $msg . $this->client->errorsToString($errors) . '.',
+                        $errors && reset($errors) ? key($errors) : 0
                     );
                 }
             }

@@ -33,7 +33,7 @@ class QueryArgumentTest extends TestCase
     /**
      * @see \SimpleComplex\Database\DbQuery::VALIDATE_PARAMS
      */
-    const VALIDATE_PARAMS = DbQuery::VALIDATE_PREPARE | DbQuery::VALIDATE_EXECUTE | DbQuery::VALIDATE_FAILURE;
+    const VALIDATE_PARAMS = /*DbQuery::VALIDATE_PREPARE | DbQuery::VALIDATE_EXECUTE |*/ DbQuery::VALIDATE_FAILURE;
 
     /**
      * @see ResetTest::testResetStructure()

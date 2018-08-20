@@ -110,7 +110,8 @@ class MariaDbResult extends DbResult
         $cls_xcptn = $this->query->client->errorsToException($errors, DbResultException::class);
         throw new $cls_xcptn(
             $this->query->messagePrefix() . ' - failed counting affected rows, error: '
-            . $this->query->client->errorsToString($errors) . '.'
+            . $this->query->client->errorsToString($errors) . '.',
+            $errors && reset($errors) ? key($errors) : 0
         );
     }
 
@@ -168,7 +169,8 @@ class MariaDbResult extends DbResult
         $cls_xcptn = $this->query->client->errorsToException($errors, DbResultException::class);
         throw new $cls_xcptn(
             $this->query->messagePrefix() . ' - failed getting insert ID, error: '
-            . $this->query->client->errorsToString($errors) . '.'
+            . $this->query->client->errorsToString($errors) . '.',
+            $errors && reset($errors) ? key($errors) : 0
         );
     }
 
@@ -215,6 +217,7 @@ class MariaDbResult extends DbResult
         }
         if (!$this->result && !($load = $this->loadResult())) {
             if ($load === null) {
+                $errors = null;
                 $cls_xcptn = DbResultException::class;
                 $msg = '';
             } else {
@@ -224,7 +227,8 @@ class MariaDbResult extends DbResult
             }
             $this->closeAndLog(__FUNCTION__);
             throw new $cls_xcptn(
-                $this->query->messagePrefix() . ' - failed getting number of rows, no result set' . $msg . '.'
+                $this->query->messagePrefix() . ' - failed getting number of rows, no result set' . $msg . '.',
+                $errors && reset($errors) ? key($errors) : 0
             );
         }
         // Prepared statement is unlikely because stored mode isn't supported
@@ -239,7 +243,8 @@ class MariaDbResult extends DbResult
         $cls_xcptn = $this->query->client->errorsToException($errors, DbResultException::class);
         throw new $cls_xcptn(
             $this->query->messagePrefix() . ' - failed getting number of rows, error: '
-            . $this->query->client->errorsToString($errors) . '.'
+            . $this->query->client->errorsToString($errors) . '.',
+            $errors && reset($errors) ? key($errors) : 0
         );
     }
 
@@ -265,7 +270,8 @@ class MariaDbResult extends DbResult
         $cls_xcptn = $this->query->client->errorsToException($errors, DbResultException::class);
         throw new $cls_xcptn(
             $this->query->messagePrefix() . ' - failed getting number of columns, error: '
-            . $this->query->client->errorsToString($errors) . '.'
+            . $this->query->client->errorsToString($errors) . '.',
+            $errors && reset($errors) ? key($errors) : 0
         );
     }
 
@@ -294,6 +300,7 @@ class MariaDbResult extends DbResult
         ++$this->rowIndex;
         if (!$this->result && !($load = $this->loadResult())) {
             if ($load === null) {
+                $errors = null;
                 $cls_xcptn = DbResultException::class;
                 $msg = '';
             } else {
@@ -305,7 +312,8 @@ class MariaDbResult extends DbResult
             throw new $cls_xcptn(
                 $this->query->messagePrefix() . ' - failed fetching column by '
                 . (!$name ? ('$index[' . $index . ']') : ('$name[' . $name . ']'))
-                . ', no result set' . $msg . '.'
+                . ', no result set' . $msg . '.',
+                $errors && reset($errors) ? key($errors) : 0
             );
         }
 
@@ -350,7 +358,8 @@ class MariaDbResult extends DbResult
         throw new $cls_xcptn(
             $this->query->messagePrefix() . ' - failed fetching column by '
             . (!$name ? ('$index[' . $index . ']') : ('$name[' . $name . ']')) . ', error: '
-            . $this->query->client->errorsToString($errors) . '.'
+            . $this->query->client->errorsToString($errors) . '.',
+            $errors && reset($errors) ? key($errors) : 0
         );
     }
 
@@ -372,6 +381,7 @@ class MariaDbResult extends DbResult
         ++$this->rowIndex;
         if (!$this->result && !($load = $this->loadResult())) {
             if ($load === null) {
+                $errors = null;
                 $cls_xcptn = DbResultException::class;
                 $msg = '';
             } else {
@@ -381,7 +391,8 @@ class MariaDbResult extends DbResult
             }
             $this->closeAndLog(__FUNCTION__);
             throw new $cls_xcptn(
-                $this->query->messagePrefix() . ' - failed fetching row as array, no result set' . $msg . '.'
+                $this->query->messagePrefix() . ' - failed fetching row as array, no result set' . $msg . '.',
+                $errors && reset($errors) ? key($errors) : 0
             );
         }
 
@@ -394,7 +405,8 @@ class MariaDbResult extends DbResult
         $cls_xcptn = $this->query->client->errorsToException($errors, DbResultException::class);
         throw new $cls_xcptn(
             $this->query->messagePrefix() . ' - failed fetching row as array, error: '
-            . $this->query->client->errorsToString($errors) . '.'
+            . $this->query->client->errorsToString($errors) . '.',
+            $errors && reset($errors) ? key($errors) : 0
         );
     }
 
@@ -419,6 +431,7 @@ class MariaDbResult extends DbResult
         ++$this->rowIndex;
         if (!$this->result && !($load = $this->loadResult())) {
             if ($load === null) {
+                $errors = null;
                 $cls_xcptn = DbResultException::class;
                 $msg = '';
             } else {
@@ -428,7 +441,8 @@ class MariaDbResult extends DbResult
             }
             $this->closeAndLog(__FUNCTION__);
             throw new $cls_xcptn(
-                $this->query->messagePrefix() . ' - failed fetching row as object, no result set' . $msg . '.'
+                $this->query->messagePrefix() . ' - failed fetching row as object, no result set' . $msg . '.',
+                $errors && reset($errors) ? key($errors) : 0
             );
         }
 
@@ -448,7 +462,8 @@ class MariaDbResult extends DbResult
         $cls_xcptn = $this->query->client->errorsToException($errors, DbResultException::class);
         throw new $cls_xcptn(
             $this->query->messagePrefix() . ' - failed fetching row as object, error: '
-            . $this->query->client->errorsToString($errors) . '.'
+            . $this->query->client->errorsToString($errors) . '.',
+            $errors && reset($errors) ? key($errors) : 0
         );
     }
 
@@ -476,6 +491,7 @@ class MariaDbResult extends DbResult
         // Result set routine; don't change or move.
         if (!$this->result && !($load = $this->loadResult())) {
             if ($load === null) {
+                $errors = null;
                 $cls_xcptn = DbResultException::class;
                 $msg = '';
             } else {
@@ -485,7 +501,8 @@ class MariaDbResult extends DbResult
             }
             $this->closeAndLog(__FUNCTION__);
             throw new $cls_xcptn(
-                $this->query->messagePrefix() . ' - failed fetching all rows as arrays, no result set' . $msg . '.'
+                $this->query->messagePrefix() . ' - failed fetching all rows as arrays, no result set' . $msg . '.',
+                $errors && reset($errors) ? key($errors) : 0
             );
         }
 
@@ -504,7 +521,8 @@ class MariaDbResult extends DbResult
                 $cls_xcptn = $this->query->client->errorsToException($errors, DbResultException::class);
                 throw new $cls_xcptn(
                     $this->query->messagePrefix() . ' - failed fetching all rows as numeric arrays, error: '
-                    . $this->query->client->errorsToString($errors) . '.'
+                    . $this->query->client->errorsToString($errors) . '.',
+                    $errors && reset($errors) ? key($errors) : 0
                 );
             }
             $this->rowIndex += count($list);
@@ -519,7 +537,8 @@ class MariaDbResult extends DbResult
                 $cls_xcptn = $this->query->client->errorsToException($errors, DbResultException::class);
                 throw new $cls_xcptn(
                     $this->query->messagePrefix() . ' - failed fetching all rows as associative array, error: '
-                    . $this->query->client->errorsToString($errors) . '.'
+                    . $this->query->client->errorsToString($errors) . '.',
+                    $errors && reset($errors) ? key($errors) : 0
                 );
             }
             $this->rowIndex += count($list);
@@ -552,7 +571,8 @@ class MariaDbResult extends DbResult
             throw new $cls_xcptn(
                 $this->query->messagePrefix()
                 . ' - failed fetching complete list of all rows as associative arrays, error: '
-                . $this->query->client->errorsToString($errors) . '.'
+                . $this->query->client->errorsToString($errors) . '.',
+                $errors && reset($errors) ? key($errors) : 0
             );
         }
         return $list;
@@ -582,6 +602,7 @@ class MariaDbResult extends DbResult
         // Result set routine; don't change or move.
         if (!$this->result && !($load = $this->loadResult())) {
             if ($load === null) {
+                $errors = null;
                 $cls_xcptn = DbResultException::class;
                 $msg = '';
             } else {
@@ -591,7 +612,8 @@ class MariaDbResult extends DbResult
             }
             $this->closeAndLog(__FUNCTION__);
             throw new $cls_xcptn(
-                $this->query->messagePrefix() . ' - failed fetching all rows as objects, no result set' . $msg . '.'
+                $this->query->messagePrefix() . ' - failed fetching all rows as objects, no result set' . $msg . '.',
+                $errors && reset($errors) ? key($errors) : 0
             );
         }
 
@@ -635,7 +657,8 @@ class MariaDbResult extends DbResult
             $cls_xcptn = $this->query->client->errorsToException($errors, DbResultException::class);
             throw new $cls_xcptn(
                 $this->query->messagePrefix() . ' - failed fetching complete list of all rows as objects, error: '
-                . $this->query->client->errorsToString($errors) . '.'
+                . $this->query->client->errorsToString($errors) . '.',
+                $errors && reset($errors) ? key($errors) : 0
             );
         }
         return $list;
@@ -674,7 +697,8 @@ class MariaDbResult extends DbResult
         $cls_xcptn = $this->query->client->errorsToException($errors, DbResultException::class);
         throw new $cls_xcptn(
             $this->query->messagePrefix() . ' - failed going to set[' . $this->setIndex . '], error: '
-            . $this->query->client->errorsToString($errors) . '.'
+            . $this->query->client->errorsToString($errors) . '.',
+            $errors && reset($errors) ? key($errors) : 0
         );
     }
 
@@ -693,7 +717,7 @@ class MariaDbResult extends DbResult
     public function nextRow() : bool
     {
         if (!$this->result && !($load = $this->loadResult())) {
-            $msg = $load === null ? '': (', error: ' . $this->query->getErrors(DbError::AS_STRING));
+            $msg = $load === null ? '' : (', error: ' . $this->query->getErrors(DbError::AS_STRING));
             $this->closeAndLog(__FUNCTION__);
             throw new DbResultException(
                 $this->query->messagePrefix() . ' - failed going to next row, no result set' . $msg . '.'
@@ -713,7 +737,8 @@ class MariaDbResult extends DbResult
         throw new $cls_xcptn(
             $this->query->messagePrefix()
             . ' - failed going to set[' . $this->setIndex . '] row[' . $this->rowIndex . '], error: '
-            . $this->query->client->errorsToString($errors) . '.'
+            . $this->query->client->errorsToString($errors) . '.',
+            $errors && reset($errors) ? key($errors) : 0
         );
     }
 

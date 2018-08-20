@@ -442,7 +442,7 @@ abstract class DbClient extends Explorable implements DbClientInterface
                     }
                 }
             }
-            if (reset($list) == static::ERROR_CODE_CONNECT) {
+            if (reset($list) === static::ERROR_CODE_CONNECT) {
                 return DbConnectionException::class;
             }
         }

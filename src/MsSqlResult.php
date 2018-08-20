@@ -113,7 +113,8 @@ class MsSqlResult extends DbResult
         $cls_xcptn = $this->query->client->errorsToException($errors, DbResultException::class);
         throw new $cls_xcptn(
             $this->query->messagePrefix() . ' - failed counting affected rows, error: '
-            . $this->query->client->errorsToString($errors) . '.'
+            . $this->query->client->errorsToString($errors) . '.',
+            $errors && reset($errors) ? key($errors) : 0
         );
     }
 
@@ -216,7 +217,8 @@ class MsSqlResult extends DbResult
         $cls_xcptn = $this->query->client->errorsToException($errors, DbResultException::class);
         throw new $cls_xcptn(
             $this->query->messagePrefix() . ' - failed getting insert ID, error: '
-            . $this->query->client->errorsToString($errors) . '.'
+            . $this->query->client->errorsToString($errors) . '.',
+            $errors && reset($errors) ? key($errors) : 0
         );
     }
 
@@ -281,7 +283,8 @@ class MsSqlResult extends DbResult
         $cls_xcptn = $this->query->client->errorsToException($errors, DbResultException::class);
         throw new $cls_xcptn(
             $this->query->messagePrefix() . ' - failed getting number of rows, error: '
-            . $this->query->client->errorsToString($errors) . '.'
+            . $this->query->client->errorsToString($errors) . '.',
+            $errors && reset($errors) ? key($errors) : 0
         );
     }
 
@@ -305,7 +308,8 @@ class MsSqlResult extends DbResult
         $cls_xcptn = $this->query->client->errorsToException($errors, DbResultException::class);
         throw new $cls_xcptn(
             $this->query->messagePrefix() . ' - failed getting number of columns, error: '
-            . $this->query->client->errorsToString($errors) . '.'
+            . $this->query->client->errorsToString($errors) . '.',
+            $errors && reset($errors) ? key($errors) : 0
         );
     }
 
@@ -397,7 +401,8 @@ class MsSqlResult extends DbResult
         throw new $cls_xcptn(
             $this->query->messagePrefix() . ' - failed fetching column by '
             . (!$name ? ('$index[' . $index . ']') : ('$name[' . $name . ']')) . ', error: '
-            . $this->query->client->errorsToString($errors) . '.'
+            . $this->query->client->errorsToString($errors) . '.',
+            $errors && reset($errors) ? key($errors) : 0
         );
     }
 
@@ -433,7 +438,8 @@ class MsSqlResult extends DbResult
         throw new $cls_xcptn(
             $this->query->messagePrefix() . ' - failed fetching row as '
             . ($as == DbResult::FETCH_ASSOC ? 'assoc' : 'numeric') . ' array, error: '
-            . $this->query->client->errorsToString($errors) . '.'
+            . $this->query->client->errorsToString($errors) . '.',
+            $errors && reset($errors) ? key($errors) : 0
         );
     }
 
@@ -498,7 +504,8 @@ class MsSqlResult extends DbResult
         $cls_xcptn = $this->query->client->errorsToException($errors, DbResultException::class);
         throw new $cls_xcptn(
             $this->query->messagePrefix() . ' - failed fetching row as object, error: '
-            . $this->query->client->errorsToString($errors) . '.'
+            . $this->query->client->errorsToString($errors) . '.',
+            $errors && reset($errors) ? key($errors) : 0
         );
     }
 
@@ -584,7 +591,8 @@ class MsSqlResult extends DbResult
             throw new $cls_xcptn(
                 $this->query->messagePrefix() . ' - failed fetching complete list of all rows as '
                 . ($as = DbResult::FETCH_ASSOC ? 'associative' : 'numeric') . ' arrays, error: '
-                . $this->query->client->errorsToString($errors) . '.'
+                . $this->query->client->errorsToString($errors) . '.',
+                $errors && reset($errors) ? key($errors) : 0
             );
         }
         return $list;
@@ -688,7 +696,8 @@ class MsSqlResult extends DbResult
             $cls_xcptn = $this->query->client->errorsToException($errors, DbResultException::class);
             throw new $cls_xcptn(
                 $this->query->messagePrefix() . ' - failed fetching complete list of all rows as objects, error: '
-                . $this->query->client->errorsToString($errors) . '.'
+                . $this->query->client->errorsToString($errors) . '.',
+                $errors && reset($errors) ? key($errors) : 0
             );
         }
         return $list;
@@ -720,7 +729,8 @@ class MsSqlResult extends DbResult
         $cls_xcptn = $this->query->client->errorsToException($errors, DbResultException::class);
         throw new $cls_xcptn(
             $this->query->messagePrefix() . ' - failed going to set[' . $this->setIndex . '], error: '
-            . $this->query->client->errorsToString($errors) . '.'
+            . $this->query->client->errorsToString($errors) . '.',
+            $errors && reset($errors) ? key($errors) : 0
         );
     }
 
@@ -748,7 +758,8 @@ class MsSqlResult extends DbResult
         $cls_xcptn = $this->query->client->errorsToException($errors, DbResultException::class);
         throw new $cls_xcptn(
             $this->query->messagePrefix() . ' - failed going to next row, error: '
-            . $this->query->client->errorsToString($errors) . '.'
+            . $this->query->client->errorsToString($errors) . '.',
+            $errors && reset($errors) ? key($errors) : 0
         );
     }
 
