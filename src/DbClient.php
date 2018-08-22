@@ -525,10 +525,12 @@ abstract class DbClient extends Explorable implements DbClientInterface
         if ($nativeErrors) {
             $dupes = 0;
             foreach ($nativeErrors as $error) {
-                $code = $error['code'];
+                $key = $code = $error['code'];
                 // Secure that dupes don't disappear due to bucket overwrite.
-                $list[!isset($list[$code]) ? $code : ($code . str_repeat('_', ++$dupes))] =
-                    '(' . $code . ')[' . $error['sqlstate'] . '] ' . $error['msg'];
+                if ($list && isset($list[$code])) {
+                    $key = '' . $code . str_repeat('_', ++$dupes);
+                }
+                $list[$key] = '(' . $code . ')[' . $error['sqlstate'] . '] ' . $error['msg'];
             }
         }
         return !$toString ? $list : $this->errorsToString($list, $toString == DbError::AS_STRING_EMPTY_ON_NONE);

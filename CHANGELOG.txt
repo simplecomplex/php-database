@@ -1,3 +1,7 @@
+SimpleComplex/Database 1.x, 2018-08-22
+--------------------------------------
+- Use DBMS error code as exception code.
+
 SimpleComplex/Database 1.x, 2018-08-18
 --------------------------------------
 - Query option sql_minify remove multi-line comment, and trim leading/trailing
