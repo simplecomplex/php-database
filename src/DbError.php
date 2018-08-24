@@ -22,6 +22,21 @@ namespace SimpleComplex\Database;
 abstract class DbError
 {
     /**
+     * Some DBMSs (like MsSql) forbids stored procedures from (re)using
+     * a native error code when throwing an error.
+     *
+     * If an error code is larger than this and less than twice this
+     * it will be evaluated with this subtracted.
+     *
+     * Set (override) to zero if irrelevant and misleading.
+     *
+     * @see DbClient::errorsToException()
+     *
+     * @var int
+     */
+    const FORWARDED_CODE_OFFSET = 100000;
+
+    /**
      * Connection related RMDBS native error codes.
      *
      * @var int[]

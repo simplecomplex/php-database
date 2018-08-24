@@ -416,29 +416,44 @@ abstract class DbClient extends Explorable implements DbClientInterface
              * @see DbError::RESULT_RANGES
              */
             $result_ranges = constant($class . '::RESULT_RANGES');
+            /**
+             * @see DbError::FORWARDED_CODE_OFFSET
+             */
+            $forwarded_code_offset = constant($class . '::FORWARDED_CODE_OFFSET');
             foreach ($list as $code) {
-                if (in_array($code, $connection_codes)) {
-                    return DbConnectionException::class;
-                }
-                foreach ($connection_ranges as $range) {
-                    if ($code >= $range[0] && $code <= $range[1]) {
+                if ($code) {
+                    if (
+                        $forwarded_code_offset
+                        && $code > $forwarded_code_offset && $code < $forwarded_code_offset * 2
+                    ) {
+                        $code -= $forwarded_code_offset;
+                    }
+
+                    if (in_array($code, $connection_codes)) {
                         return DbConnectionException::class;
                     }
-                }
-                if (in_array($code, $query_codes)) {
-                    return DbQueryException::class;
-                }
-                foreach ($query_ranges as $range) {
-                    if ($code >= $range[0] && $code <= $range[1]) {
+                    foreach ($connection_ranges as $range) {
+                        if ($code >= $range[0] && $code <= $range[1]) {
+                            return DbConnectionException::class;
+                        }
+                    }
+
+                    if (in_array($code, $query_codes)) {
                         return DbQueryException::class;
                     }
-                }
-                if (in_array($code, $result_codes)) {
-                    return DbResultException::class;
-                }
-                foreach ($result_ranges as $range) {
-                    if ($code >= $range[0] && $code <= $range[1]) {
+                    foreach ($query_ranges as $range) {
+                        if ($code >= $range[0] && $code <= $range[1]) {
+                            return DbQueryException::class;
+                        }
+                    }
+
+                    if (in_array($code, $result_codes)) {
                         return DbResultException::class;
+                    }
+                    foreach ($result_ranges as $range) {
+                        if ($code >= $range[0] && $code <= $range[1]) {
+                            return DbResultException::class;
+                        }
                     }
                 }
             }

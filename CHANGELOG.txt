@@ -1,3 +1,8 @@
+SimpleComplex/Database 1.x, 2018-08-24
+--------------------------------------
+- Supported error code offset by a fixed number to get out of DBMS reserved
+  error code range.
+
 SimpleComplex/Database 1.x, 2018-08-22
 --------------------------------------
 - Use DBMS error code as exception code.
