@@ -584,7 +584,7 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
                     ' ',
                     // Remove multi-line /* */ comment.
                     preg_replace(
-                        '/\n\/\*[^\*]*\*\//',
+                        '/\n\/\*(?:(?!\*\/).)+\*\//s',
                         // Space because comment may be placed inside
                         // a statement.
                         ' ',

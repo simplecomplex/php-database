@@ -1,3 +1,7 @@
+SimpleComplex/Database 1.x, 2018-09-08
+--------------------------------------
+- Query option sql_minify remove multi-line comment containing star.
+
 SimpleComplex/Database 1.x, 2018-08-24
 --------------------------------------
 - Supported error code offset by a fixed number to get out of DBMS reserved
