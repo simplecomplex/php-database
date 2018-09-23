@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace SimpleComplex\Database;
 
 use SimpleComplex\Utils\Utils;
+use SimpleComplex\Utils\Time;
 
 use SimpleComplex\Database\Interfaces\DbQueryInterface;
 
@@ -359,7 +360,13 @@ class MsSqlResult extends DbResult
              * @see sqlsrv_get_field()
              * @see MsSqlResult::insertId()
              */
-            if ($value || ($value !== false && $value !== null)) {
+            if ($value) {
+                if ($this->query->resultDateTimeToTime && $value instanceof \DateTime) {
+                    return Time::createFromDateTime($value);
+                }
+                return $value;
+            }
+            if ($value !== false && $value !== null) {
                 return $value;
             }
             // Try to detect out-of-range;
@@ -382,6 +389,9 @@ class MsSqlResult extends DbResult
             ++$this->rowIndex;
             if ($row) {
                 if (array_key_exists($name, $row)) {
+                    if ($this->query->resultDateTimeToTime && $row[$name] instanceof \DateTime) {
+                        return Time::createFromDateTime($row[$name]);
+                    }
                     return $row[$name];
                 }
                 $this->closeAndLog(__FUNCTION__);
@@ -429,8 +439,19 @@ class MsSqlResult extends DbResult
             ++$this->setIndex;
         }
         ++$this->rowIndex;
-        if ($row || $row === null) {
+        if ($row) {
+            if ($this->query->resultDateTimeToTime) {
+                foreach ($row as &$val) {
+                    if ($val instanceof \DateTime) {
+                        $val = Time::createFromDateTime($val);
+                    }
+                }
+                unset($val);
+            }
             return $row;
+        }
+        if ($row === null) {
+            return null;
         }
         $errors = $this->query->client->getErrors();
         $this->closeAndLog(__FUNCTION__);
@@ -487,17 +508,29 @@ class MsSqlResult extends DbResult
             ++$this->setIndex;
         }
         ++$this->rowIndex;
-        if ($row || $row === null) {
+        if ($row) {
+            $to_time = $this->query->resultDateTimeToTime;
             // Custom (non-stdClass) object routine.
-            if ($row && $class && $class != \stdClass::class) {
+            if ($class && $class != \stdClass::class) {
                 $o = !$args ? new $class() :
                     new $class(...$args);
                 foreach ($row as $column => $value) {
-                    $o->{$column} = $value;
+                    $o->{$column} = $to_time && $value instanceof \DateTime ?
+                        Time::createFromDateTime($value) : $value;
                 }
                 return $o;
+            } elseif ($to_time) {
+                foreach ($row as &$val) {
+                    if ($val instanceof \DateTime) {
+                        $val = Time::createFromDateTime($val);
+                    }
+                }
+                unset($val);
             }
             return $row;
+        }
+        if ($row === null) {
+            return null;
         }
         $errors = $this->query->client->getErrors();
         $this->closeAndLog(__FUNCTION__);
@@ -531,6 +564,7 @@ class MsSqlResult extends DbResult
     public function fetchAllArrays(int $as = DbResult::FETCH_ASSOC, string $list_by_column = null) : array
     {
         $list = [];
+        $to_time = $this->query->resultDateTimeToTime;
         if ($as == DbResult::FETCH_NUMERIC) {
             if ($list_by_column) {
                 $this->closeAndLog(__FUNCTION__);
@@ -545,6 +579,14 @@ class MsSqlResult extends DbResult
                     ++$this->setIndex;
                 }
                 ++$this->rowIndex;
+                if ($row && $to_time) {
+                    foreach ($row as &$val) {
+                        if ($val instanceof \DateTime) {
+                            $val = Time::createFromDateTime($val);
+                        }
+                    }
+                    unset($val);
+                }
                 $list[] = $row;
             }
             if ($this->setIndex < 0) {
@@ -560,6 +602,14 @@ class MsSqlResult extends DbResult
                     ++$this->setIndex;
                 }
                 ++$this->rowIndex;
+                if ($row && $to_time) {
+                    foreach ($row as &$val) {
+                        if ($val instanceof \DateTime) {
+                            $val = Time::createFromDateTime($val);
+                        }
+                    }
+                    unset($val);
+                }
                 if (!$list_by_column) {
                     $list[] = $row;
                 }
@@ -643,6 +693,7 @@ class MsSqlResult extends DbResult
          */
         //while (($row = @sqlsrv_fetch_object($this->statement, $class, $args))) {
         $custom_class = $class && $class != \stdClass::class;
+        $to_time = $this->query->resultDateTimeToTime;
         while (($row = @sqlsrv_fetch_object($this->statement))) {
             // sqlsrv_fetch_object() implicitly moves to first set.
             if ($this->setIndex < 0) {
@@ -654,10 +705,19 @@ class MsSqlResult extends DbResult
                     $o = !$args ? new $class() :
                         new $class(...$args);
                     foreach ($row as $column => $value) {
-                        $o->{$column} = $value;
+                        $o->{$column} = $to_time && $value instanceof \DateTime ?
+                            Time::createFromDateTime($value) : $value;
                     }
                     $list[] = $o;
                 } else {
+                    if ($row && $to_time) {
+                        foreach ($row as &$val) {
+                            if ($val instanceof \DateTime) {
+                                $val = Time::createFromDateTime($val);
+                            }
+                        }
+                        unset($val);
+                    }
                     $list[] = $row;
                 }
             }
@@ -677,10 +737,19 @@ class MsSqlResult extends DbResult
                     $o = !$args ? new $class() :
                         new $class(...$args);
                     foreach ($row as $column => $value) {
-                        $o->{$column} = $value;
+                        $o->{$column} = $to_time && $value instanceof \DateTime ?
+                            Time::createFromDateTime($value) : $value;
                     }
                     $list[$row->{$list_by_column}] = $o;
                 } else {
+                    if ($row && $to_time) {
+                        foreach ($row as &$val) {
+                            if ($val instanceof \DateTime) {
+                                $val = Time::createFromDateTime($val);
+                            }
+                        }
+                        unset($val);
+                    }
                     $list[$row->{$list_by_column}] = $row;
                 }
             }

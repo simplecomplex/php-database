@@ -57,6 +57,7 @@ use SimpleComplex\Database\Exception\DbQueryException;
  *
  * Own properties:
  * @property-read int $queryTimeout
+ * @property-read bool $resultDateTimeToTime
  * @property-read bool $sendDataChunked
  * @property-read int $sendChunksLimit
  * @property-read bool $getInsertId
@@ -189,6 +190,13 @@ class MsSqlQuery extends DbQuery
     const OPTIONS_SPECIFIC = [
         'send_data_chunked',
         'sendChunksLimit',
+        /**
+         * Convert result \DateTime to Time, to secure JSON serialization
+         * to ISO-8601 (instead of PHP-only interoperable object),
+         * and better diff features.
+         * @see \SimpleComplex\Utils\Time::jsonSerialize()
+         */
+        'result_datetime_to_time',
     ];
 
     /**
@@ -246,6 +254,13 @@ class MsSqlQuery extends DbQuery
      * @var string
      */
     protected $resultMode;
+
+    /**
+     * Option (bool) result_datetime_to_time.
+     *
+     * @var bool
+     */
+    protected $resultDateTimeToTime = false;
 
     /**
      * Option (bool) send_data_chunked.
@@ -363,6 +378,9 @@ class MsSqlQuery extends DbQuery
             $this->queryTimeout = static::QUERY_TIMEOUT;
         }
         $this->explorableIndex[] = 'queryTimeout';
+
+        $this->resultDateTimeToTime = !empty($options['result_datetime_to_time']);
+        $this->explorableIndex[] = 'resultDateTimeToTime';
 
         if (!empty($options['send_data_chunked'])) {
             $this->sendDataChunked = true;
