@@ -389,7 +389,7 @@ class MsSqlResult extends DbResult
             ++$this->rowIndex;
             if ($row) {
                 if (array_key_exists($name, $row)) {
-                    if ($this->query->resultDateTimeToTime && $row[$name] instanceof \DateTime) {
+                    if ($row[$name] && $this->query->resultDateTimeToTime && $row[$name] instanceof \DateTime) {
                         return Time::createFromDateTime($row[$name]);
                     }
                     return $row[$name];
