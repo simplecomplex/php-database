@@ -1123,7 +1123,6 @@ class MsSqlQuery extends DbQuery
         return static::$nativeTypesSupported;
     }
 
-
     /**
      * Get name of a native type, if supported.
      *
@@ -1148,7 +1147,7 @@ class MsSqlQuery extends DbQuery
      * @param &$arguments
      *      By reference, for prepared statement's sake.
      * @param array $options
-     *      (bool) native_types.
+     *      (bool) native_types: all $arguments are native type arrays.
      *
      * @return void
      *      Number of parameters/arguments.
