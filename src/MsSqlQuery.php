@@ -421,6 +421,9 @@ class MsSqlQuery extends DbQuery
      * - 2: (int|null) SQLSRV_PHPTYPE_*; out type
      * - 3: (int|null) SQLSRV_SQLTYPE_*; in type
      *
+     * @see MsSqlQuery::argIn()
+     * @see MsSqlQuery::argOut()
+     * @see MsSqlQuery::argInOut()
      * @see http://php.net/manual/en/function.sqlsrv-prepare.php
      *
      * Supports that arg $arguments is associative array.
@@ -430,6 +433,8 @@ class MsSqlQuery extends DbQuery
      *      Ignored for $arguments that are type qualifying arrays.
      * @param array &$arguments
      *      By reference.
+     * @param array $options
+     *      (bool) native_types: all $arguments are native type arrays.
      *
      * @return $this|DbQueryInterface
      *
@@ -442,7 +447,7 @@ class MsSqlQuery extends DbQuery
      * @throws DbRuntimeException
      *      Failure to bind $arguments to native layer.
      */
-    public function prepare(string $types, array &$arguments) : DbQueryInterface
+    public function prepare(string $types, array &$arguments, array $options = []) : DbQueryInterface
     {
         if ($this->isPreparedStatement) {
             // Unset prepared statement arguments reference.
@@ -459,7 +464,7 @@ class MsSqlQuery extends DbQuery
         if ($sql_fragments) {
             unset($sql_fragments);
             // Set instance var $arguments['prepared'] or $arguments['simple'].
-            $this->adaptArguments($types, $arguments);
+            $this->adaptArguments($types, $arguments, $options);
         }
 
         $options = [
@@ -518,6 +523,8 @@ class MsSqlQuery extends DbQuery
      * @param array $arguments
      *      Values to substitute sql ?-parameters with.
      *      Arguments are consumed once, not referred.
+     * @param array $options
+     *      (bool) native_types: all $arguments are native type arrays.
      *
      * @return $this|DbQueryInterface
      *
@@ -528,7 +535,7 @@ class MsSqlQuery extends DbQuery
      *      Arg $types contains illegal char(s).
      *      Arg $types length (unless empty) doesn't match number of parameters.
      */
-    public function parameters(string $types, array $arguments) : DbQueryInterface
+    public function parameters(string $types, array $arguments, array $options = []) : DbQueryInterface
     {
         if ($this->isPreparedStatement) {
             // Unset prepared statement arguments reference.
@@ -548,7 +555,7 @@ class MsSqlQuery extends DbQuery
         $sql_fragments = $this->sqlFragments($this->sql, $arguments);
         if ($sql_fragments) {
             // Set instance var $arguments['prepared'] or $arguments['simple'].
-            $this->adaptArguments($types, $arguments);
+            $this->adaptArguments($types, $arguments, $options);
         }
 
         return $this;
@@ -744,6 +751,90 @@ class MsSqlQuery extends DbQuery
         }
     }
 
+    /**
+     * Format IN argument as natively type array.
+     *
+     * @see MsSqlQuery::IN_BIT
+     * @see MsSqlQuery::IN_TINYINT
+     * @see MsSqlQuery::IN_SMALLINT
+     * @see MsSqlQuery::IN_INT
+     * @see MsSqlQuery::IN_BIGINT
+     * @see MsSqlQuery::IN_FLOAT
+     * @see MsSqlQuery::IN_REAL
+     * @see MsSqlQuery::IN_DECIMAL
+     * @see MsSqlQuery::IN_DECIMAL_14_2
+     * @see MsSqlQuery::IN_VARCHAR
+     * @see MsSqlQuery::IN_NVARCHAR
+     * @see MsSqlQuery::IN_VARBINARY
+     * @see MsSqlQuery::IN_TIME
+     * @see MsSqlQuery::IN_DATE
+     * @see MsSqlQuery::IN_DATETIME
+     * @see MsSqlQuery::IN_DATETIME2
+     * @see MsSqlQuery::IN_UUID
+     *
+     * @param int $inType
+     * @param null $value
+     *
+     * @return array
+     */
+    public function argIn(int $inType, $value = null) : array
+    {
+        return [
+            $value,
+            SQLSRV_PARAM_IN,
+            null,
+            $inType,
+        ];
+    }
+
+    /**
+     * Format OUT argument as natively type array.
+     *
+     * @see MsSqlQuery::OUT_INT
+     * @see MsSqlQuery::OUT_FLOAT
+     * @see MsSqlQuery::OUT_STRING
+     * @see MsSqlQuery::OUT_STRING_UTF_8
+     * @see MsSqlQuery::OUT_STRING_CODE_PAGE
+     * @see MsSqlQuery::OUT_STRING_BINARY
+     * @see MsSqlQuery::OUT_DATETIME
+     *
+     * @param int $outType
+     * @param null &$value
+     *      By reference.
+     *
+     * @return array
+     */
+    public function argOut(int $outType, &$value = null) : array
+    {
+        return [
+            &$value,
+            SQLSRV_PARAM_OUT,
+            $outType == -1 ? SQLSRV_PHPTYPE_STRING(SQLSRV_ENC_CHAR) : $outType,
+            null,
+        ];
+    }
+
+    /**
+     * Format INOUT argument as natively type array.
+     *
+     * @param int $inType
+     * @param int $outType
+     * @param null &$value
+     *      By reference.
+     *
+     * @return array
+     */
+    public function argInOut(int $inType, int $outType, &$value = null) : array
+    {
+        return [
+            &$value,
+            SQLSRV_PARAM_INOUT,
+            // Code page of the Windows locale that is set on the system.
+            $outType == -1 ? SQLSRV_PHPTYPE_STRING(SQLSRV_ENC_CHAR) : $outType,
+            $inType,
+        ];
+    }
+
 
     // Helpers.-----------------------------------------------------------------
 
@@ -803,17 +894,15 @@ class MsSqlQuery extends DbQuery
                 }
                 return SQLSRV_PHPTYPE_INT;
             case 'd':
-                return $direction == 'in' ? SQLSRV_SQLTYPE_FLOAT :
-                    SQLSRV_PHPTYPE_FLOAT;
+                return $direction == 'in' ? SQLSRV_SQLTYPE_FLOAT : SQLSRV_PHPTYPE_FLOAT;
             case 's':
                 if ($direction == 'in') {
-                    return SQLSRV_SQLTYPE_VARCHAR('max');
+                    // @todo: Use NVARCHAR?
+                    return static::IN_VARCHAR;
                 }
-                return $this->client->characterSet == 'UTF-8' ? SQLSRV_PHPTYPE_STRING('UTF-8') :
-                    SQLSRV_PHPTYPE_STRING(SQLSRV_ENC_CHAR);
+                return $this->client->characterSet == 'UTF-8' ? self::OUT_STRING_UTF_8 : static::OUT_STRING_CODE_PAGE;
             case 'b':
-                return $direction == 'in' ? SQLSRV_SQLTYPE_VARBINARY('max') :
-                    SQLSRV_PHPTYPE_STRING(SQLSRV_ENC_BINARY);
+                return $direction == 'in' ? static::IN_VARBINARY : self::OUT_STRING_BINARY;
         }
         throw new DbQueryArgumentException(
             $this->messagePrefix() . ' - arg $types index[' . $index . '] char[' . $types{$index}
@@ -873,19 +962,17 @@ class MsSqlQuery extends DbQuery
                 return SQLSRV_PHPTYPE_INT;
             case 'double':
             case 'float':
-                return $direction == 'in' ? SQLSRV_SQLTYPE_FLOAT :
-                    SQLSRV_PHPTYPE_FLOAT;
+                return $direction == 'in' ? SQLSRV_SQLTYPE_FLOAT : SQLSRV_PHPTYPE_FLOAT;
             case 'string':
                 // Cannot discern binary from string.
                 if ($direction == 'in') {
-                    return SQLSRV_SQLTYPE_VARCHAR('max');
+                    // @todo: Use NVARCHAR?
+                    return static::IN_VARCHAR;
                 }
-                return $this->client->characterSet == 'UTF-8' ? SQLSRV_PHPTYPE_STRING('UTF-8') :
-                    SQLSRV_PHPTYPE_STRING(SQLSRV_ENC_CHAR);
+                return $this->client->characterSet == 'UTF-8' ? self::OUT_STRING_UTF_8 : static::OUT_STRING_CODE_PAGE;
             default:
                 if ($value instanceof \DateTime) {
-                    return $direction == 'in' ? SQLSRV_SQLTYPE_DATETIME2 :
-                        SQLSRV_PHPTYPE_DATETIME;
+                    return $direction == 'in' ? SQLSRV_SQLTYPE_DATETIME2 : SQLSRV_PHPTYPE_DATETIME;
                 }
                 /**
                  * @see MsSqlQuery::AUTO_STRINGABLE_CLASSES
@@ -893,7 +980,8 @@ class MsSqlQuery extends DbQuery
                 elseif ($direction == 'in' && $type == 'object' && static::AUTO_STRINGABLE_CLASSES) {
                     foreach (static::AUTO_STRINGABLE_CLASSES as $class_name) {
                         if (is_a($value, $class_name)) {
-                            return SQLSRV_SQLTYPE_VARCHAR('max');
+                            // @todo: Use NVARCHAR?
+                            return static::IN_VARCHAR;
                         }
                     }
                 }
@@ -905,6 +993,66 @@ class MsSqlQuery extends DbQuery
                 . '] is not integer|float|string or other resolvable and supported sql argument type.'
         );
     }
+
+    /**
+     * Sqlsrv IN SQL parameter types.
+     */
+    const IN_BIT = SQLSRV_SQLTYPE_BIT;
+    const IN_TINYINT = SQLSRV_SQLTYPE_TINYINT;
+    const IN_SMALLINT = SQLSRV_SQLTYPE_SMALLINT;
+    const IN_INT = SQLSRV_SQLTYPE_INT;
+    const IN_BIGINT = SQLSRV_SQLTYPE_BIGINT;
+    const IN_FLOAT = SQLSRV_SQLTYPE_FLOAT;
+    const IN_REAL = SQLSRV_SQLTYPE_REAL;
+    /**
+     * SQLSRV_SQLTYPE_DECIMAL(14,2).
+     */
+    const IN_DECIMAL = 16784387;
+    /**
+     * SQLSRV_SQLTYPE_DECIMAL(14,2).
+     */
+    const IN_DECIMAL_14_2 = 16784387;
+    /**
+     * SQLSRV_SQLTYPE_VARCHAR('max').
+     */
+    const IN_VARCHAR = 2147483148;
+    /**
+     * SQLSRV_SQLTYPE_NVARCHAR('max').
+     */
+    const IN_NVARCHAR = 2147483639;
+    /**
+     * SQLSRV_SQLTYPE_VARBINARY('max').
+     */
+    const IN_VARBINARY = 2147483645;
+    const IN_TIME = SQLSRV_SQLTYPE_TIME;
+    const IN_DATE = SQLSRV_SQLTYPE_DATE;
+    const IN_DATETIME = SQLSRV_SQLTYPE_DATETIME;
+    const IN_DATETIME2 = SQLSRV_SQLTYPE_DATETIME2;
+    const IN_UUID = SQLSRV_SQLTYPE_UNIQUEIDENTIFIER;
+
+    /**
+     * Sqlsrv OUT PHP parameter types.
+     */
+    const OUT_INT = SQLSRV_PHPTYPE_INT;
+    const OUT_FLOAT = SQLSRV_PHPTYPE_FLOAT;
+    /**
+     * SQLSRV_PHPTYPE_STRING('UTF-8').
+     */
+    const OUT_STRING = 16640260;
+    /**
+     * SQLSRV_PHPTYPE_STRING('UTF-8').
+     */
+    const OUT_STRING_UTF_8 = 16640260;
+    /**
+     * Code page of the Windows locale that is set on the system.
+     * SQLSRV_PHPTYPE_STRING(SQLSRV_ENC_CHAR).
+     */
+    const OUT_STRING_CODE_PAGE = -1; // SQLSRV_PHPTYPE_STRING(SQLSRV_ENC_CHAR);
+    /**
+     * SQLSRV_PHPTYPE_STRING(SQLSRV_ENC_BINARY)-
+     */
+    const OUT_STRING_BINARY = 516;
+    const OUT_DATETIME = SQLSRV_PHPTYPE_DATETIME;
 
     /**
      * List native types by name.
@@ -928,33 +1076,40 @@ class MsSqlQuery extends DbQuery
         if (!static::$nativeTypesSupported) {
             static::$nativeTypesSupported = [
                 // in types.
-                'SQLTYPE_BIT' => SQLSRV_SQLTYPE_BIT,
-                'SQLTYPE_TINYINT' => SQLSRV_SQLTYPE_TINYINT,
-                'SQLTYPE_SMALLINT' => SQLSRV_SQLTYPE_SMALLINT,
-                'SQLTYPE_INT' => SQLSRV_SQLTYPE_INT,
-                'SQLTYPE_BIGINT' => SQLSRV_SQLTYPE_BIGINT,
-                'SQLTYPE_FLOAT' => SQLSRV_SQLTYPE_FLOAT,
-                'SQLTYPE_REAL' => SQLSRV_SQLTYPE_REAL,
-                'SQLTYPE_DECIMAL(14,2)' => SQLSRV_SQLTYPE_DECIMAL(14,2),
-                'SQLTYPE_VARCHAR' => SQLSRV_SQLTYPE_VARCHAR('max'),
-                'SQLTYPE_NVARCHAR' => SQLSRV_SQLTYPE_NVARCHAR('max'),
-                'SQLTYPE_VARBINARY' => SQLSRV_SQLTYPE_VARBINARY('max'),
-                'SQLTYPE_TIME' => SQLSRV_SQLTYPE_TIME,
-                'SQLTYPE_DATE' => SQLSRV_SQLTYPE_DATE,
-                'SQLTYPE_DATETIME' => SQLSRV_SQLTYPE_DATETIME,
-                'SQLTYPE_DATETIME2' => SQLSRV_SQLTYPE_DATETIME2,
-                'SQLTYPE_UNIQUEIDENTIFIER' => SQLSRV_SQLTYPE_UNIQUEIDENTIFIER,
+                'IN_BIT' => SQLSRV_SQLTYPE_BIT,
+                'IN_TINYINT' => SQLSRV_SQLTYPE_TINYINT,
+                'IN_SMALLINT' => SQLSRV_SQLTYPE_SMALLINT,
+                'IN_INT' => SQLSRV_SQLTYPE_INT,
+                'IN_BIGINT' => SQLSRV_SQLTYPE_BIGINT,
+                'IN_FLOAT' => SQLSRV_SQLTYPE_FLOAT,
+                'IN_REAL' => SQLSRV_SQLTYPE_REAL,
+                // Allow extending class to override default DECIMAL.
+                'IN_DECIMAL' => static::IN_DECIMAL,
+                'IN_DECIMAL_14_2' => self::IN_DECIMAL_14_2,
+                // Allow extending class to override default lengths.
+                'IN_VARCHAR' => static::IN_VARCHAR,
+                'IN_NVARCHAR' => static::IN_NVARCHAR,
+                'IN_VARBINARY' => static::IN_VARBINARY,
+                'IN_TIME' => SQLSRV_SQLTYPE_TIME,
+                'IN_DATE' => SQLSRV_SQLTYPE_DATE,
+                'IN_DATETIME' => SQLSRV_SQLTYPE_DATETIME,
+                'IN_DATETIME2' => SQLSRV_SQLTYPE_DATETIME2,
+                'IN_UUID' => SQLSRV_SQLTYPE_UNIQUEIDENTIFIER,
                 // out types.
-                'PHPTYPE_INT' => SQLSRV_PHPTYPE_INT,
-                'PHPTYPE_FLOAT' => SQLSRV_PHPTYPE_FLOAT,
-                'PHPTYPE_STRING(UTF-8)' => SQLSRV_PHPTYPE_STRING('UTF-8'),
-                'PHPTYPE_STRING(SQLSRV_ENC_CHAR)' => SQLSRV_PHPTYPE_STRING(SQLSRV_ENC_CHAR),
-                'PHPTYPE_STRING(SQLSRV_ENC_BINARY)' => SQLSRV_PHPTYPE_STRING(SQLSRV_ENC_BINARY),
-                'PHPTYPE_DATETIME' => SQLSRV_PHPTYPE_DATETIME,
+                'OUT_INT' => SQLSRV_PHPTYPE_INT,
+                'OUT_FLOAT' => SQLSRV_PHPTYPE_FLOAT,
+                // Allow extending class to override default charset.
+                'OUT_STRING' => static::OUT_STRING,
+                'OUT_STRING_UTF_8' => self::OUT_STRING_UTF_8,
+                // Allow extending class to override default charset.
+                'OUT_STRING_CODE_PAGE' => static::OUT_STRING_CODE_PAGE,
+                'OUT_STRING_BINARY' => self::OUT_STRING_BINARY,
+                'OUT_DATETIME' => SQLSRV_PHPTYPE_DATETIME,
             ];
         }
         return static::$nativeTypesSupported;
     }
+
 
     /**
      * Get name of a native type, if supported.
@@ -966,13 +1121,8 @@ class MsSqlQuery extends DbQuery
      */
     public function nativeTypeName(int $nativeType) : string
     {
-        $types = $this->nativeTypes();
-        foreach ($types as $name => $number) {
-            if ($nativeType == $number) {
-                return $name;
-            }
-        }
-        return '';
+        $key = array_search($nativeType, $this->nativeTypes());
+        return $key === false ? '' : $key;
     }
 
 
@@ -984,13 +1134,15 @@ class MsSqlQuery extends DbQuery
      * @param string $types
      * @param &$arguments
      *      By reference, for prepared statement's sake.
+     * @param array $options
+     *      (bool) native_types.
      *
      * @return void
      *      Number of parameters/arguments.
      *
      * @throws DbQueryArgumentException
      */
-    protected function adaptArguments(string $types, array &$arguments) /*: void*/
+    protected function adaptArguments(string $types, array &$arguments, array $options = []) /*: void*/
     {
         $n_params = count($arguments);
         if (!$n_params) {
@@ -1002,83 +1154,86 @@ class MsSqlQuery extends DbQuery
         // Otherwise arg $types - or actual type detection - for those buckets
         // that aren't type qualifying arrays.
 
-        $all_fully_typed = true;
+        $all_fully_typed = !empty($options['native_types']);
         // List of typed buckets; key is index, value is (bool) fully typed.
         $typed__fully = [];
-        /**
-         * Type qualifying array argument:
-         * - 0: (mixed) value
-         * - 1: (int|null) SQLSRV_PARAM_IN|SQLSRV_PARAM_INOUT|null; null ~ SQLSRV_PARAM_IN
-         * - 2: (int|null) SQLSRV_PHPTYPE_*; out type
-         * - 3: (int|null) SQLSRV_SQLTYPE_*; in type
-         * @see http://php.net/manual/en/function.sqlsrv-prepare.php
-         */
-        $i = -1;
-        foreach ($arguments as $arg) {
-            ++$i;
-            if (!is_array($arg)) {
-                // Argumment is arg value only.
-                $all_fully_typed = false;
-            }
-            else {
-                $count = count($arg);
-                // An 'out' parameter must have 3th bucket,
-                // containing SQLSRV_PHPTYPE_* constant.
-                // An 'in' or 'inout' parameter must have 4th bucket,
-                // containing SQLSRV_SQLTYPE_* constant.
-                if (!$count) {
-                    throw new DbQueryArgumentException(
-                        $this->messagePrefix() . ' - arg $arguments bucket ' . $i . ' is empty array.'
-                    );
-                }
-                if ($count == 1) {
-                    // 0: Value only.
-                    // 1: SQLSRV_PARAM_IN|SQLSRV_PARAM_INOUT|SQLSRV_PARAM_OUT.
-                    $typed__fully[$i] = false;
+
+        if (!$all_fully_typed) {
+            /**
+             * Type qualifying array argument:
+             * - 0: (mixed) value
+             * - 1: (int|null) SQLSRV_PARAM_IN|SQLSRV_PARAM_INOUT|null; null ~ SQLSRV_PARAM_IN
+             * - 2: (int|null) SQLSRV_PHPTYPE_*; out type
+             * - 3: (int|null) SQLSRV_SQLTYPE_*; in type
+             * @see http://php.net/manual/en/function.sqlsrv-prepare.php
+             */
+            $i = -1;
+            foreach ($arguments as $arg) {
+                ++$i;
+                if (!is_array($arg)) {
+                    // Argumment is arg value only.
                     $all_fully_typed = false;
                 }
-                if (!isset($arg[1])) {
-                    $direction = SQLSRV_PARAM_IN;
-                }
                 else {
-                    $direction = $arg[1];
-                    if (
-                        $direction !== SQLSRV_PARAM_IN && $direction !== SQLSRV_PARAM_INOUT
-                        && $direction !== SQLSRV_PARAM_OUT
-                    ) {
+                    $count = count($arg);
+                    // An 'out' parameter must have 3th bucket,
+                    // containing SQLSRV_PHPTYPE_* constant.
+                    // An 'in' or 'inout' parameter must have 4th bucket,
+                    // containing SQLSRV_SQLTYPE_* constant.
+                    if (!$count) {
                         throw new DbQueryArgumentException(
-                            $this->messagePrefix() . ' - arg $arguments direction bucket at index['
-                            . $i . '][1] type[' . Utils::getType($arg[1])
-                            . '] is not int SQLSRV_PARAM_IN|SQLSRV_PARAM_INOUT|SQLSRV_PARAM_OUT or null.'
+                            $this->messagePrefix() . ' - arg $arguments bucket ' . $i . ' is empty array.'
                         );
                     }
-                }
-                switch ($direction) {
-                    case SQLSRV_PARAM_IN:
-                        if (!empty($arg[3])) {
-                            // Non-empty 'in' SQLSRV_SQLTYPE_*.
-                            $typed__fully[$i] = true;
-                        } else {
-                            $typed__fully[$i] = $all_fully_typed = false;
+                    if ($count == 1) {
+                        // 0: Value only.
+                        // 1: SQLSRV_PARAM_IN|SQLSRV_PARAM_INOUT|SQLSRV_PARAM_OUT.
+                        $typed__fully[$i] = false;
+                        $all_fully_typed = false;
+                    }
+                    if (!isset($arg[1])) {
+                        $direction = SQLSRV_PARAM_IN;
+                    }
+                    else {
+                        $direction = $arg[1];
+                        if (
+                            $direction !== SQLSRV_PARAM_IN && $direction !== SQLSRV_PARAM_INOUT
+                            && $direction !== SQLSRV_PARAM_OUT
+                        ) {
+                            throw new DbQueryArgumentException(
+                                $this->messagePrefix() . ' - arg $arguments direction bucket at index['
+                                . $i . '][1] type[' . Utils::getType($arg[1])
+                                . '] is not int SQLSRV_PARAM_IN|SQLSRV_PARAM_INOUT|SQLSRV_PARAM_OUT or null.'
+                            );
                         }
-                        break;
-                    case SQLSRV_PARAM_INOUT:
-                        if (!empty($arg[2]) && !empty($arg[3])) {
-                            // Non-empty 'out' SQLSRV_PHPTYPE_*
-                            // and non-empty 'in' SQLSRV_SQLTYPE_*.
-                            $typed__fully[$i] = true;
-                        } else {
-                            $typed__fully[$i] = $all_fully_typed = false;
-                        }
-                        break;
-                    case SQLSRV_PARAM_OUT:
-                        if (!empty($arg[2])) {
-                            // Non-empty 'out' SQLSRV_PHPTYPE_*
-                            $typed__fully[$i] = true;
-                        } else {
-                            $typed__fully[$i] = $all_fully_typed = false;
-                        }
-                        break;
+                    }
+                    switch ($direction) {
+                        case SQLSRV_PARAM_IN:
+                            if (!empty($arg[3])) {
+                                // Non-empty 'in' SQLSRV_SQLTYPE_*.
+                                $typed__fully[$i] = true;
+                            } else {
+                                $typed__fully[$i] = $all_fully_typed = false;
+                            }
+                            break;
+                        case SQLSRV_PARAM_INOUT:
+                            if (!empty($arg[2]) && !empty($arg[3])) {
+                                // Non-empty 'out' SQLSRV_PHPTYPE_*
+                                // and non-empty 'in' SQLSRV_SQLTYPE_*.
+                                $typed__fully[$i] = true;
+                            } else {
+                                $typed__fully[$i] = $all_fully_typed = false;
+                            }
+                            break;
+                        case SQLSRV_PARAM_OUT:
+                            if (!empty($arg[2])) {
+                                // Non-empty 'out' SQLSRV_PHPTYPE_*
+                                $typed__fully[$i] = true;
+                            } else {
+                                $typed__fully[$i] = $all_fully_typed = false;
+                            }
+                            break;
+                    }
                 }
             }
         }
@@ -1256,7 +1411,7 @@ class MsSqlQuery extends DbQuery
     }
 
     /**
-     * Validate that arguments matches native types.
+     * Validate that arguments match native types.
      *
      * Loose typings:
      * - bit type allows boolean and stringed 0|1
@@ -1284,9 +1439,8 @@ class MsSqlQuery extends DbQuery
      * @throws DbQueryArgumentException
      *      If validation failure and non-empty arg $errorContext.
      */
-    protected function validateArgumentsNativeType(array $arguments, array $skipIndices = [], string $errorContext = '') {
-        $native = $this->nativeTypes();
-
+    protected function validateArgumentsNativeType(array $arguments, array $skipIndices = [], string $errorContext = '')
+    {
         $invalids = [];
         $index = -1;
         foreach ($arguments as $arg) {
@@ -1321,7 +1475,7 @@ class MsSqlQuery extends DbQuery
                     $em = '';
                     $type_supported = true;
                     switch ($declared_type) {
-                        case $native['SQLTYPE_BIT']:
+                        case self::IN_BIT:
                             if (
                                 (!is_int($value) || ($value != 0 && $value != 1))
                                 && !is_bool($value)
@@ -1332,10 +1486,10 @@ class MsSqlQuery extends DbQuery
                                 break;
                             }
                             break;
-                        case $native['SQLTYPE_TINYINT']:
-                        case $native['SQLTYPE_SMALLINT']:
-                        case $native['SQLTYPE_INT']:
-                        case $native['SQLTYPE_BIGINT']:
+                        case self::IN_TINYINT:
+                        case self::IN_SMALLINT:
+                        case self::IN_INT:
+                        case self::IN_BIGINT:
                             if (!is_int($value)) {
                                 if ($value === '') {
                                     $em = 'empty string is neither integer nor stringed integer';
@@ -1348,25 +1502,25 @@ class MsSqlQuery extends DbQuery
                                 }
                             }
                             switch ($declared_type) {
-                                case $native['SQLTYPE_TINYINT']:
+                                case self::IN_TINYINT:
                                     if ($value < 0 || $value > 255) {
                                         $em = 'value[' . $value . '] is '
                                             . ($value < 0 ? 'less than zero' : 'more than 255');
                                     }
                                     break;
-                                case $native['SQLTYPE_SMALLINT']:
+                                case self::IN_SMALLINT:
                                     if ($value < -32768 || $value > 32767) {
                                         $em = 'value[' . $value . '] is '
                                             . ($value < 0 ? 'less than -32768' : 'more than 32767');
                                     }
                                     break;
-                                case $native['SQLTYPE_INT']:
+                                case self::IN_INT:
                                     if ($value < -2147483648 || $value > 2147483647) {
                                         $em = 'value[' . $value . '] is '
                                             . ($value < 0 ? 'less than -2147483648' : 'more than 2147483647');
                                     }
                                     break;
-                                case $native['SQLTYPE_BIGINT']:
+                                case self::IN_BIGINT:
                                     if ($value < -pow(2, 63) || $value > pow(2, 63) - 1) {
                                         $em = 'value[' . $value . '] is '
                                             . ($value < 0 ? 'less than -2^63' : 'more than 2^31-1');
@@ -1374,9 +1528,11 @@ class MsSqlQuery extends DbQuery
                                     break;
                             }
                             break;
-                        case $native['SQLTYPE_FLOAT']:
-                        case $native['SQLTYPE_REAL']:
-                        case $native['SQLTYPE_DECIMAL(14,2)']:
+                        case self::IN_FLOAT:
+                        case self::IN_REAL:
+                        // Allow extending class to override default DECIMAL.
+                        case static::IN_DECIMAL:
+                        case self::IN_DECIMAL_14_2:
                             if (!is_float($value) && !is_int($value)) {
                                 if ($value === '') {
                                     $em = 'empty string is neither number nor stringed number';
@@ -1390,9 +1546,10 @@ class MsSqlQuery extends DbQuery
                                 }
                             }
                             break;
-                        case $native['SQLTYPE_VARCHAR']:
-                        case $native['SQLTYPE_NVARCHAR']:
-                        case $native['SQLTYPE_VARBINARY']:
+                        // Allow extending class to override default lengths.
+                        case static::IN_VARCHAR:
+                        case static::IN_NVARCHAR:
+                        case static::IN_VARBINARY:
                             // Camnot discern binary from non-binary string.
                             if (!is_string($value)) {
                                 $valid = false;
@@ -1426,7 +1583,7 @@ class MsSqlQuery extends DbQuery
                                 }
                             }
                             break;
-                        case $native['SQLTYPE_TIME']:
+                        case self::IN_TIME:
                             // MsSql time requires seconds.
                             if (
                                 !is_string($value)
@@ -1438,9 +1595,9 @@ class MsSqlQuery extends DbQuery
                                 break;
                             }
                             break;
-                        case $native['SQLTYPE_DATE']:
-                        case $native['SQLTYPE_DATETIME']:
-                        case $native['SQLTYPE_DATETIME2']:
+                        case self::IN_DATE:
+                        case self::IN_DATETIME:
+                        case self::IN_DATETIME2:
                             if (
                                 !($value instanceof \DateTime)
                                 && (!is_string($value) || !$this->validate->dateISO8601Local($value))
@@ -1450,7 +1607,7 @@ class MsSqlQuery extends DbQuery
                                 break;
                             }
                             break;
-                        case $native['SQLTYPE_UNIQUEIDENTIFIER']:
+                        case self::IN_UUID:
                             if (!is_string($value) || !$this->validate->uuid($value)) {
                                 $em = 'type[' . Utils::getType($value) . '] is a UUID';
                                 break;
@@ -1484,7 +1641,7 @@ class MsSqlQuery extends DbQuery
                     $em = '';
                     $type_supported = true;
                     switch ($declared_type) {
-                        case $native['PHPTYPE_INT']:
+                        case self::OUT_INT:
                             if (!is_int($value)) {
                                 if ($value === '') {
                                     $em = 'empty string is neither integer nor stringed integer';
@@ -1497,7 +1654,7 @@ class MsSqlQuery extends DbQuery
                                 }
                             }
                             break;
-                        case $native['PHPTYPE_FLOAT']:
+                        case self::OUT_FLOAT:
                             if (!is_float($value) && !is_int($value)) {
                                 if ($value === '') {
                                     $em = 'empty string is neither number nor stringed number';
@@ -1511,9 +1668,12 @@ class MsSqlQuery extends DbQuery
                                 }
                             }
                             break;
-                        case $native['PHPTYPE_STRING(UTF-8)']:
-                        case $native['PHPTYPE_STRING(SQLSRV_ENC_CHAR)']:
-                        case $native['PHPTYPE_STRING(SQLSRV_ENC_BINARY)']:
+                        // Allow extending class to override default charset.
+                        case static::OUT_STRING:
+                        case self::OUT_STRING_UTF_8:
+                        // Allow extending class to override default charset.
+                        case static::OUT_STRING_CODE_PAGE:
+                        case self::OUT_STRING_BINARY:
                             // Camnot discern binary from non-binary string.
                             if (!is_string($value)) {
                                 $valid = false;
@@ -1547,7 +1707,7 @@ class MsSqlQuery extends DbQuery
                                 }
                             }
                             break;
-                        case $native['PHPTYPE_DATETIME']:
+                        case self::OUT_DATETIME:
                             if (
                                 !($value instanceof \DateTime)
                                 && (!is_string($value) || !$this->validate->dateISO8601Local($value))
