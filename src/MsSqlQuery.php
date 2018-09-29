@@ -777,7 +777,7 @@ class MsSqlQuery extends DbQuery
      *
      * @return array
      */
-    public function argIn(int $inType, $value = null) : array
+    public static function argIn(int $inType, $value = null) : array
     {
         return [
             $value,
@@ -804,11 +804,14 @@ class MsSqlQuery extends DbQuery
      *
      * @return array
      */
-    public function argOut(int $outType, &$value = null) : array
+    public static function argOut(int $outType, &$value = null) : array
     {
         return [
             &$value,
             SQLSRV_PARAM_OUT,
+            /**
+             * @see MsSqlQuery::OUT_STRING_CODE_PAGE
+             */
             $outType == -1 ? SQLSRV_PHPTYPE_STRING(SQLSRV_ENC_CHAR) : $outType,
             null,
         ];
@@ -824,12 +827,14 @@ class MsSqlQuery extends DbQuery
      *
      * @return array
      */
-    public function argInOut(int $inType, int $outType, &$value = null) : array
+    public static function argInOut(int $inType, int $outType, &$value = null) : array
     {
         return [
             &$value,
             SQLSRV_PARAM_INOUT,
-            // Code page of the Windows locale that is set on the system.
+            /**
+             * @see MsSqlQuery::OUT_STRING_CODE_PAGE
+             */
             $outType == -1 ? SQLSRV_PHPTYPE_STRING(SQLSRV_ENC_CHAR) : $outType,
             $inType,
         ];
@@ -900,7 +905,11 @@ class MsSqlQuery extends DbQuery
                     // @todo: Use NVARCHAR?
                     return static::IN_VARCHAR;
                 }
-                return $this->client->characterSet == 'UTF-8' ? self::OUT_STRING_UTF_8 : static::OUT_STRING_CODE_PAGE;
+                return $this->client->characterSet == 'UTF-8' ? self::OUT_STRING_UTF_8 :
+                    /**
+                     * @see MsSqlQuery::OUT_STRING_CODE_PAGE
+                     */
+                    SQLSRV_PHPTYPE_STRING(SQLSRV_ENC_CHAR);
             case 'b':
                 return $direction == 'in' ? static::IN_VARBINARY : self::OUT_STRING_BINARY;
         }
@@ -969,7 +978,11 @@ class MsSqlQuery extends DbQuery
                     // @todo: Use NVARCHAR?
                     return static::IN_VARCHAR;
                 }
-                return $this->client->characterSet == 'UTF-8' ? self::OUT_STRING_UTF_8 : static::OUT_STRING_CODE_PAGE;
+                return $this->client->characterSet == 'UTF-8' ? self::OUT_STRING_UTF_8 :
+                    /**
+                     * @see MsSqlQuery::OUT_STRING_CODE_PAGE
+                     */
+                    SQLSRV_PHPTYPE_STRING(SQLSRV_ENC_CHAR);
             default:
                 if ($value instanceof \DateTime) {
                     return $direction == 'in' ? SQLSRV_SQLTYPE_DATETIME2 : SQLSRV_PHPTYPE_DATETIME;
@@ -1045,9 +1058,10 @@ class MsSqlQuery extends DbQuery
     const OUT_STRING_UTF_8 = 16640260;
     /**
      * Code page of the Windows locale that is set on the system.
+     * Will be resolved on the fly.
      * SQLSRV_PHPTYPE_STRING(SQLSRV_ENC_CHAR).
      */
-    const OUT_STRING_CODE_PAGE = -1; // SQLSRV_PHPTYPE_STRING(SQLSRV_ENC_CHAR);
+    const OUT_STRING_CODE_PAGE = -1;
     /**
      * SQLSRV_PHPTYPE_STRING(SQLSRV_ENC_BINARY)-
      */
@@ -1101,8 +1115,7 @@ class MsSqlQuery extends DbQuery
                 // Allow extending class to override default charset.
                 'OUT_STRING' => static::OUT_STRING,
                 'OUT_STRING_UTF_8' => self::OUT_STRING_UTF_8,
-                // Allow extending class to override default charset.
-                'OUT_STRING_CODE_PAGE' => static::OUT_STRING_CODE_PAGE,
+                'OUT_STRING_CODE_PAGE' => self::OUT_STRING_CODE_PAGE,
                 'OUT_STRING_BINARY' => self::OUT_STRING_BINARY,
                 'OUT_DATETIME' => SQLSRV_PHPTYPE_DATETIME,
             ];
@@ -1668,12 +1681,23 @@ class MsSqlQuery extends DbQuery
                                 }
                             }
                             break;
+                        case self::OUT_DATETIME:
+                            if (
+                                !($value instanceof \DateTime)
+                                && (!is_string($value) || !$this->validate->dateISO8601Local($value))
+                            ) {
+                                $em = 'type[' . Utils::getType($value)
+                                    . '] is neither \DateTime nor string date IS0-8601 YYYY-MM-DD';
+                                break;
+                            }
+                            break;
                         // Allow extending class to override default charset.
                         case static::OUT_STRING:
                         case self::OUT_STRING_UTF_8:
                         // Allow extending class to override default charset.
                         case static::OUT_STRING_CODE_PAGE:
                         case self::OUT_STRING_BINARY:
+                        default:
                             // Camnot discern binary from non-binary string.
                             if (!is_string($value)) {
                                 $valid = false;
@@ -1702,25 +1726,25 @@ class MsSqlQuery extends DbQuery
                                         break;
                                 }
                                 if (!$valid) {
-                                    $em = 'type[' . Utils::getType($value)
-                                        . '] is not string, integer, float or stringable object';
+                                    switch ($declared_type) {
+                                        case static::OUT_STRING:
+                                        case self::OUT_STRING_UTF_8:
+                                            // Allow extending class to override default charset.
+                                        case static::OUT_STRING_CODE_PAGE:
+                                        case self::OUT_STRING_BINARY:
+                                            $em = 'type[' . Utils::getType($value)
+                                                . '] is not string, integer, float or stringable object';
+                                            break;
+                                        default:
+                                            $type_supported = false;
+                                            $em = 'index[' . $index . '] out-param native type int[' . $declared_type
+                                                . '] is either not supported or is win code page'
+                                                . ' SQLSRV_PHPTYPE_STRING(SQLSRV_ENC_CHAR), value type['
+                                                . Utils::getType($value) . ']';
+                                    }
                                 }
                             }
                             break;
-                        case self::OUT_DATETIME:
-                            if (
-                                !($value instanceof \DateTime)
-                                && (!is_string($value) || !$this->validate->dateISO8601Local($value))
-                            ) {
-                                $em = 'type[' . Utils::getType($value)
-                                    . '] is neither \DateTime nor string date IS0-8601 YYYY-MM-DD';
-                                break;
-                            }
-                            break;
-                        default:
-                            $type_supported = false;
-                            $em = 'index[' . $index . '] out-param native type int[' . $declared_type
-                                . '] is not supported, value type[' . Utils::getType($value) . ']';
                     }
                     if ($em) {
                         if ($type_supported) {

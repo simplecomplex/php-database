@@ -643,7 +643,7 @@ class QueryArgumentTest extends TestCase
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [
                 'name' => __FUNCTION__,
-                'validate_params' => 3,
+                'validate_params' => static::VALIDATE_PARAMS,
                 'sql_minify' => true,
                 'affected_rows' => true,
             ]
@@ -732,6 +732,63 @@ class QueryArgumentTest extends TestCase
         $args['_1_float'][0] = '1.1';
         $args['_2_decimal'][0] ='2.2';
         $args['_3_varchar'][0] = 'type qualified strict updated';
+        $args['_5_date'][0] = $time->getDateISOlocal();
+        //$args['_5_date'][0] = 'cykel';
+        $args['_6_datetime'][0] = $time->getDateISOlocal();
+        $args['_8_bit'][0] = true;
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
+        $this->assertInstanceOf(MsSqlResult::class, $result);
+        $this->assertSame(1, $result->affectedRows());
+    }
+
+    /**
+     * Type qualifying arguments, checked strictly.
+     *
+     * @see ClientTest::testInstantiation()
+     */
+    public function testQueryArgumentsTypeQualifyHelpers()
+    {
+        $client = (new ClientTest())->testInstantiation();
+
+        $query = $client->query(
+            'INSERT INTO typish (_0_int, _1_float, _2_decimal, _3_varchar, _4_blob, _5_date, _6_datetime, _7_nvarchar,
+                _8_bit, _9_time, _10_uuid)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [
+                'name' => __FUNCTION__,
+                'validate_params' => static::VALIDATE_PARAMS,
+                'sql_minify' => true,
+                'affected_rows' => true,
+            ]
+        );
+
+        //$types = 'idssbsss';
+        $types = '';
+
+        $time = new Time();
+        $args = [
+            '_0_int' => MsSqlQuery::argIn(MsSqlQuery::IN_INT, 0),
+            '_1_float' => MsSqlQuery::argIn(MsSqlQuery::IN_FLOAT, 1.0),
+            '_2_decimal' => MsSqlQuery::argIn(MsSqlQuery::IN_DECIMAL_14_2, 2.0),
+            '_3_varchar' => MsSqlQuery::argIn(MsSqlQuery::IN_VARCHAR, 'type qualify helpers'),
+            '_4_blob' => MsSqlQuery::argIn(MsSqlQuery::IN_VARBINARY, sprintf("%08d", decbin(4))),
+            '_5_date' => MsSqlQuery::argIn(MsSqlQuery::IN_DATE, $time),
+            '_6_datetime' => MsSqlQuery::argIn(MsSqlQuery::IN_DATETIME, $time),
+            '_7_nvarchar' => MsSqlQuery::argIn(MsSqlQuery::IN_NVARCHAR, 'n varchar'),
+            '_8_bit' => MsSqlQuery::argIn(MsSqlQuery::IN_BIT, 0),
+            '_9_time' => MsSqlQuery::argIn(MsSqlQuery::IN_TIME, '10:30:01'),
+            '_10_uuid' => MsSqlQuery::argIn(MsSqlQuery::IN_UUID, '123e4567-e89b-12d3-a456-426655440000'),
+        ];
+        TestHelper::queryPrepareLogOnError($query, $types, $args);
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
+        $this->assertInstanceOf(MsSqlResult::class, $result);
+        $this->assertSame(1, $result->affectedRows());
+
+        $args['_0_int'][0] = '1';
+        //$args['_0_int'][0] = 'hest';
+        $args['_1_float'][0] = '1.1';
+        $args['_2_decimal'][0] ='2.2';
+        $args['_3_varchar'][0] = 'type qualify helpers updated';
         $args['_5_date'][0] = $time->getDateISOlocal();
         //$args['_5_date'][0] = 'cykel';
         $args['_6_datetime'][0] = $time->getDateISOlocal();

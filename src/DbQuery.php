@@ -212,7 +212,7 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
     const VALIDATE_PARAMS = 1;
 
     /**
-     * Validate query parameters on query failure (only).
+     * Validate query parameters on query failure.
      *
      * Bitmask value.
      */
