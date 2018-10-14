@@ -369,14 +369,9 @@ class MsSqlResult extends DbResult
             if ($value !== false && $value !== null) {
                 return $value;
             }
-            // Try to detect out-of-range;
-            // falsy sqlsrv_get_field() and no native error
-            if (!$this->query->client->getErrors(DbError::AS_STRING_EMPTY_ON_NONE)) {
-                $this->closeAndLog(__FUNCTION__);
-                throw new \OutOfRangeException(
-                    $this->query->messagePrefix() . ' - failed fetching column by $index[' . $index
-                    . '], presumably row has no such index.'
-                );
+            // Assume that the value actually is null, unless native error.
+            if ($value === null && !$this->query->client->getErrors(DbError::AS_STRING_EMPTY_ON_NONE)) {
+                return null;
             }
             // Otherwise continue to exception at and of method.
         }
