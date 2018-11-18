@@ -277,6 +277,8 @@ abstract class DbClient extends Explorable implements DbClientInterface
         if (!$this->options) {
             $this->options = [];
         }
+        // Don't err on integer (dev/test) password.
+        $this->pass = '' . $this->pass;
         // Coerce port to integer or use fallback.
         $this->port = $this->port ? (int) $this->port : static::SERVER_PORT;
 

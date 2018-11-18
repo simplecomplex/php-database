@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace SimpleComplex\Database;
 
+use SimpleComplex\Utils\Utils;
 use SimpleComplex\Database\Interfaces\DbQueryInterface;
 
 use SimpleComplex\Database\Exception\DbRuntimeException;
@@ -96,6 +97,22 @@ class MariaDbClient extends DbClient
         'connect_timeout' => 'MYSQLI_OPT_CONNECT_TIMEOUT',
         // str. default: CHARACTER_SET
         'character_set' => 'character_set',
+        // SSL (TLS) connection vars:
+        // ssl_private_key triggers detection of all SSL vars.
+        // And do consider using flag MYSQLI_CLIENT_SSL_DONT_VERIFY_SERVER_CERT.
+        // ~ key; path+file, relative supported.
+        'ssl_private_key' => 'ssl_private_key',
+        // ~ cert; path+file, relative supported.
+        // Required if ssl_private_key.
+        'ssl_public_key' => 'ssl_public_key',
+        // ~ ca.
+        'ssl_ca_file' => 'ssl_ca_file',
+        // ~ capath; path, relative supported.
+        // Default: /etc/ssl/certs.
+        'ssl_ca_dir' => 'ssl_ca_dir',
+        // ~ cipher; colon separated list of ciphers supported
+        // by MariaDb/MySQL server. Required if ssl_private_key.
+        'ssl_cipher' => 'ssl_cipher',
     ];
 
     /**
@@ -153,9 +170,10 @@ class MariaDbClient extends DbClient
      *      @var string $pass
      *      @var array $options
      *          Keys are PHP constant names or OPTION_SHORTHANDS keys.
-     *      @var string[] $flags
-     *          Database type specific bitmask flags, by name not value;
-     *          'MYSQLI_CLIENT_COMPRESS', not MYSQLI_CLIENT_COMPRESS.
+     *      @var int|string|int[]|string[] $flags
+     *          Database type specific bitmask flags, as either (int) bitmask,
+     *          (str) MYSQLI_CLIENT_* PHP constant name,
+     *          or list of integers or constant names.
      *          Alternatively, set the flags in $options['flags'].
      * }
      */
@@ -447,7 +465,7 @@ class MariaDbClient extends DbClient
             $options = $this->options;
 
             /**
-             * Secure connection timeout.
+             * Ensure connection timeout.
              * @see MariaDbClient::OPTION_SHORTHANDS
              */
             if (!empty($options['connect_timeout'])) {
@@ -457,6 +475,34 @@ class MariaDbClient extends DbClient
                 $options['MYSQLI_OPT_CONNECT_TIMEOUT'] = static::CONNECT_TIMEOUT;
             }
             unset($options['connect_timeout']);
+
+            // SSL (TLS) connection vars.
+            if (!empty($options['ssl_private_key'])) {
+                $utils = Utils::getInstance();
+                // Support relative paths.
+                $this->options['ssl_private_key'] = $utils->resolvePath($options['ssl_private_key']);
+                if (empty($options['ssl_public_key'])) {
+                    throw new \LogicException(
+                        $this->messagePrefix()
+                        . ' - option[ssl_public_key] cannot be ' . (!array_key_exists('ssl_public_key', $options) ? 'missing' : 'empty')
+                        . ' when option[ssl_private_key].'
+                    );
+                }
+                $this->options['ssl_public_key'] = $utils->resolvePath($options['ssl_public_key']);
+                if (!empty($options['ssl_ca_file'])) {
+                    $this->options['ssl_ca_file'] = $utils->resolvePath($options['ssl_ca_file']);
+                }
+                if (!empty($options['ssl_ca_path'])) {
+                    $this->options['ssl_ca_path'] = $utils->resolvePath($options['ssl_ca_path']);
+                }
+                if (empty($options['ssl_cipher'])) {
+                    throw new \InvalidArgumentException('Arg $databaseInfo misses ssl_cipher.');
+                }
+                unset(
+                    $options['ssl_private_key'], $options['ssl_public_key'], $options['ssl_ca_file'], $options['ssl_ca_path'],
+                    $options['ssl_cipher']
+                );
+            }
 
             /**
              * Remove character set option; handled prior to this, elsewhere.
@@ -487,23 +533,38 @@ class MariaDbClient extends DbClient
             // Do (MySQLi specialty) connection flags.
             $flags = 0;
             if ($this->flags) {
-                foreach ($this->flags as $name) {
-                    // Name must be (string) name, not constant value.
-                    if (ctype_digit('' . $name)) {
+                if (is_int($this->flags)) {
+                    $flags = $this->flags;
+                }
+                else {
+                    if (is_string($this->flags)) {
+                        $this->flags = [
+                            $this->flags
+                        ];
+                    }
+                    elseif (!is_array($this->flags)) {
                         throw new \LogicException(
-                            $this->messagePrefix() . ' - flag[' . $name
-                            . '] is integer, must be string name of MYSQLI_CLIENT_* PHP constant.'
+                            $this->messagePrefix() . ' - options flags type[' . Utils::getType($this->flags) . ']'
+                            . '] is not integer|string|array.'
                         );
                     }
-                    $constant = @constant($name);
-                    if ($constant === null) {
-                        throw new \LogicException(
-                            $this->messagePrefix()
-                            . ' - invalid flag[' . $name . '], there\'s no PHP constant by that name.'
-                        );
+                    foreach ($this->flags as $name_or_value) {
+                        if (is_int($name_or_value)) {
+                            // Set if missing; bitwise Or (inclusive or).
+                            $flags = $flags | $name_or_value;
+                        }
+                        else {
+                            $constant = @constant($name_or_value);
+                            if ($constant === null) {
+                                throw new \LogicException(
+                                    $this->messagePrefix()
+                                    . ' - invalid flag[' . $name_or_value . '], there\'s no PHP constant by that name.'
+                                );
+                            }
+                            // Set if missing; bitwise Or (inclusive or).
+                            $flags = $flags | $constant;
+                        }
                     }
-                    // Set if missing; bitwise Or (inclusive or).
-                    $flags = $flags | $constant;
                 }
             }
             $this->flagsResolved = $flags;
@@ -602,6 +663,16 @@ class MariaDbClient extends DbClient
                     ];
                     return false;
                 }
+            }
+
+            if (!empty($this->options['ssl_private_key'])) {
+                $mysqli->ssl_set(
+                    $this->options['ssl_private_key'],
+                    $this->options['ssl_public_key'],
+                    $this->options['ssl_ca_file'] ?? null,
+                    $this->options['ssl_ca_dir'] ?? '/etc/ssl/certs',
+                    $this->options['ssl_cipher']
+                );
             }
 
             if (

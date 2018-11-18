@@ -1,3 +1,10 @@
+SimpleComplex/Database 1.x, 2018-11-18
+--------------------------------------
+- MariaDb/MySQL SSL (TLS) connection support.
+- Flags may now be passed as integer (bitmask), or list of integers and/or
+  MYSQLI_CLIENT_* PHP constant name.
+- Don't err on integer (dev/test) password.
+
 SimpleComplex/Database 1.x, 2018-10-15
 --------------------------------------
 - MsSqlResult::fetchColumn() shan't assume that a null value is null
