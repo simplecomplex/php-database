@@ -38,6 +38,218 @@ class ResultTest extends TestCase
     /**
      * @see ResetTest::testResetStructure()
      */
+    public function testResetStructure()
+    {
+        $reset_test = new ResetTest();
+        /** @var MsSqlClient $client */
+        $client = $reset_test->testResetStructure();
+        $this->assertInstanceOf(MsSqlClient::class, $client);
+    }
+
+    /**
+     * @see ClientTest::testInstantiation()
+     * @see QueryArgumentTest::testQueryArgumentsReferred()
+     */
+    public function testEmptyFetchColumn()
+    {
+        $client = (new ClientTest())->testInstantiation();
+
+        $query = $client->query(
+            'SELECT TOP(1) * FROM typish',
+            [
+                'name' => __FUNCTION__,
+                'validate_params' => static::VALIDATE_PARAMS,
+                'sql_minify' => true,
+            ]
+        );
+        TestHelper::queryPrepareLogOnError($query);
+
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
+        $this->assertInstanceOf(MsSqlResult::class, $result);
+        $column_by_index = $result->fetchColumn(4);
+        $this->assertNull($column_by_index);
+
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
+        $this->assertInstanceOf(MsSqlResult::class, $result);
+        $column_by_name = $result->fetchColumn(0, '_3_varchar');
+        $this->assertNull($column_by_index);
+
+        //TestHelper::logVariable('', [ $column_by_index, $column_by_name]);
+
+        $query = $client->query(
+            'SELECT * FROM typish
+            ORDER BY id ASC
+            -- OFFSET 1 ROWS FETCH NEXT 1 ROWS ONLY is illegal :-(
+            OFFSET 2 ROWS FETCH NEXT 1 ROWS ONLY',
+            [
+                'name' => __FUNCTION__,
+                'validate_params' => static::VALIDATE_PARAMS,
+                'sql_minify' => true,
+            ]
+        );
+        TestHelper::queryPrepareLogOnError($query);
+
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
+        $this->assertInstanceOf(MsSqlResult::class, $result);
+        $column_by_index = $result->fetchColumn(4);
+        $this->assertNull($column_by_index);
+
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
+        $this->assertInstanceOf(MsSqlResult::class, $result);
+        $column_by_name = $result->fetchColumn(0, '_3_varchar');
+        $this->assertNull($column_by_index);
+
+        //TestHelper::logVariable('', [ $column_by_index, $column_by_name]);
+    }
+
+    /**
+     * @see ClientTest::testInstantiation()
+     */
+    public function testEmptyFetchArray()
+    {
+        $client = (new ClientTest())->testInstantiation();
+
+        $query = $client->query(
+            'SELECT * FROM typish',
+            [
+                'name' => __FUNCTION__,
+                'validate_params' => static::VALIDATE_PARAMS,
+                'sql_minify' => true,
+            ]
+        );
+        TestHelper::queryPrepareLogOnError($query);
+
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
+        $this->assertInstanceOf(MsSqlResult::class, $result);
+        $fetch_assoc = $result->fetchArray();
+        $this->assertNull($fetch_assoc);
+
+        $this->assertInstanceOf(MsSqlResult::class, $result);
+        $fetch_num = $result->fetchArray(DbResult::FETCH_NUMERIC);
+        $this->assertNull($fetch_num);
+
+        //TestHelper::logVariable('fetch array assoc, fetch array num', [ $fetch_assoc, $fetch_num]);
+
+        $query = $client->query(
+            'SELECT * FROM typish',
+            [
+                'name' => __FUNCTION__,
+                'validate_params' => static::VALIDATE_PARAMS,
+                'sql_minify' => true,
+            ]
+        );
+        TestHelper::queryPrepareLogOnError($query);
+
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
+        $this->assertInstanceOf(MsSqlResult::class, $result);
+        $fetch_assoc = $result->fetchAllArrays();
+        $this->assertNull($fetch_assoc);
+
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
+        $this->assertInstanceOf(MsSqlResult::class, $result);
+        $fetch_num = $result->fetchAllArrays(DbResult::FETCH_NUMERIC);
+        $this->assertNull($fetch_num);
+
+        //TestHelper::logVariable('fetch all arrays assoc, fetch all arrays num', [ $fetch_assoc, $fetch_num]);
+    }
+
+    /**
+     * @see ClientTest::testInstantiation()
+     *
+     * @expectedException \InvalidArgumentException
+     */
+    public function testEmptyFetchAllArraysListByColumn()
+    {
+        $client = (new ClientTest())->testInstantiation();
+
+        $query = $client->query(
+            'SELECT * FROM typish',
+            [
+                'name' => __FUNCTION__,
+                'validate_params' => static::VALIDATE_PARAMS,
+                'sql_minify' => true,
+            ]
+        );
+        TestHelper::queryPrepareLogOnError($query);
+
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
+        $this->assertInstanceOf(MsSqlResult::class, $result);
+        $fetch_assoc = $result->fetchAllArrays(DbResult::FETCH_ASSOC, '_3_varchar');
+        $this->assertNull($fetch_assoc);
+
+        //TestHelper::logVariable('fetch all arrays assoc+list by column', $fetch_assoc);
+
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
+        $this->assertInstanceOf(MsSqlResult::class, $result);
+        /**
+         * Non-empty arg $list_by_column when arg $as is FETCH_NUMERIC.
+         * @throws \InvalidArgumentException
+         */
+        $result->fetchAllArrays(DbResult::FETCH_NUMERIC, '_3_varchar');
+    }
+
+    /**
+     * @see ClientTest::testInstantiation()
+     */
+    public function testEmptyFetchObject()
+    {
+        $client = (new ClientTest())->testInstantiation();
+
+        $query = $client->query(
+            'SELECT * FROM typish',
+            [
+                'name' => __FUNCTION__,
+                'validate_params' => static::VALIDATE_PARAMS,
+                'sql_minify' => true,
+            ]
+        );
+        TestHelper::queryPrepareLogOnError($query);
+
+        /** @var MsSqlResult $result */
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
+        $this->assertInstanceOf(MsSqlResult::class, $result);
+        $fetch_object = $result->fetchObject();
+        $this->assertNull($fetch_object);
+
+        $fetch_typed = $result->fetchObject(Typish::class);
+        $this->assertInstanceOf(Typish::class, $fetch_typed);
+
+        $fetch_typed_w_args = $result->fetchObject(Typish::class, ['hello']);
+        $this->assertNull($fetch_typed_w_args);
+
+        //TestHelper::logVariable('fetch object, fetch typed', [$fetch_object, $fetch_typed, $fetch_typed_w_args]);
+
+        $query = $client->query(
+            'SELECT * FROM typish',
+            [
+                'name' => __FUNCTION__,
+                'validate_params' => static::VALIDATE_PARAMS,
+                'sql_minify' => true,
+            ]
+        );
+        TestHelper::queryPrepareLogOnError($query);
+
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
+        $this->assertInstanceOf(MsSqlResult::class, $result);
+        $fetch_object = $result->fetchAllObjects();
+        $this->assertNull($fetch_object);
+
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
+        $this->assertInstanceOf(MsSqlResult::class, $result);
+        $fetch_typed = $result->fetchAllObjects(Typish::class);
+        $this->assertNull($fetch_typed);
+
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
+        $this->assertInstanceOf(MsSqlResult::class, $result);
+        $fetch_typed_w_args = $result->fetchAllObjects(Typish::class, '_3_varchar', ['hello']);
+        $this->assertNull($fetch_typed_w_args);
+
+        //TestHelper::logVariable('fetch all objects, fetch all typed, fetch all typed with args', [$fetch_object, $fetch_typed, $fetch_typed_w_args]);
+    }
+
+    /**
+     * @see ResetTest::testResetStructure()
+     */
     public function testReset()
     {
         $reset_test = new ResetTest();
