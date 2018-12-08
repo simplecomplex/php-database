@@ -143,20 +143,20 @@ class ResultTest extends TestCase
         $result = TestHelper::logOnError('query execute', $query, 'execute');
         $this->assertInstanceOf(MsSqlResult::class, $result);
         $fetch_assoc = $result->fetchAllArrays();
-        $this->assertNull($fetch_assoc);
+        $this->assertInternalType('array', $fetch_assoc);
+        $this->assertEmpty($fetch_assoc);
 
         $result = TestHelper::logOnError('query execute', $query, 'execute');
         $this->assertInstanceOf(MsSqlResult::class, $result);
         $fetch_num = $result->fetchAllArrays(DbResult::FETCH_NUMERIC);
-        $this->assertNull($fetch_num);
+        $this->assertInternalType('array', $fetch_num);
+        $this->assertEmpty($fetch_num);
 
         //TestHelper::logVariable('fetch all arrays assoc, fetch all arrays num', [ $fetch_assoc, $fetch_num]);
     }
 
     /**
      * @see ClientTest::testInstantiation()
-     *
-     * @expectedException \InvalidArgumentException
      */
     public function testEmptyFetchAllArraysListByColumn()
     {
@@ -175,17 +175,13 @@ class ResultTest extends TestCase
         $result = TestHelper::logOnError('query execute', $query, 'execute');
         $this->assertInstanceOf(MsSqlResult::class, $result);
         $fetch_assoc = $result->fetchAllArrays(DbResult::FETCH_ASSOC, '_3_varchar');
-        $this->assertNull($fetch_assoc);
+        $this->assertInternalType('array', $fetch_assoc);
+        $this->assertEmpty($fetch_assoc);
 
         //TestHelper::logVariable('fetch all arrays assoc+list by column', $fetch_assoc);
 
         $result = TestHelper::logOnError('query execute', $query, 'execute');
         $this->assertInstanceOf(MsSqlResult::class, $result);
-        /**
-         * Non-empty arg $list_by_column when arg $as is FETCH_NUMERIC.
-         * @throws \InvalidArgumentException
-         */
-        $result->fetchAllArrays(DbResult::FETCH_NUMERIC, '_3_varchar');
     }
 
     /**
@@ -212,7 +208,7 @@ class ResultTest extends TestCase
         $this->assertNull($fetch_object);
 
         $fetch_typed = $result->fetchObject(Typish::class);
-        $this->assertInstanceOf(Typish::class, $fetch_typed);
+        $this->assertNull($fetch_typed);
 
         $fetch_typed_w_args = $result->fetchObject(Typish::class, ['hello']);
         $this->assertNull($fetch_typed_w_args);
@@ -232,23 +228,27 @@ class ResultTest extends TestCase
         $result = TestHelper::logOnError('query execute', $query, 'execute');
         $this->assertInstanceOf(MsSqlResult::class, $result);
         $fetch_object = $result->fetchAllObjects();
-        $this->assertNull($fetch_object);
+        $this->assertInternalType('array', $fetch_object);
+        $this->assertEmpty($fetch_object);
 
         $result = TestHelper::logOnError('query execute', $query, 'execute');
         $this->assertInstanceOf(MsSqlResult::class, $result);
         $fetch_typed = $result->fetchAllObjects(Typish::class);
-        $this->assertNull($fetch_typed);
+        $this->assertInternalType('array', $fetch_typed);
+        $this->assertEmpty($fetch_typed);
 
         $result = TestHelper::logOnError('query execute', $query, 'execute');
         $this->assertInstanceOf(MsSqlResult::class, $result);
         $fetch_typed_w_args = $result->fetchAllObjects(Typish::class, '_3_varchar', ['hello']);
-        $this->assertNull($fetch_typed_w_args);
+        $this->assertInternalType('array', $fetch_typed_w_args);
+        $this->assertEmpty($fetch_typed_w_args);
 
         //TestHelper::logVariable('fetch all objects, fetch all typed, fetch all typed with args', [$fetch_object, $fetch_typed, $fetch_typed_w_args]);
     }
 
     /**
      * @see ResetTest::testResetStructure()
+     * @see ResetTest::testResetPopulate()
      */
     public function testReset()
     {
