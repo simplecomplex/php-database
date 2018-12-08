@@ -112,7 +112,7 @@ REFERENCES parent(id)
     }
 
     /**
-     * Inserts getting sql from file.
+     * Drops and recreates tables via sql from file.
      *
      * @see ClientTest::testInstantiation
      *
