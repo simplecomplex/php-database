@@ -261,25 +261,34 @@ class MsSqlResult extends DbResult
      */
     public function numRows() : int
     {
-        $count = @sqlsrv_num_rows(
-            $this->statement
-        );
-        if (($count && $count > 0) || $count === 0) {
-            return $count;
+        if (!@sqlsrv_has_rows($this->statement)) {
+            $has_rows = false;
         }
-        switch ($this->query->resultMode) {
-            case SQLSRV_CURSOR_STATIC:
-            case SQLSRV_CURSOR_KEYSET:
-                break;
-            default:
-                $this->closeAndLog(__FUNCTION__);
-                throw new \LogicException(
-                    $this->query->client->messagePrefix() . ' - result mode[' . $this->query->resultMode
-                    . '] forbids getting number of rows'
-                    . ', use SQLSRV_CURSOR_STATIC (\'static\') or SQLSRV_CURSOR_KEYSET (\'static\') instead.'
-                );
+        else {
+            $has_rows = true;
+            $count = @sqlsrv_num_rows(
+                $this->statement
+            );
+            if (($count && $count > 0) || $count === 0) {
+                return $count;
+            }
+            switch ($this->query->resultMode) {
+                case SQLSRV_CURSOR_STATIC:
+                case SQLSRV_CURSOR_KEYSET:
+                    break;
+                default:
+                    $this->closeAndLog(__FUNCTION__);
+                    throw new \LogicException(
+                        $this->query->client->messagePrefix() . ' - result mode[' . $this->query->resultMode
+                        . '] forbids getting number of rows'
+                        . ', use SQLSRV_CURSOR_STATIC (\'static\') or SQLSRV_CURSOR_KEYSET (\'static\') instead.'
+                    );
+            }
         }
         $errors = $this->query->client->getErrors();
+        if (!$has_rows && !$errors) {
+            return 0;
+        }
         $this->closeAndLog(__FUNCTION__);
         $cls_xcptn = $this->query->client->errorsToException($errors, DbResultException::class);
         throw new $cls_xcptn(
@@ -298,13 +307,22 @@ class MsSqlResult extends DbResult
      */
     public function numColumns() : int
     {
-        $count = @sqlsrv_num_fields(
-            $this->statement
-        );
-        if (($count && $count > 0) || $count === 0) {
-            return $count;
+        if (!@sqlsrv_has_rows($this->statement)) {
+            $has_rows = false;
+        }
+        else {
+            $has_rows = true;
+            $count = @sqlsrv_num_fields(
+                $this->statement
+            );
+            if (($count && $count > 0) || $count === 0) {
+                return $count;
+            }
         }
         $errors = $this->query->client->getErrors();
+        if (!$has_rows && !$errors) {
+            return 0;
+        }
         $this->closeAndLog(__FUNCTION__);
         $cls_xcptn = $this->query->client->errorsToException($errors, DbResultException::class);
         throw new $cls_xcptn(
@@ -335,72 +353,81 @@ class MsSqlResult extends DbResult
      */
     public function fetchColumn(int $index = 0, string $name = null)
     {
-        // Column name cannot be '0' (sql illegal) so loose check suffices.
-        if (!$name) {
-            if ($index < 0) {
-                $this->closeAndLog(__FUNCTION__);
-                throw new \InvalidArgumentException(
-                    $this->query->messagePrefix() . ' - failed fetching column, arg $index['
-                    . $index . '] cannot be negative.'
-                );
-            }
-            if ($this->rowIndex < 0 && !$this->nextRow()) {
-                // No row at all.
-                $this->closeAndLog(__FUNCTION__);
-                throw new DbResultException(
-                    $this->query->messagePrefix() . ' - failed getting column by '
-                    . (!$name ? ('$index[' . $index . ']') : ('$name[' . $name . ']'))
-                    . ', no result row at all.'
-                );
-            }
-            $value = @sqlsrv_get_field($this->statement, $index);
-            /**
-             * Null: Sqlsrv documentation doesn't mention null return,
-             * but have observed such.
-             * @see sqlsrv_get_field()
-             * @see MsSqlResult::insertId()
-             */
-            if ($value) {
-                if ($this->query->resultDateTimeToTime && $value instanceof \DateTime) {
-                    return Time::createFromDateTime($value);
-                }
-                return $value;
-            }
-            if ($value !== false && $value !== null) {
-                return $value;
-            }
-            // Assume that the value actually is null, unless native error.
-            if ($value === null && !$this->query->client->getErrors(DbError::AS_STRING_EMPTY_ON_NONE)) {
-                return null;
-            }
-            // Otherwise continue to exception at and of method.
+        if (!@sqlsrv_has_rows($this->statement)) {
+            $has_rows = false;
         }
         else {
-            $row = @sqlsrv_fetch_array($this->statement, SQLSRV_FETCH_ASSOC);
-            // sqlsrv_fetch_array() implicitly moves to first set.
-            if ($this->setIndex < 0) {
-                ++$this->setIndex;
-            }
-            ++$this->rowIndex;
-            if ($row) {
-                if (array_key_exists($name, $row)) {
-                    if ($row[$name] && $this->query->resultDateTimeToTime && $row[$name] instanceof \DateTime) {
-                        return Time::createFromDateTime($row[$name]);
-                    }
-                    return $row[$name];
+            $has_rows = true;
+            // Column name cannot be '0' (sql illegal) so loose check suffices.
+            if (!$name) {
+                if ($index < 0) {
+                    $this->closeAndLog(__FUNCTION__);
+                    throw new \InvalidArgumentException(
+                        $this->query->messagePrefix() . ' - failed fetching column, arg $index['
+                        . $index . '] cannot be negative.'
+                    );
                 }
-                $this->closeAndLog(__FUNCTION__);
-                throw new \OutOfRangeException(
-                    $this->query->messagePrefix()
-                    . ' - failed fetching column, row has no $name[' . $name . '].'
-                );
+                if ($this->rowIndex < 0 && !$this->nextRow()) {
+                    // No row at all.
+                    $this->closeAndLog(__FUNCTION__);
+                    throw new DbResultException(
+                        $this->query->messagePrefix() . ' - failed getting column by '
+                        . (!$name ? ('$index[' . $index . ']') : ('$name[' . $name . ']'))
+                        . ', no result row at all.'
+                    );
+                }
+                $value = @sqlsrv_get_field($this->statement, $index);
+                /**
+                 * Null: Sqlsrv documentation doesn't mention null return,
+                 * but have observed such.
+                 * @see sqlsrv_get_field()
+                 * @see MsSqlResult::insertId()
+                 */
+                if ($value) {
+                    if ($this->query->resultDateTimeToTime && $value instanceof \DateTime) {
+                        return Time::createFromDateTime($value);
+                    }
+                    return $value;
+                }
+                if ($value !== false && $value !== null) {
+                    return $value;
+                }
+                // Assume that the value actually is null, unless native error.
+                if ($value === null && !$this->query->client->getErrors(DbError::AS_STRING_EMPTY_ON_NONE)) {
+                    return null;
+                }
+                // Otherwise continue to exception at and of method.
             }
-            elseif ($row === null) {
-                // No more rows.
-                return null;
+            else {
+                $row = @sqlsrv_fetch_array($this->statement, SQLSRV_FETCH_ASSOC);
+                // sqlsrv_fetch_array() implicitly moves to first set.
+                if ($this->setIndex < 0) {
+                    ++$this->setIndex;
+                }
+                ++$this->rowIndex;
+                if ($row) {
+                    if (array_key_exists($name, $row)) {
+                        if ($row[$name] && $this->query->resultDateTimeToTime && $row[$name] instanceof \DateTime) {
+                            return Time::createFromDateTime($row[$name]);
+                        }
+                        return $row[$name];
+                    }
+                    $this->closeAndLog(__FUNCTION__);
+                    throw new \OutOfRangeException(
+                        $this->query->messagePrefix()
+                        . ' - failed fetching column, row has no $name[' . $name . '].'
+                    );
+                }
+                elseif ($row === null) {
+                    // No more rows.
+                    return null;
+                }
             }
         }
         $errors = $this->query->client->getErrors();
+        if (!$has_rows && !$errors) {
+            return null;
+        }
         $this->closeAndLog(__FUNCTION__);
         $cls_xcptn = $this->query->client->errorsToException($errors, DbResultException::class);
         throw new $cls_xcptn(
@@ -425,30 +452,39 @@ class MsSqlResult extends DbResult
      */
     public function fetchArray(int $as = DbResult::FETCH_ASSOC) /*: ?array*/
     {
-        $row = @sqlsrv_fetch_array(
-            $this->statement,
-            $as == DbResult::FETCH_ASSOC ? SQLSRV_FETCH_ASSOC : SQLSRV_FETCH_NUMERIC
-        );
-        // sqlsrv_fetch_array() implicitly moves to first set.
-        if ($this->setIndex < 0) {
-            ++$this->setIndex;
+        if (!@sqlsrv_has_rows($this->statement)) {
+            $has_rows = false;
         }
-        ++$this->rowIndex;
-        if ($row) {
-            if ($this->query->resultDateTimeToTime) {
-                foreach ($row as &$val) {
-                    if ($val instanceof \DateTime) {
-                        $val = Time::createFromDateTime($val);
-                    }
-                }
-                unset($val);
+        else {
+            $has_rows = true;
+            $row = @sqlsrv_fetch_array(
+                $this->statement,
+                $as == DbResult::FETCH_ASSOC ? SQLSRV_FETCH_ASSOC : SQLSRV_FETCH_NUMERIC
+            );
+            // sqlsrv_fetch_array() implicitly moves to first set.
+            if ($this->setIndex < 0) {
+                ++$this->setIndex;
             }
-            return $row;
-        }
-        if ($row === null) {
-            return null;
+            ++$this->rowIndex;
+            if ($row) {
+                if ($this->query->resultDateTimeToTime) {
+                    foreach ($row as &$val) {
+                        if ($val instanceof \DateTime) {
+                            $val = Time::createFromDateTime($val);
+                        }
+                    }
+                    unset($val);
+                }
+                return $row;
+            }
+            if ($row === null) {
+                return null;
+            }
         }
         $errors = $this->query->client->getErrors();
+        if (!$has_rows && !$errors) {
+            return null;
+        }
         $this->closeAndLog(__FUNCTION__);
         $cls_xcptn = $this->query->client->errorsToException($errors, DbResultException::class);
         throw new $cls_xcptn(
@@ -487,47 +523,57 @@ class MsSqlResult extends DbResult
                 $this->query->messagePrefix() . ' - can\'t fetch row as object into non-existent class[' . $class . '].'
             );
         }
-        /**
-         * Custom (non-stdClass) object gets constructed and populated 'manually',
-         * because native Sqlsrv method cannot handle that.
-         * Passing class name arg to sqlsrv_fetch_object() produces segmentation
-         * fault for namespaced class (because namespace\class gets lowercased).
-         * @see sqlsrv_fetch_object()
-         * @see https://github.com/Microsoft/msphpsql/issues/119
-         */
-        //$row = @sqlsrv_fetch_object($this->statement, $class, $args);
-        $row = @sqlsrv_fetch_object($this->statement);
+        if (!@sqlsrv_has_rows($this->statement)) {
+            $has_rows = false;
+        }
+        else {
+            $has_rows = true;
+            /**
+             * Custom (non-stdClass) object gets constructed and populated 'manually',
+             * because native Sqlsrv method cannot handle that.
+             * Passing class name arg to sqlsrv_fetch_object() produces segmentation
+             * fault for namespaced class (because namespace\class gets lowercased).
+             * @see sqlsrv_fetch_object()
+             * @see https://github.com/Microsoft/msphpsql/issues/119
+             */
+            //$row = @sqlsrv_fetch_object($this->statement, $class, $args);
+            $row = @sqlsrv_fetch_object($this->statement);
 
-        // sqlsrv_fetch_object() implicitly moves to first set.
-        if ($this->setIndex < 0) {
-            ++$this->setIndex;
-        }
-        ++$this->rowIndex;
-        if ($row) {
-            $to_time = $this->query->resultDateTimeToTime;
-            // Custom (non-stdClass) object routine.
-            if ($class && $class != \stdClass::class) {
-                $o = !$args ? new $class() :
-                    new $class(...$args);
-                foreach ($row as $column => $value) {
-                    $o->{$column} = $to_time && $value instanceof \DateTime ?
-                        Time::createFromDateTime($value) : $value;
-                }
-                return $o;
-            } elseif ($to_time) {
-                foreach ($row as &$val) {
-                    if ($val instanceof \DateTime) {
-                        $val = Time::createFromDateTime($val);
-                    }
-                }
-                unset($val);
+            // sqlsrv_fetch_object() implicitly moves to first set.
+            if ($this->setIndex < 0) {
+                ++$this->setIndex;
             }
-            return $row;
-        }
-        if ($row === null) {
-            return null;
+            ++$this->rowIndex;
+            if ($row) {
+                $to_time = $this->query->resultDateTimeToTime;
+                // Custom (non-stdClass) object routine.
+                if ($class && $class != \stdClass::class) {
+                    $o = !$args ? new $class() :
+                        new $class(...$args);
+                    foreach ($row as $column => $value) {
+                        $o->{$column} = $to_time && $value instanceof \DateTime ?
+                            Time::createFromDateTime($value) : $value;
+                    }
+                    return $o;
+                }
+                elseif ($to_time) {
+                    foreach ($row as &$val) {
+                        if ($val instanceof \DateTime) {
+                            $val = Time::createFromDateTime($val);
+                        }
+                    }
+                    unset($val);
+                }
+                return $row;
+            }
+            if ($row === null) {
+                return null;
+            }
         }
         $errors = $this->query->client->getErrors();
+        if (!$has_rows && !$errors) {
+            return null;
+        }
         $this->closeAndLog(__FUNCTION__);
         $cls_xcptn = $this->query->client->errorsToException($errors, DbResultException::class);
         throw new $cls_xcptn(
@@ -559,78 +605,87 @@ class MsSqlResult extends DbResult
     public function fetchAllArrays(int $as = DbResult::FETCH_ASSOC, string $list_by_column = null) : array
     {
         $list = [];
-        $to_time = $this->query->resultDateTimeToTime;
-        if ($as == DbResult::FETCH_NUMERIC) {
-            if ($list_by_column) {
-                $this->closeAndLog(__FUNCTION__);
-                throw new \InvalidArgumentException(
-                    $this->query->client->messagePrefix() . ' - arg $list_by_column type['
-                    . Utils::getType($list_by_column) . '] must be empty when fetching all rows as numeric arrays.'
-                );
-            }
-            while (($row = @sqlsrv_fetch_array($this->statement, SQLSRV_FETCH_NUMERIC))) {
-                // sqlsrv_fetch_array() implicitly moves to first set.
-                if ($this->setIndex < 0) {
-                    ++$this->setIndex;
-                }
-                ++$this->rowIndex;
-                if ($row && $to_time) {
-                    foreach ($row as &$val) {
-                        if ($val instanceof \DateTime) {
-                            $val = Time::createFromDateTime($val);
-                        }
-                    }
-                    unset($val);
-                }
-                $list[] = $row;
-            }
-            if ($this->setIndex < 0) {
-                ++$this->setIndex;
-            }
-            ++$this->rowIndex;
+        if (!@sqlsrv_has_rows($this->statement)) {
+            $has_rows = $row = false;
         }
         else {
-            $first = true;
-            while (($row = @sqlsrv_fetch_array($this->statement, SQLSRV_FETCH_ASSOC))) {
-                // sqlsrv_fetch_array() implicitly moves to first set.
+            $has_rows = true;
+            $to_time = $this->query->resultDateTimeToTime;
+            if ($as == DbResult::FETCH_NUMERIC) {
+                if ($list_by_column) {
+                    $this->closeAndLog(__FUNCTION__);
+                    throw new \InvalidArgumentException(
+                        $this->query->client->messagePrefix() . ' - arg $list_by_column type['
+                        . Utils::getType($list_by_column) . '] must be empty when fetching all rows as numeric arrays.'
+                    );
+                }
+                while (($row = @sqlsrv_fetch_array($this->statement, SQLSRV_FETCH_NUMERIC))) {
+                    // sqlsrv_fetch_array() implicitly moves to first set.
+                    if ($this->setIndex < 0) {
+                        ++$this->setIndex;
+                    }
+                    ++$this->rowIndex;
+                    if ($row && $to_time) {
+                        foreach ($row as &$val) {
+                            if ($val instanceof \DateTime) {
+                                $val = Time::createFromDateTime($val);
+                            }
+                        }
+                        unset($val);
+                    }
+                    $list[] = $row;
+                }
                 if ($this->setIndex < 0) {
                     ++$this->setIndex;
                 }
                 ++$this->rowIndex;
-                if ($row && $to_time) {
-                    foreach ($row as &$val) {
-                        if ($val instanceof \DateTime) {
-                            $val = Time::createFromDateTime($val);
-                        }
-                    }
-                    unset($val);
-                }
-                if (!$list_by_column) {
-                    $list[] = $row;
-                }
-                else {
-                    if ($first) {
-                        $first = false;
-                        if (!array_key_exists($list_by_column, $row)) {
-                            $this->closeAndLog(__FUNCTION__);
-                            throw new \InvalidArgumentException(
-                                $this->query->messagePrefix()
-                                . ' - failed fetching all rows as associative arrays listed by column['
-                                . $list_by_column . '], non-existent column.'
-                            );
-                        }
-                    }
-                    $list[$row[$list_by_column]] = $row;
-                }
             }
-            if ($this->setIndex < 0) {
-                ++$this->setIndex;
+            else {
+                $first = true;
+                while (($row = @sqlsrv_fetch_array($this->statement, SQLSRV_FETCH_ASSOC))) {
+                    // sqlsrv_fetch_array() implicitly moves to first set.
+                    if ($this->setIndex < 0) {
+                        ++$this->setIndex;
+                    }
+                    ++$this->rowIndex;
+                    if ($row && $to_time) {
+                        foreach ($row as &$val) {
+                            if ($val instanceof \DateTime) {
+                                $val = Time::createFromDateTime($val);
+                            }
+                        }
+                        unset($val);
+                    }
+                    if (!$list_by_column) {
+                        $list[] = $row;
+                    }
+                    else {
+                        if ($first) {
+                            $first = false;
+                            if (!array_key_exists($list_by_column, $row)) {
+                                $this->closeAndLog(__FUNCTION__);
+                                throw new \InvalidArgumentException(
+                                    $this->query->messagePrefix()
+                                    . ' - failed fetching all rows as associative arrays listed by column['
+                                    . $list_by_column . '], non-existent column.'
+                                );
+                            }
+                        }
+                        $list[$row[$list_by_column]] = $row;
+                    }
+                }
+                if ($this->setIndex < 0) {
+                    ++$this->setIndex;
+                }
+                ++$this->rowIndex;
             }
-            ++$this->rowIndex;
         }
         // Last fetched row must be null; no more rows.
         if ($row !== null) {
             $errors = $this->query->client->getErrors();
+            if (!$has_rows && !$errors) {
+                return [];
+            }
             $this->closeAndLog(__FUNCTION__);
             $cls_xcptn = $this->query->client->errorsToException($errors, DbResultException::class);
             throw new $cls_xcptn(
@@ -677,85 +732,96 @@ class MsSqlResult extends DbResult
             );
         }
         $list = [];
-        $first = true;
-        /**
-         * Custom (non-stdClass) object gets constructed and populated 'manually',
-         * because native Sqlsrv method cannot handle that.
-         * Passing class name arg to sqlsrv_fetch_object() produces segmentation
-         * fault for namespaced class (because namespace\class gets lowercased).
-         * @see sqlsrv_fetch_object()
-         * @see https://github.com/Microsoft/msphpsql/issues/119
-         */
-        //while (($row = @sqlsrv_fetch_object($this->statement, $class, $args))) {
-        $custom_class = $class && $class != \stdClass::class;
-        $to_time = $this->query->resultDateTimeToTime;
-        while (($row = @sqlsrv_fetch_object($this->statement))) {
-            // sqlsrv_fetch_object() implicitly moves to first set.
+        if (!@sqlsrv_has_rows($this->statement)) {
+            $has_rows = $row = false;
+        }
+        else {
+            $has_rows = true;
+            $first = true;
+            /**
+             * Custom (non-stdClass) object gets constructed and populated 'manually',
+             * because native Sqlsrv method cannot handle that.
+             * Passing class name arg to sqlsrv_fetch_object() produces segmentation
+             * fault for namespaced class (because namespace\class gets lowercased).
+             * @see sqlsrv_fetch_object()
+             * @see https://github.com/Microsoft/msphpsql/issues/119
+             */
+            //while (($row = @sqlsrv_fetch_object($this->statement, $class, $args))) {
+            $custom_class = $class && $class != \stdClass::class;
+            $to_time = $this->query->resultDateTimeToTime;
+            while (($row = @sqlsrv_fetch_object($this->statement))) {
+                // sqlsrv_fetch_object() implicitly moves to first set.
+                if ($this->setIndex < 0) {
+                    ++$this->setIndex;
+                }
+                ++$this->rowIndex;
+                if (!$list_by_column) {
+                    if ($custom_class) {
+                        $o = !$args ? new $class() :
+                            new $class(...$args);
+                        foreach ($row as $column => $value) {
+                            $o->{$column} = $to_time && $value instanceof \DateTime ?
+                                Time::createFromDateTime($value) : $value;
+                        }
+                        $list[] = $o;
+                    }
+                    else {
+                        if ($row && $to_time) {
+                            foreach ($row as &$val) {
+                                if ($val instanceof \DateTime) {
+                                    $val = Time::createFromDateTime($val);
+                                }
+                            }
+                            unset($val);
+                        }
+                        $list[] = $row;
+                    }
+                }
+                else {
+                    if ($first) {
+                        $first = false;
+                        if (!property_exists($row, $list_by_column)) {
+                            $this->closeAndLog(__FUNCTION__);
+                            throw new \InvalidArgumentException(
+                                $this->query->messagePrefix()
+                                . ' - failed fetching all rows as objects listed by column[' . $list_by_column
+                                . '], non-existent column.'
+                            );
+                        }
+                    }
+                    if ($custom_class) {
+                        $o = !$args ? new $class() :
+                            new $class(...$args);
+                        foreach ($row as $column => $value) {
+                            $o->{$column} = $to_time && $value instanceof \DateTime ?
+                                Time::createFromDateTime($value) : $value;
+                        }
+                        $list[$row->{$list_by_column}] = $o;
+                    }
+                    else {
+                        if ($row && $to_time) {
+                            foreach ($row as &$val) {
+                                if ($val instanceof \DateTime) {
+                                    $val = Time::createFromDateTime($val);
+                                }
+                            }
+                            unset($val);
+                        }
+                        $list[$row->{$list_by_column}] = $row;
+                    }
+                }
+            }
             if ($this->setIndex < 0) {
                 ++$this->setIndex;
             }
             ++$this->rowIndex;
-            if (!$list_by_column) {
-                if ($custom_class) {
-                    $o = !$args ? new $class() :
-                        new $class(...$args);
-                    foreach ($row as $column => $value) {
-                        $o->{$column} = $to_time && $value instanceof \DateTime ?
-                            Time::createFromDateTime($value) : $value;
-                    }
-                    $list[] = $o;
-                } else {
-                    if ($row && $to_time) {
-                        foreach ($row as &$val) {
-                            if ($val instanceof \DateTime) {
-                                $val = Time::createFromDateTime($val);
-                            }
-                        }
-                        unset($val);
-                    }
-                    $list[] = $row;
-                }
-            }
-            else {
-                if ($first) {
-                    $first = false;
-                    if (!property_exists($row, $list_by_column)) {
-                        $this->closeAndLog(__FUNCTION__);
-                        throw new \InvalidArgumentException(
-                            $this->query->messagePrefix()
-                            . ' - failed fetching all rows as objects listed by column[' . $list_by_column
-                            . '], non-existent column.'
-                        );
-                    }
-                }
-                if ($custom_class) {
-                    $o = !$args ? new $class() :
-                        new $class(...$args);
-                    foreach ($row as $column => $value) {
-                        $o->{$column} = $to_time && $value instanceof \DateTime ?
-                            Time::createFromDateTime($value) : $value;
-                    }
-                    $list[$row->{$list_by_column}] = $o;
-                } else {
-                    if ($row && $to_time) {
-                        foreach ($row as &$val) {
-                            if ($val instanceof \DateTime) {
-                                $val = Time::createFromDateTime($val);
-                            }
-                        }
-                        unset($val);
-                    }
-                    $list[$row->{$list_by_column}] = $row;
-                }
-            }
         }
-        if ($this->setIndex < 0) {
-            ++$this->setIndex;
-        }
-        ++$this->rowIndex;
         // Last fetched row must be null; no more rows.
         if ($row !== null) {
             $errors = $this->query->client->getErrors();
+            if (!$has_rows && !$errors) {
+                return [];
+            }
             $this->closeAndLog(__FUNCTION__);
             $cls_xcptn = $this->query->client->errorsToException($errors, DbResultException::class);
             throw new $cls_xcptn(
