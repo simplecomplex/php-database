@@ -20,7 +20,7 @@ use SimpleComplex\Tests\Database\Stringable;
  *
  * @code
  * # CLI
- * php cli.phpsh utils-execute backend/vendor/simplecomplex/database/dev/mariadb/utils_execute_mariadb_simple.php -yf
+ * php cli.php utils-execute backend/vendor/simplecomplex/database/dev/mariadb/utils_execute_mariadb_simple.php -yf
  * @endcode
  */
 
