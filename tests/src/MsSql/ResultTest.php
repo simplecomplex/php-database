@@ -286,7 +286,7 @@ class ResultTest extends TestCase
             '_2_decimal' => '2.2',
             '_3_varchar' => 'insert id as int',
             '_4_blob' => sprintf("%08d", decbin(4)),
-            '_5_date' => $time->getDateISOlocal(),
+            '_5_date' => method_exists($time, 'getDateISO') ? $time->getDateISO() : $time->getDateISOlocal(),
             '_6_datetime' => $time,
             '_7_nvarchar' => 'n varchar',
         ];

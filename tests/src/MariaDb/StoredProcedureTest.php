@@ -75,8 +75,8 @@ class StoredProcedureTest extends TestCase
             '_2_decimal' => '2.0',
             '_3_varchar' => __FUNCTION__,
             '_4_blob' => sprintf("%08d", decbin(4)),
-            '_5_date' => $time->getDateISOlocal(),
-            '_6_datetime' => $time->getDateISOlocal(),
+            '_5_date' => method_exists($time, 'getDateISO') ? $time->getDateISO() : $time->getDateISOlocal(),
+            '_6_datetime' => method_exists($time, 'getDateISO') ? $time->getDateISO() : $time->getDateISOlocal(),
             '_7_text' => 'MySQLi is not convincing',
         ];
         TestHelper::queryPrepareLogOnError($query, $types, $args);
@@ -111,8 +111,8 @@ class StoredProcedureTest extends TestCase
             '_2_decimal' => '2.0',
             '_3_varchar' => __FUNCTION__,
             '_4_blob' => sprintf("%08d", decbin(4)),
-            '_5_date' => $time->getDateISOlocal(),
-            '_6_datetime' => $time->getDateISOlocal(),
+            '_5_date' => method_exists($time, 'getDateISO') ? $time->getDateISO() : $time->getDateISOlocal(),
+            '_6_datetime' => method_exists($time, 'getDateISO') ? $time->getDateISO() : $time->getDateISOlocal(),
             '_7_text' => 'MySQLi is not convincing',
         ];
         TestHelper::queryPrepareLogOnError($query, $types, $args);
@@ -153,8 +153,8 @@ class StoredProcedureTest extends TestCase
             '_2_decimal' => '2.0',
             '_3_varchar' => __FUNCTION__,
             '_4_blob' => sprintf("%08d", decbin(4)),
-            '_5_date' => $time->getDateISOlocal(),
-            '_6_datetime' => $time->getDateISOlocal(),
+            '_5_date' => method_exists($time, 'getDateISO') ? $time->getDateISO() : $time->getDateISOlocal(),
+            '_6_datetime' => method_exists($time, 'getDateISO') ? $time->getDateISO() : $time->getDateISOlocal(),
             '_7_text' => 'MySQLi is not convincing',
         ];
         TestHelper::queryPrepareLogOnError($query, $types, $args);
