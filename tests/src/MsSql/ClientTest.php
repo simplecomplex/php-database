@@ -42,7 +42,7 @@ class ClientTest extends TestCase
         $database_info = (new ConfigurationTest())->testMsSql();
 
         $client = $db_broker->getClient('test_scx_mssql', 'mssql', $database_info);
-        $this->assertInstanceOf(MsSqlClient::class, $client);
+        static::assertInstanceOf(MsSqlClient::class, $client);
 
         return $client;
     }
@@ -55,7 +55,7 @@ class ClientTest extends TestCase
     public function testConnection(DbClientInterface $client)
     {
         $connection = $client->getConnection(true);
-        $this->assertInternalType('resource', $connection);
+        static::assertInternalType('resource', $connection);
     }
 
     /**
@@ -96,12 +96,12 @@ class ClientTest extends TestCase
 
         $database_info['database'] = 'nonexistent_database';
         $client = $db_broker->getClient('database-non-exist-client', 'mssql', $database_info);
-        $this->assertInstanceOf(MsSqlClient::class, $client);
+        static::assertInstanceOf(MsSqlClient::class, $client);
 
         $client->getConnection();
-        $this->assertSame(false, $client->isConnected());
+        static::assertSame(false, $client->isConnected());
         $errors = $client->getErrors();
-        $this->assertNotEmpty($errors);
+        static::assertNotEmpty($errors);
         TestHelper::logVariable('Connection errors', $errors);
         /**
          * @throws \SimpleComplex\Database\Exception\DbConnectionException

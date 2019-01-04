@@ -36,7 +36,7 @@ class BrokerTest extends TestCase
         /** @var \SimpleComplex\Database\DatabaseBroker $db_broker */
         $db_broker = $container->get('database-broker');
 
-        $this->assertInstanceOf(DatabaseBroker::class, $db_broker);
+        static::assertInstanceOf(DatabaseBroker::class, $db_broker);
 
         return $db_broker;
     }

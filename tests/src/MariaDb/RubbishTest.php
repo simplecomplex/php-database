@@ -38,7 +38,7 @@ class RubbishTest extends TestCase
 
         /** @var MariaDbResult $result */
         $result = $query->execute();
-        $this->assertInstanceOf(MariaDbResult::class, $result);
+        static::assertInstanceOf(MariaDbResult::class, $result);
 
         $num_rows = count($result->fetchAllArrays(DbResult::FETCH_NUMERIC));
 

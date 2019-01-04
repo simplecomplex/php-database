@@ -42,7 +42,7 @@ class ClientTest extends TestCase
         $database_info = (new ConfigurationTest())->testMariaDb();
 
         $client = $db_broker->getClient('test_scx_mariadb', 'mariadb', $database_info);
-        $this->assertInstanceOf(MariaDbClient::class, $client);
+        static::assertInstanceOf(MariaDbClient::class, $client);
 
         return $client;
     }
@@ -55,7 +55,7 @@ class ClientTest extends TestCase
     public function testConnection(DbClientInterface $client)
     {
         $connection = $client->getConnection(true);
-        $this->assertInstanceOf(\mysqli::class, $connection);
+        static::assertInstanceOf(\mysqli::class, $connection);
     }
 
     /**
@@ -96,12 +96,12 @@ class ClientTest extends TestCase
 
         $database_info['database'] = 'nonexistent_database';
         $client = $db_broker->getClient('database-non-exist-client', 'mariadb', $database_info);
-        $this->assertInstanceOf(MariaDbClient::class, $client);
+        static::assertInstanceOf(MariaDbClient::class, $client);
 
         $client->getConnection();
-        $this->assertSame(false, $client->isConnected());
+        static::assertSame(false, $client->isConnected());
         $errors = $client->getErrors();
-        $this->assertNotEmpty($errors);
+        static::assertNotEmpty($errors);
         TestHelper::logVariable('Connection errors', $errors);
         /**
          * @throws \SimpleComplex\Database\Exception\DbConnectionException

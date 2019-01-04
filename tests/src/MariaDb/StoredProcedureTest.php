@@ -47,7 +47,7 @@ class StoredProcedureTest extends TestCase
         $reset_test->testResetStructure();
         /** @var MariaDbClient $client */
         $client = $reset_test->testResetPopulate();
-        $this->assertInstanceOf(MariaDbClient::class, $client);
+        static::assertInstanceOf(MariaDbClient::class, $client);
     }
 
     /**
@@ -81,9 +81,9 @@ class StoredProcedureTest extends TestCase
         ];
         TestHelper::queryPrepareLogOnError($query, $types, $args);
         $result = TestHelper::logOnError('query execute', $query, 'execute');
-        $this->assertInstanceOf(MariaDbResult::class, $result);
+        static::assertInstanceOf(MariaDbResult::class, $result);
 
-        $this->assertSame(1, $result->affectedRows());
+        static::assertSame(1, $result->affectedRows());
     }
 
     /**
@@ -117,14 +117,14 @@ class StoredProcedureTest extends TestCase
         ];
         TestHelper::queryPrepareLogOnError($query, $types, $args);
         $result = TestHelper::logOnError('query execute', $query, 'execute');
-        $this->assertInstanceOf(MariaDbResult::class, $result);
+        static::assertInstanceOf(MariaDbResult::class, $result);
 
         //$this->assertSame(1, $result->affectedRows());
 
         //$this->assertSame(1, $result->nextSet());
 
         $record = $result->fetchArray();
-        $this->assertInternalType('array', $record);
+        static::assertInternalType('array', $record);
         TestHelper::logVariable(__FUNCTION__, $record);
     }
 
@@ -159,19 +159,19 @@ class StoredProcedureTest extends TestCase
         ];
         TestHelper::queryPrepareLogOnError($query, $types, $args);
         $result = TestHelper::logOnError('query execute', $query, 'execute');
-        $this->assertInstanceOf(MariaDbResult::class, $result);
+        static::assertInstanceOf(MariaDbResult::class, $result);
 
         //$this->assertSame(1, $result->affectedRows());
 
         //$this->assertSame(1, $result->nextSet());
 
         $insert_id = $result->fetchColumn();
-        $this->assertInternalType('int', $insert_id);
+        static::assertInternalType('int', $insert_id);
         TestHelper::logVariable(__FUNCTION__, $insert_id);
 
-        $this->assertSame(true, $result->nextSet());
+        static::assertSame(true, $result->nextSet());
         $record = $result->fetchArray();
-        $this->assertInternalType('array', $record);
+        static::assertInternalType('array', $record);
 
         TestHelper::logVariable(__FUNCTION__, $record);
     }

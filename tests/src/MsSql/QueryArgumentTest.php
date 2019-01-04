@@ -44,7 +44,7 @@ class QueryArgumentTest extends TestCase
         $reset_test->testResetStructure();
         /** @var MsSqlClient $client */
         $client = $reset_test->testResetPopulate();
-        $this->assertInstanceOf(MsSqlClient::class, $client);
+        static::assertInstanceOf(MsSqlClient::class, $client);
     }
 
     /**
@@ -93,17 +93,17 @@ class QueryArgumentTest extends TestCase
         TestHelper::queryPrepareLogOnError($query, $types, $args);
         /** @var MsSqlResult $result */
         $result = TestHelper::logOnError('query execute', $query, 'execute');
-        $this->assertInstanceOf(MsSqlResult::class, $result);
+        static::assertInstanceOf(MsSqlResult::class, $result);
         $affected_rows = $result->affectedRows();
-        $this->assertInternalType('int', $affected_rows);
-        $this->assertSame(1, $affected_rows);
+        static::assertInternalType('int', $affected_rows);
+        static::assertSame(1, $affected_rows);
 
         $_1_float = 1.1;
         $_2_decimal = '2.2';
         $_3_varchar = 'arguments referred 2';
         $result = TestHelper::logOnError('query execute', $query, 'execute');
-        $this->assertInstanceOf(MsSqlResult::class, $result);
-        $this->assertSame(1, $result->affectedRows());
+        static::assertInstanceOf(MsSqlResult::class, $result);
+        static::assertSame(1, $result->affectedRows());
     }
 
     /**
@@ -141,14 +141,14 @@ class QueryArgumentTest extends TestCase
         ];
         TestHelper::queryPrepareLogOnError($query, $types, $args);
         $result = TestHelper::logOnError('query execute', $query, 'execute');
-        $this->assertInstanceOf(MsSqlResult::class, $result);
-        $this->assertSame(1, $result->affectedRows());
+        static::assertInstanceOf(MsSqlResult::class, $result);
+        static::assertSame(1, $result->affectedRows());
 
         $args[1] = 1.1;
         $args[2] = '2.2';
         $result = TestHelper::logOnError('query execute', $query, 'execute');
-        $this->assertInstanceOf(MsSqlResult::class, $result);
-        $this->assertSame(1, $result->affectedRows());
+        static::assertInstanceOf(MsSqlResult::class, $result);
+        static::assertSame(1, $result->affectedRows());
     }
 
     /**
@@ -186,14 +186,14 @@ class QueryArgumentTest extends TestCase
         ];
         TestHelper::queryPrepareLogOnError($query, $types, $args);
         $result = TestHelper::logOnError('query execute', $query, 'execute');
-        $this->assertInstanceOf(MsSqlResult::class, $result);
-        $this->assertSame(1, $result->affectedRows());
+        static::assertInstanceOf(MsSqlResult::class, $result);
+        static::assertSame(1, $result->affectedRows());
 
         $args['_1_float'] = 1.1;
         $args['_2_decimal'] = 2.2;
         $result = TestHelper::logOnError('query execute', $query, 'execute');
-        $this->assertInstanceOf(MsSqlResult::class, $result);
-        $this->assertSame(1, $result->affectedRows());
+        static::assertInstanceOf(MsSqlResult::class, $result);
+        static::assertSame(1, $result->affectedRows());
     }
 
     /**
@@ -236,8 +236,8 @@ class QueryArgumentTest extends TestCase
         ];
         TestHelper::queryPrepareLogOnError($query, $types, $args);
         $result = TestHelper::logOnError('query execute', $query, 'execute');
-        $this->assertInstanceOf(MsSqlResult::class, $result);
-        $this->assertSame(1, $result->affectedRows());
+        static::assertInstanceOf(MsSqlResult::class, $result);
+        static::assertSame(1, $result->affectedRows());
 
         /**
          * Sqlsrv apparantly doesn't use an object's __toString() method.
@@ -256,8 +256,8 @@ class QueryArgumentTest extends TestCase
         $args['_7_nvarchar'] = new Stringable('stringable');
 
         $result = TestHelper::logOnError('query execute', $query, 'execute');
-        $this->assertInstanceOf(MsSqlResult::class, $result);
-        $this->assertSame(1, $result->affectedRows());
+        static::assertInstanceOf(MsSqlResult::class, $result);
+        static::assertSame(1, $result->affectedRows());
     }
 
     /**
@@ -345,14 +345,14 @@ class QueryArgumentTest extends TestCase
         ];
         TestHelper::queryPrepareLogOnError($query, $types, $args);
         $result = TestHelper::logOnError('query execute', $query, 'execute');
-        $this->assertInstanceOf(MsSqlResult::class, $result);
-        $this->assertSame(1, $result->affectedRows());
+        static::assertInstanceOf(MsSqlResult::class, $result);
+        static::assertSame(1, $result->affectedRows());
 
         $_1_float = 1.1;
         $_2_decimal = '2.2';
         $result = TestHelper::logOnError('query execute', $query, 'execute');
-        $this->assertInstanceOf(MsSqlResult::class, $result);
-        $this->assertSame(1, $result->affectedRows());
+        static::assertInstanceOf(MsSqlResult::class, $result);
+        static::assertSame(1, $result->affectedRows());
     }
 
     /**
@@ -431,14 +431,14 @@ class QueryArgumentTest extends TestCase
         ];
         TestHelper::queryPrepareLogOnError($query, $types, $args);
         $result = TestHelper::logOnError('query execute', $query, 'execute');
-        $this->assertInstanceOf(MsSqlResult::class, $result);
-        $this->assertSame(1, $result->affectedRows());
+        static::assertInstanceOf(MsSqlResult::class, $result);
+        static::assertSame(1, $result->affectedRows());
 
         $args[1][0] = 1.1;
         $args[2][0] = '2.2';
         $result = TestHelper::logOnError('query execute', $query, 'execute');
-        $this->assertInstanceOf(MsSqlResult::class, $result);
-        $this->assertSame(1, $result->affectedRows());
+        static::assertInstanceOf(MsSqlResult::class, $result);
+        static::assertSame(1, $result->affectedRows());
     }
 
     /**
@@ -517,14 +517,14 @@ class QueryArgumentTest extends TestCase
         ];
         TestHelper::queryPrepareLogOnError($query, $types, $args);
         $result = TestHelper::logOnError('query execute', $query, 'execute');
-        $this->assertInstanceOf(MsSqlResult::class, $result);
-        $this->assertSame(1, $result->affectedRows());
+        static::assertInstanceOf(MsSqlResult::class, $result);
+        static::assertSame(1, $result->affectedRows());
 
         $args['_1_float'][0] = 1.1;
         $args['_2_decimal'][0] ='2.2';
         $result = TestHelper::logOnError('query execute', $query, 'execute');
-        $this->assertInstanceOf(MsSqlResult::class, $result);
-        $this->assertSame(1, $result->affectedRows());
+        static::assertInstanceOf(MsSqlResult::class, $result);
+        static::assertSame(1, $result->affectedRows());
     }
 
     /**
@@ -567,8 +567,8 @@ class QueryArgumentTest extends TestCase
         ];
         TestHelper::queryPrepareLogOnError($query, $types, $args);
         $result = TestHelper::logOnError('query execute', $query, 'execute');
-        $this->assertInstanceOf(MsSqlResult::class, $result);
-        $this->assertSame(1, $result->affectedRows());
+        static::assertInstanceOf(MsSqlResult::class, $result);
+        static::assertSame(1, $result->affectedRows());
     }
 
     /**
@@ -622,8 +622,8 @@ class QueryArgumentTest extends TestCase
         //TestHelper::logVariable(__FUNCTION__ . ' query', $query);
 
         $result = TestHelper::logOnError('query execute', $query, 'execute');
-        $this->assertInstanceOf(MsSqlResult::class, $result);
-        $this->assertSame(1, $result->affectedRows());
+        static::assertInstanceOf(MsSqlResult::class, $result);
+        static::assertSame(1, $result->affectedRows());
     }
 
 
@@ -724,8 +724,8 @@ class QueryArgumentTest extends TestCase
         ];
         TestHelper::queryPrepareLogOnError($query, $types, $args);
         $result = TestHelper::logOnError('query execute', $query, 'execute');
-        $this->assertInstanceOf(MsSqlResult::class, $result);
-        $this->assertSame(1, $result->affectedRows());
+        static::assertInstanceOf(MsSqlResult::class, $result);
+        static::assertSame(1, $result->affectedRows());
 
         $args['_0_int'][0] = '1';
         //$args['_0_int'][0] = 'hest';
@@ -737,8 +737,8 @@ class QueryArgumentTest extends TestCase
         $args['_6_datetime'][0] = method_exists($time, 'getDateISO') ? $time->getDateISO() : $time->getDateISOlocal();
         $args['_8_bit'][0] = true;
         $result = TestHelper::logOnError('query execute', $query, 'execute');
-        $this->assertInstanceOf(MsSqlResult::class, $result);
-        $this->assertSame(1, $result->affectedRows());
+        static::assertInstanceOf(MsSqlResult::class, $result);
+        static::assertSame(1, $result->affectedRows());
     }
 
     /**
@@ -781,8 +781,8 @@ class QueryArgumentTest extends TestCase
         ];
         TestHelper::queryPrepareLogOnError($query, $types, $args);
         $result = TestHelper::logOnError('query execute', $query, 'execute');
-        $this->assertInstanceOf(MsSqlResult::class, $result);
-        $this->assertSame(1, $result->affectedRows());
+        static::assertInstanceOf(MsSqlResult::class, $result);
+        static::assertSame(1, $result->affectedRows());
 
         $args['_0_int'][0] = '1';
         //$args['_0_int'][0] = 'hest';
@@ -794,8 +794,8 @@ class QueryArgumentTest extends TestCase
         $args['_6_datetime'][0] = method_exists($time, 'getDateISO') ? $time->getDateISO() : $time->getDateISOlocal();
         $args['_8_bit'][0] = true;
         $result = TestHelper::logOnError('query execute', $query, 'execute');
-        $this->assertInstanceOf(MsSqlResult::class, $result);
-        $this->assertSame(1, $result->affectedRows());
+        static::assertInstanceOf(MsSqlResult::class, $result);
+        static::assertSame(1, $result->affectedRows());
     }
 
     /**
@@ -851,8 +851,8 @@ class QueryArgumentTest extends TestCase
         ];
         TestHelper::queryParametersLogOnError($query, $types, $args);
         $result = TestHelper::logOnError('query execute', $query, 'execute');
-        $this->assertInstanceOf(MsSqlResult::class, $result);
-        $this->assertSame(1, $result->affectedRows());
+        static::assertInstanceOf(MsSqlResult::class, $result);
+        static::assertSame(1, $result->affectedRows());
     }
 
     /**
@@ -888,15 +888,15 @@ class QueryArgumentTest extends TestCase
         ];
         TestHelper::queryParametersLogOnError($query, $types, $args);
         $result = TestHelper::logOnError('query execute', $query, 'execute');
-        $this->assertInstanceOf(MsSqlResult::class, $result);
-        $this->assertSame(1, $result->affectedRows());
+        static::assertInstanceOf(MsSqlResult::class, $result);
+        static::assertSame(1, $result->affectedRows());
 
         $args['_1_float'] = 1.1;
         $args['_2_decimal'] = '2.2';
         TestHelper::queryParametersLogOnError($query, $types, $args);
         $result = TestHelper::logOnError('query execute', $query, 'execute');
-        $this->assertInstanceOf(MsSqlResult::class, $result);
-        $this->assertSame(1, $result->affectedRows());
+        static::assertInstanceOf(MsSqlResult::class, $result);
+        static::assertSame(1, $result->affectedRows());
     }
 
     /**
@@ -933,7 +933,7 @@ class QueryArgumentTest extends TestCase
         ];
         TestHelper::queryParametersLogOnError($query, $types, $args);
         $result = TestHelper::logOnError('query execute', $query, 'execute');
-        $this->assertInstanceOf(MsSqlResult::class, $result);
-        $this->assertSame(1, $result->affectedRows());
+        static::assertInstanceOf(MsSqlResult::class, $result);
+        static::assertSame(1, $result->affectedRows());
     }
 }

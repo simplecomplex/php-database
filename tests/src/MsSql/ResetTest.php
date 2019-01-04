@@ -46,7 +46,7 @@ class ResetTest extends TestCase
 
         /** @var MsSqlResult $result */
         $result = $query->execute();
-        $this->assertInstanceOf(MsSqlResult::class, $result);
+        static::assertInstanceOf(MsSqlResult::class, $result);
 
         /**
          * @throws \SimpleComplex\Database\Exception\DbQueryException
@@ -106,7 +106,7 @@ REFERENCES parent(id)
 
         /** @var MsSqlResult $result */
         $result = $query->execute();
-        $this->assertInstanceOf(MsSqlResult::class, $result);
+        static::assertInstanceOf(MsSqlResult::class, $result);
         // Traversing all result sets is obsolete when using MsSql, but anyway.
         TestHelper::logOnError('traverse all result sets', $result, 'depleteSets');
     }
@@ -125,12 +125,12 @@ REFERENCES parent(id)
 
         // Get .sql file containing inserts.
         $file_path = TestHelper::fileFind('MsSql/sql/test_scx_mssql.structure.sql', 'tests');
-        $this->assertInternalType('string', $file_path);
-        $this->assertNotEmpty($file_path);
+        static::assertInternalType('string', $file_path);
+        static::assertNotEmpty($file_path);
 
         $sql = file_get_contents($file_path);
-        $this->assertInternalType('string', $sql);
-        $this->assertNotEmpty($sql);
+        static::assertInternalType('string', $sql);
+        static::assertNotEmpty($sql);
 
         /** @var MsSqlQuery $query */
         $query = $client->query(
@@ -141,7 +141,7 @@ REFERENCES parent(id)
 
         /** @var MsSqlResult $result */
         $result = $query->execute();
-        $this->assertInstanceOf(MsSqlResult::class, $result);
+        static::assertInstanceOf(MsSqlResult::class, $result);
         // Traversing all result sets is obsolete when using MsSql, but anyway.
         TestHelper::logOnError('traverse all result sets', $result, 'depleteSets');
 
@@ -162,12 +162,12 @@ REFERENCES parent(id)
 
         // Get .sql file containing inserts.
         $file_path = TestHelper::fileFind('MsSql/sql/test_scx_mssql.data.sql', 'tests');
-        $this->assertInternalType('string', $file_path);
-        $this->assertNotEmpty($file_path);
+        static::assertInternalType('string', $file_path);
+        static::assertNotEmpty($file_path);
 
         $sql = file_get_contents($file_path);
-        $this->assertInternalType('string', $sql);
-        $this->assertNotEmpty($sql);
+        static::assertInternalType('string', $sql);
+        static::assertNotEmpty($sql);
 
         /** @var MsSqlQuery $query */
         $query = $client->query(
@@ -178,7 +178,7 @@ REFERENCES parent(id)
 
         /** @var MsSqlResult $result */
         $result = $query->execute();
-        $this->assertInstanceOf(MsSqlResult::class, $result);
+        static::assertInstanceOf(MsSqlResult::class, $result);
         // Traversing all result sets is obsolete when using MsSql, but anyway.
         TestHelper::logOnError('traverse all result sets', $result, 'depleteSets');
 

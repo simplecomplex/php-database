@@ -51,7 +51,7 @@ class SslTest extends TestCase
             'flags' => 'MYSQLI_CLIENT_SSL_DONT_VERIFY_SERVER_CERT',
         ]);
 
-        $this->assertInstanceOf(MariaDbClient::class, $client);
+        static::assertInstanceOf(MariaDbClient::class, $client);
 
         return $client;
     }
@@ -64,7 +64,7 @@ class SslTest extends TestCase
     public function testConnection(DbClientInterface $client)
     {
         $connection = $client->getConnection(true);
-        $this->assertInstanceOf(\mysqli::class, $connection);
+        static::assertInstanceOf(\mysqli::class, $connection);
     }
 
     /**
@@ -83,6 +83,6 @@ class SslTest extends TestCase
 
         //TestHelper::logVariable('SSL connection result data', $data);
 
-        $this->assertInternalType('array', $data);
+        static::assertInternalType('array', $data);
     }
 }

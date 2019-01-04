@@ -1,3 +1,8 @@
+SimpleComplex/Database 1.x, 2019-01-04
+--------------------------------------
+- Don't use deprecated methods of the Time class, if new alternatives exist.
+- phpunit's assert... methods are static, not instance methods.
+
 SimpleComplex/Database 1.x, 2018-12-08
 --------------------------------------
 - MsSql result shan't err on empty result set (sic).

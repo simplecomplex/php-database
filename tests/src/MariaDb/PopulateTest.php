@@ -56,12 +56,12 @@ class PopulateTest extends TestCase
         $query_insert->prepare('sss', $args_insert);
         /** @var MariaDbResult $result_insert */
         $result_insert = $query_insert->execute();
-        $this->assertInstanceOf(MariaDbResult::class, $result_insert);
+        static::assertInstanceOf(MariaDbResult::class, $result_insert);
         TestHelper::logVariable('set type', $result_insert);
-        $this->assertSame(1, $result_insert->affectedRows());
+        static::assertSame(1, $result_insert->affectedRows());
         $insert_id = $result_insert->insertId('i');
         TestHelper::logVariable('insert ID', $insert_id);
-        $this->assertInternalType('integer', $insert_id);
+        static::assertInternalType('integer', $insert_id);
 
         $args_select = [
             'id' => $insert_id,
@@ -69,19 +69,19 @@ class PopulateTest extends TestCase
         $query_select->prepare('i', $args_select);
         /** @var MariaDbResult $result_select */
         $result_select = $query_select->execute();
-        $this->assertInstanceOf(MariaDbResult::class, $result_select);
+        static::assertInstanceOf(MariaDbResult::class, $result_select);
         $row_select = $result_select->fetchArray();
         TestHelper::logVariable('row select', $row_select);
-        $this->assertInternalType('array', $row_select);
+        static::assertInternalType('array', $row_select);
         $result_select->free();
 
         $args_insert['firstName'] = 'Praenomeno';
         $args_insert['birthday'] = '1970-01-02';
         $result_insert = $query_insert->execute();
-        $this->assertInstanceOf(MariaDbResult::class, $result_insert);
-        $this->assertSame(1, $result_insert->affectedRows());
+        static::assertInstanceOf(MariaDbResult::class, $result_insert);
+        static::assertSame(1, $result_insert->affectedRows());
         $insert_id = $result_insert->insertId('i');
-        $this->assertInternalType('integer', $insert_id);
+        static::assertInternalType('integer', $insert_id);
 
         $query_select->close();
         /** @noinspection SqlResolve */

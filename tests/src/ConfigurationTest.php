@@ -95,14 +95,14 @@ class ConfigurationTest extends TestCase
             $database_info = static::DATABASE_INFO['mariadb'];
         }
 
-        $this->assertInternalType('array', $database_info);
-        $this->assertNotEmpty($database_info);
+        static::assertInternalType('array', $database_info);
+        static::assertNotEmpty($database_info);
         if (is_array($database_info) && $database_info) {
             $requireds = DbClient::DATABASE_INFO;
             foreach ($requireds as $key => $required) {
                 if ($required) {
-                    $this->assertArrayHasKey($key, $database_info);
-                    $this->assertNotEmpty($database_info[$key]);
+                    static::assertArrayHasKey($key, $database_info);
+                    static::assertNotEmpty($database_info[$key]);
                 }
             }
         }
@@ -124,14 +124,14 @@ class ConfigurationTest extends TestCase
             $database_info = static::DATABASE_INFO['mssql'];
         }
 
-        $this->assertInternalType('array', $database_info);
-        $this->assertNotEmpty($database_info);
+        static::assertInternalType('array', $database_info);
+        static::assertNotEmpty($database_info);
         if (is_array($database_info) && $database_info) {
             $requireds = DbClient::DATABASE_INFO;
             foreach ($requireds as $key => $required) {
                 if ($required) {
-                    $this->assertArrayHasKey($key, $database_info);
-                    $this->assertNotEmpty($database_info[$key]);
+                    static::assertArrayHasKey($key, $database_info);
+                    static::assertNotEmpty($database_info[$key]);
                 }
             }
         }
