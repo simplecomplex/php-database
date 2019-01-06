@@ -1,3 +1,7 @@
+SimpleComplex/Database 1.x, 2019-01-06
+--------------------------------------
+- Release 1.3.2.
+
 SimpleComplex/Database 1.x, 2019-01-04
 --------------------------------------
 - Don't use deprecated methods of the Time class, if new alternatives exist.
