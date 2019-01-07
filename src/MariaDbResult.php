@@ -276,7 +276,7 @@ class MariaDbResult extends DbResult
     }
 
     /**
-     * Get value of a single column in a row.
+     * Get value of a single column in a single row.
      *
      * Nb: Don't call this more times for a single row;
      * will move cursor to next row.

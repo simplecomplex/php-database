@@ -62,7 +62,7 @@ interface DbResultInterface
     public function numColumns() : int;
 
     /**
-     * Get value of a single column in a row.
+     * Get value of a single column in a single row.
      *
      * @param int $index
      * @param string $name

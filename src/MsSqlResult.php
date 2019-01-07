@@ -333,7 +333,7 @@ class MsSqlResult extends DbResult
     }
 
     /**
-     * Get value of a single column in a row.
+     * Get value of a single column in a single row.
      *
      * Nb: Don't call this more times for a single row using arg $name;
      * will move cursor to next row.
