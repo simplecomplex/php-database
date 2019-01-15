@@ -26,6 +26,8 @@ interface DbQueryInterface
 {
     /**
      * @see DbClientInterface::query()
+     * @see MariaDbQuery::__construct()
+     * @see MsSqlQuery::__construct()
      *
      * @param \SimpleComplex\Database\Interfaces\DbClientInterface $client
      *      Reference to parent client.
@@ -49,6 +51,9 @@ interface DbQueryInterface
      * - d: float (double).
      * - s: string.
      * - b: blob.
+     *
+     * @see MariaDbQuery::prepare()
+     * @see MsSqlQuery::prepare()
      *
      * @param string $types
      *      Empty: uses $arguments' actual types.
@@ -81,6 +86,9 @@ interface DbQueryInterface
      * - s: string.
      * - b: blob.
      *
+     * @see MariaDbQuery::parameters()
+     * @see MsSqlQuery::parameters()
+     *
      * @param string $types
      *      Empty: uses $arguments' actual types.
      * @param array $arguments
@@ -94,6 +102,9 @@ interface DbQueryInterface
     /**
      * Any query must be executed, even non-prepared statement.
      *
+     * @see MariaDbQuery::execute()
+     * @see MsSqlQuery::execute()
+     *
      * @return DbResultInterface
      *
      * @throws \LogicException
@@ -104,6 +115,9 @@ interface DbQueryInterface
 
     /**
      * Must unset prepared statement arguments reference.
+     *
+     * @see MariaDbQuery::close()
+     * @see MsSqlQuery::close()
      *
      * @return void
      */

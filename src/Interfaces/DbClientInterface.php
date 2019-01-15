@@ -32,6 +32,9 @@ interface DbClientInterface
      *
      * Connection to the database server is created later, on demand.
      *
+     * @see MariaDbClient::__construct()
+     * @see MsSqlClient::__construct()
+     *
      * @param string $name
      * @param array $databaseInfo
      */
@@ -40,12 +43,18 @@ interface DbClientInterface
     /**
      * Disable re-connection permanently.
      *
+     * @see MariaDbClient::reConnectDisable()
+     * @see MsSqlClient::reConnectDisable()
+     *
      * @return $this|DbClientInterface
      */
     public function reConnectDisable() : DbClientInterface;
 
     /**
      * Create a query.
+     *
+     * @see MariaDbClient::query()
+     * @see MsSqlClient::query()
      *
      * @param string $sql
      * @param array $options
@@ -55,12 +64,18 @@ interface DbClientInterface
     public function query(string $sql, array $options = []) : DbQueryInterface;
 
     /**
+     * @see MariaDbClient::transactionStart()
+     * @see MsSqlClient::transactionStart()
+     *
      * @return void
      *      Throws exception on failure.
      */
     public function transactionStart();
 
     /**
+     * @see MariaDbClient::transactionCommit()
+     * @see MsSqlClient::transactionCommit()
+     *
      * @return void
      *      Throws exception on failure.
      *
@@ -70,6 +85,9 @@ interface DbClientInterface
     public function transactionCommit();
 
     /**
+     * @see MariaDbClient::transactionRollback()
+     * @see MsSqlClient::transactionRollback()
+     *
      * @return void
      *      Throws exception on failure.
      *
@@ -79,12 +97,18 @@ interface DbClientInterface
     public function transactionRollback();
 
     /**
+     * @see MariaDbClient::isConnected()
+     * @see MsSqlClient::isConnected()
+     *
      * @return bool
      */
     public function isConnected() : bool;
 
     /**
      * Close database server connection.
+     *
+     * @see MariaDbClient::disConnect()
+     * @see MsSqlClient::disConnect()
      */
     public function disConnect();
 
@@ -94,6 +118,9 @@ interface DbClientInterface
     /**
      * Get RMDBS/driver native error(s) recorded as array,
      * concatenated string or empty string.
+     *
+     * @see MariaDbClient::getErrors()
+     * @see MsSqlClient::getErrors()
      *
      * @param int $stringed
      *      1: on no error returns message indicating no error.
@@ -118,6 +145,9 @@ interface DbClientInterface
      * - permanently when a query doesn't use client buffered result mode
      *
      * @internal Package protected; for DbQueryInterface.
+     *
+     * @see MariaDbClient::getConnection()
+     * @see MsSqlClient::getConnection()
      *
      * @param bool $reConnect
      *

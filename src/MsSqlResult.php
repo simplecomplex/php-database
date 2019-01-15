@@ -71,7 +71,7 @@ class MsSqlResult extends DbResult
      * Number of rows affected by a CRUD statement.
      *
      * NB: Query class result mode must be SQLSRV_CURSOR_FORWARD ('forward').
-     * @see MsSqlQuery::__constructor()
+     * @see MsSqlQuery::__construct()
      *
      * Goes to first result set (initially), but doesn't move to next set.
      *
@@ -125,7 +125,7 @@ class MsSqlResult extends DbResult
      * NB: Goes to next result set, expecting first/current to be a CRUD
      * statement and next to be SELECT SCOPE_IDENTITY() AS IDENTITY_COLUMN_NAME.
      * Use query class option 'insert_id'.
-     * @see MsSqlQuery::__constructor()
+     * @see MsSqlQuery::__construct()
      * @see https://blogs.msdn.microsoft.com/nickhodge/2008/09/22/sql-server-driver-for-php-last-inserted-row-id/
      * @see https://docs.microsoft.com/en-us/sql/t-sql/functions/scope-identity-transact-sql
      *
@@ -228,7 +228,7 @@ class MsSqlResult extends DbResult
      *
      * NB: Query class result mode must be SQLSRV_CURSOR_STATIC ('static')
      * or SQLSRV_CURSOR_KEYSET ('keyset').
-     * @see MsSqlQuery::__constructor()
+     * @see MsSqlQuery::__construct()
      *
      * Go for design patterns that don't require numRows().
      * @code

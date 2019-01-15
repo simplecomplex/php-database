@@ -19,6 +19,9 @@ use SimpleComplex\Database\DbResult;
 interface DbResultInterface
 {
     /**
+     * @see MariaDbResult::__construct()
+     * @see MsSqlResult::__construct()
+     *
      * @param DbQueryInterface $query
      * @param mixed|null $connection
      * @param mixed|null $statement
@@ -28,6 +31,9 @@ interface DbResultInterface
     /**
      * Number of rows affected by a CRUD statement.
      *
+     * @see MariaDbResult::affectedRows()
+     * @see MsSqlResult::affectedRows()
+     *
      * @return int
      *      Throws throwable on failure.
      */
@@ -35,6 +41,9 @@ interface DbResultInterface
 
     /**
      * Auto ID set by last insert statement.
+     *
+     * @see MariaDbResult::insertId()
+     * @see MsSqlResult::insertId()
      *
      * @param string|null $getAsType
      *      Values: i|int|integer|d|float|s|string, default string.
@@ -48,6 +57,9 @@ interface DbResultInterface
     /**
      * Number of rows in a result set.
      *
+     * @see MariaDbResult::numRows()
+     * @see MsSqlResult::numRows()
+     *
      * @return int
      *      Throws throwable on failure.
      */
@@ -56,6 +68,9 @@ interface DbResultInterface
     /**
      * Number of columns in a result row.
      *
+     * @see MariaDbResult::numColumns()
+     * @see MsSqlResult::numColumns()
+     *
      * @return int
      *      Throws throwable on failure.
      */
@@ -63,6 +78,9 @@ interface DbResultInterface
 
     /**
      * Get value of a single column in a single row.
+     *
+     * @see MariaDbResult::fetchColumn()
+     * @see MsSqlResult::fetchColumn()
      *
      * @param int $index
      * @param string $name
@@ -76,6 +94,9 @@ interface DbResultInterface
     /**
      * Associative (column-keyed) or numerically indexed array.
      *
+     * @see MariaDbResult::fetchArray()
+     * @see MsSqlResult::fetchArray()
+     *
      * @param int $as
      *      Default: column-keyed.
      *
@@ -87,6 +108,9 @@ interface DbResultInterface
 
     /**
      * Column-keyed object.
+     *
+     * @see MariaDbResult::fetchObject()
+     * @see MsSqlResult::fetchObject()
      *
      * @param string $class
      *      Optional class name.
@@ -103,6 +127,9 @@ interface DbResultInterface
      * Fetch all rows into a list of associative (column-keyed) or numerically
      * indexed arrays.
      *
+     * @see MariaDbResult::fetchAllArrays()
+     * @see MsSqlResult::fetchAllArrays()
+     *
      * @param int $as
      *      Default: ~associative.
      *      DbResult::FETCH_ASSOC|DbResult::FETCH_NUMERIC
@@ -118,6 +145,9 @@ interface DbResultInterface
 
     /**
      * Fetch all rows into a list of column-keyed objects.
+     *
+     * @see MariaDbResult::fetchAllObjects()
+     * @see MsSqlResult::fetchAllObjects()
      *
      * @param string $class
      *      Optional class name; effective default stdClass.
@@ -136,6 +166,9 @@ interface DbResultInterface
     /**
      * Move cursor to next result set.
      *
+     * @see MariaDbResult::nextSet()
+     * @see MsSqlResult::nextSet()
+     *
      * @return bool
      *      False: No next result set.
      *      Throws throwable on failure.
@@ -144,6 +177,9 @@ interface DbResultInterface
 
     /**
      * Traverse all remaining result sets.
+     *
+     * @see MariaDbResult::depleteSets()
+     * @see MsSqlResult::depleteSets()
      *
      * In some case a DBMS may fail to reveal error(s)
      * until all sets have being accessed.
@@ -154,6 +190,9 @@ interface DbResultInterface
 
     /**
      * Go to next row in the result set.
+     *
+     * @see MariaDbResult::nextRow()
+     * @see MsSqlResult::nextRow()
      *
      * @return bool
      *      False: No next row.
@@ -169,6 +208,9 @@ interface DbResultInterface
      * In some case a DBMS may fail to release resources
      * until all rows have been traversed.
      *
+     * @see MariaDbResult::depleteRows()
+     * @see MsSqlResult::depleteRows()
+     *
      * @return void
      */
     public function depleteRows() /*: void*/;
@@ -176,11 +218,17 @@ interface DbResultInterface
     /**
      * Traverse all remaining result sets and rows.
      *
+     * @see MariaDbResult::depleteAll()
+     * @see MsSqlResult::depleteAll()
+     *
      * @return void
      */
     public function depleteAll() /*: void*/;
 
     /**
+     * @see MariaDbResult::free()
+     * @see MsSqlResult::free()
+     *
      * @return void
      */
     public function free() /*: void*/;

@@ -178,7 +178,7 @@ class MariaDbResult extends DbResult
      * Number of rows in a result set.
      *
      * NB: Query class result mode must be 'store'.
-     * @see MsSqlQuery::__constructor()
+     * @see MsSqlQuery::__construct()
      *
      * Effectively not available for prepared statement, because
      * prepared statement cannot be 'store' in this implementation.
