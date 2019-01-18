@@ -201,8 +201,8 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
      *
      * Recommended value by environment
      * --------------------------------
-     * Production: 1 (VALIDATE_PARAMS_FAILURE)
-     * Development/test: 2 (VALIDATE_PARAMS_ALWAYS) because great for debugging,
+     * Production: 1 (VALIDATE_FAILURE)
+     * Development/test: 2 (VALIDATE_EXECUTE) because great for debugging,
      * however horrible performance-wise.
      *
      * Gets evaluated as bitmask.
