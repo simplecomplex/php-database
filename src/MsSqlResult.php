@@ -358,6 +358,7 @@ class MsSqlResult extends DbResult
         }
         else {
             $has_rows = true;
+            $datetime_class = $this->query->resultDateTimeToTime;
             // Column name cannot be '0' (sql illegal) so loose check suffices.
             if (!$name) {
                 if ($index < 0) {
@@ -384,8 +385,9 @@ class MsSqlResult extends DbResult
                  * @see MsSqlResult::insertId()
                  */
                 if ($value) {
-                    if ($this->query->resultDateTimeToTime && $value instanceof \DateTime) {
-                        return Time::createFromDateTime($value);
+                    if ($datetime_class && $value instanceof \DateTime) {
+                        /** @see Time::createFromDateTime() */
+                        return new $datetime_class($value->format('Y-m-d H:i:s.u'), $value->getTimezone());
                     }
                     return $value;
                 }
@@ -407,8 +409,10 @@ class MsSqlResult extends DbResult
                 ++$this->rowIndex;
                 if ($row) {
                     if (array_key_exists($name, $row)) {
-                        if ($row[$name] && $this->query->resultDateTimeToTime && $row[$name] instanceof \DateTime) {
-                            return Time::createFromDateTime($row[$name]);
+                        $value = $row[$name];
+                        if ($value && $datetime_class && $value instanceof \DateTime) {
+                            /** @see Time::createFromDateTime() */
+                            return new $datetime_class($value->format('Y-m-d H:i:s.u'), $value->getTimezone());
                         }
                         return $row[$name];
                     }
@@ -468,9 +472,11 @@ class MsSqlResult extends DbResult
             ++$this->rowIndex;
             if ($row) {
                 if ($this->query->resultDateTimeToTime) {
+                    $datetime_class = $this->query->resultDateTimeToTime;
                     foreach ($row as &$val) {
-                        if ($val instanceof \DateTime) {
-                            $val = Time::createFromDateTime($val);
+                        if ($val && $val instanceof \DateTime) {
+                            /** @see Time::createFromDateTime() */
+                            $val = new $datetime_class($val->format('Y-m-d H:i:s.u'), $val->getTimezone());
                         }
                     }
                     unset($val);
@@ -545,21 +551,26 @@ class MsSqlResult extends DbResult
             }
             ++$this->rowIndex;
             if ($row) {
-                $to_time = $this->query->resultDateTimeToTime;
+                $datetime_class = $this->query->resultDateTimeToTime;
                 // Custom (non-stdClass) object routine.
                 if ($class && $class != \stdClass::class) {
                     $o = !$args ? new $class() :
                         new $class(...$args);
                     foreach ($row as $column => $value) {
-                        $o->{$column} = $to_time && $value instanceof \DateTime ?
-                            Time::createFromDateTime($value) : $value;
+                        if ($datetime_class && $value && $value instanceof \DateTime) {
+                            /** @see Time::createFromDateTime() */
+                            $o->{$column} = new $datetime_class($value->format('Y-m-d H:i:s.u'), $value->getTimezone());
+                        } else {
+                            $o->{$column} = $value;
+                        }
                     }
                     return $o;
                 }
-                elseif ($to_time) {
+                elseif ($datetime_class) {
                     foreach ($row as &$val) {
-                        if ($val instanceof \DateTime) {
-                            $val = Time::createFromDateTime($val);
+                        if ($val && $val instanceof \DateTime) {
+                            /** @see Time::createFromDateTime() */
+                            $val = new $datetime_class($val->format('Y-m-d H:i:s.u'), $val->getTimezone());
                         }
                     }
                     unset($val);
@@ -610,7 +621,7 @@ class MsSqlResult extends DbResult
         }
         else {
             $has_rows = true;
-            $to_time = $this->query->resultDateTimeToTime;
+            $datetime_class = $this->query->resultDateTimeToTime;
             if ($as == DbResult::FETCH_NUMERIC) {
                 if ($list_by_column) {
                     $this->closeAndLog(__FUNCTION__);
@@ -625,10 +636,11 @@ class MsSqlResult extends DbResult
                         ++$this->setIndex;
                     }
                     ++$this->rowIndex;
-                    if ($row && $to_time) {
+                    if ($row && $datetime_class) {
                         foreach ($row as &$val) {
-                            if ($val instanceof \DateTime) {
-                                $val = Time::createFromDateTime($val);
+                            if ($val && $val instanceof \DateTime) {
+                                /** @see Time::createFromDateTime() */
+                                $val = new $datetime_class($val->format('Y-m-d H:i:s.u'), $val->getTimezone());
                             }
                         }
                         unset($val);
@@ -648,10 +660,11 @@ class MsSqlResult extends DbResult
                         ++$this->setIndex;
                     }
                     ++$this->rowIndex;
-                    if ($row && $to_time) {
+                    if ($row && $datetime_class) {
                         foreach ($row as &$val) {
-                            if ($val instanceof \DateTime) {
-                                $val = Time::createFromDateTime($val);
+                            if ($val && $val instanceof \DateTime) {
+                                /** @see Time::createFromDateTime() */
+                                $val = new $datetime_class($val->format('Y-m-d H:i:s.u'), $val->getTimezone());
                             }
                         }
                         unset($val);
@@ -748,7 +761,7 @@ class MsSqlResult extends DbResult
              */
             //while (($row = @sqlsrv_fetch_object($this->statement, $class, $args))) {
             $custom_class = $class && $class != \stdClass::class;
-            $to_time = $this->query->resultDateTimeToTime;
+            $datetime_class = $this->query->resultDateTimeToTime;
             while (($row = @sqlsrv_fetch_object($this->statement))) {
                 // sqlsrv_fetch_object() implicitly moves to first set.
                 if ($this->setIndex < 0) {
@@ -760,16 +773,21 @@ class MsSqlResult extends DbResult
                         $o = !$args ? new $class() :
                             new $class(...$args);
                         foreach ($row as $column => $value) {
-                            $o->{$column} = $to_time && $value instanceof \DateTime ?
-                                Time::createFromDateTime($value) : $value;
+                            if ($datetime_class && $value && $value instanceof \DateTime) {
+                                /** @see Time::createFromDateTime() */
+                                $o->{$column} = new $datetime_class($value->format('Y-m-d H:i:s.u'), $value->getTimezone());
+                            } else {
+                                $o->{$column} = $value;
+                            }
                         }
                         $list[] = $o;
                     }
                     else {
-                        if ($row && $to_time) {
+                        if ($row && $datetime_class) {
                             foreach ($row as &$val) {
-                                if ($val instanceof \DateTime) {
-                                    $val = Time::createFromDateTime($val);
+                                if ($val && $val instanceof \DateTime) {
+                                    /** @see Time::createFromDateTime() */
+                                    $val = new $datetime_class($val->format('Y-m-d H:i:s.u'), $val->getTimezone());
                                 }
                             }
                             unset($val);
@@ -793,16 +811,21 @@ class MsSqlResult extends DbResult
                         $o = !$args ? new $class() :
                             new $class(...$args);
                         foreach ($row as $column => $value) {
-                            $o->{$column} = $to_time && $value instanceof \DateTime ?
-                                Time::createFromDateTime($value) : $value;
+                            if ($datetime_class && $value && $value instanceof \DateTime) {
+                                /** @see Time::createFromDateTime() */
+                                $o->{$column} = new $datetime_class($value->format('Y-m-d H:i:s.u'), $value->getTimezone());
+                            } else {
+                                $o->{$column} = $value;
+                            }
                         }
                         $list[$row->{$list_by_column}] = $o;
                     }
                     else {
-                        if ($row && $to_time) {
+                        if ($row && $datetime_class) {
                             foreach ($row as &$val) {
-                                if ($val instanceof \DateTime) {
-                                    $val = Time::createFromDateTime($val);
+                                if ($val && $val instanceof \DateTime) {
+                                    /** @see Time::createFromDateTime() */
+                                    $val = new $datetime_class($val->format('Y-m-d H:i:s.u'), $val->getTimezone());
                                 }
                             }
                             unset($val);

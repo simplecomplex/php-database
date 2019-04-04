@@ -1,3 +1,7 @@
+SimpleComplex/Database 1.x, 2019-04-04
+--------------------------------------
+- MsSqlQuery option result_datetime_to_time support using other class than Time.
+
 SimpleComplex/Database 1.x, 2019-01-15
 --------------------------------------
 - Links to method implementations in interfaces' phpdocs,

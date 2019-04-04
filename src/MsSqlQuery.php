@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace SimpleComplex\Database;
 
 use SimpleComplex\Utils\Utils;
+use SimpleComplex\Utils\Time;
 
 use SimpleComplex\Database\Interfaces\DbClientInterface;
 use SimpleComplex\Database\Interfaces\DbQueryInterface;
@@ -57,7 +58,7 @@ use SimpleComplex\Database\Exception\DbQueryException;
  *
  * Own properties:
  * @property-read int $queryTimeout
- * @property-read bool $resultDateTimeToTime
+ * @property-read string $resultDateTimeToTime
  * @property-read bool $sendDataChunked
  * @property-read int $sendChunksLimit
  * @property-read bool $getInsertId
@@ -191,10 +192,13 @@ class MsSqlQuery extends DbQuery
         'send_data_chunked',
         'sendChunksLimit',
         /**
-         * Convert result \DateTime to Time, to secure JSON serialization
-         * to ISO-8601 (instead of PHP-only interoperable object),
-         * and better diff features.
-         * @see \SimpleComplex\Utils\Time::jsonSerialize()
+         * Convert result \DateTime to Time (or other DateTime'ish class).
+         *
+         * Class name of class extending \DateTime or similar class with equivalent
+         * constructur signature and capabilities.
+         *
+         * Boolean true interpretates to \SimpleComplex\Utils\Time.
+         * @see \SimpleComplex\Utils\Time
          */
         'result_datetime_to_time',
     ];
@@ -256,11 +260,17 @@ class MsSqlQuery extends DbQuery
     protected $resultMode;
 
     /**
-     * Option (bool) result_datetime_to_time.
+     * Option (str|bool) result_datetime_to_time.
      *
-     * @var bool
+     * Class name of class extending \DateTime or similar class with equivalent
+     * constructur signature and capabilities.
+     *
+     * Boolean true interpretates to \SimpleComplex\Utils\Time.
+     * @see \SimpleComplex\Utils\Time
+     *
+     * @var string|null
      */
-    protected $resultDateTimeToTime = false;
+    protected $resultDateTimeToTime;
 
     /**
      * Option (bool) send_data_chunked.
@@ -379,7 +389,13 @@ class MsSqlQuery extends DbQuery
         }
         $this->explorableIndex[] = 'queryTimeout';
 
-        $this->resultDateTimeToTime = !empty($options['result_datetime_to_time']);
+        if (!empty($options['result_datetime_to_time'])) {
+            if (is_string($options['result_datetime_to_time'])) {
+                $this->resultDateTimeToTime = $options['result_datetime_to_time'];
+            } else {
+                $this->resultDateTimeToTime = Time::class;
+            }
+        }
         $this->explorableIndex[] = 'resultDateTimeToTime';
 
         if (!empty($options['send_data_chunked'])) {

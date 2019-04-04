@@ -50,6 +50,8 @@ class ConfigurationTest extends TestCase
         ],
     ];
 
+    const TIMEZONE = 'Europe/Copenhagen';
+
     /**
      * @param ContainerInterface $container
      *
@@ -57,6 +59,8 @@ class ConfigurationTest extends TestCase
      */
     protected function getConfigIfExist(ContainerInterface $container)
     {
+        date_default_timezone_set(static::TIMEZONE);
+
         $database_info = null;
 
         if ($container->has('config')) {

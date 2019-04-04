@@ -13,6 +13,7 @@ use PHPUnit\Framework\TestCase;
 use SimpleComplex\Tests\Database\TestHelper;
 
 use SimpleComplex\Utils\Time;
+use SimpleComplex\Utils\TimeLocal;
 
 use SimpleComplex\Database\MsSqlClient;
 use SimpleComplex\Database\DbQuery;
@@ -60,6 +61,7 @@ class ResultTest extends TestCase
                 'name' => __FUNCTION__,
                 'validate_params' => static::VALIDATE_PARAMS,
                 'sql_minify' => true,
+                'result_datetime_to_time' => TimeLocal::class,
             ]
         );
         TestHelper::queryPrepareLogOnError($query);
@@ -85,6 +87,7 @@ class ResultTest extends TestCase
                 'name' => __FUNCTION__,
                 'validate_params' => static::VALIDATE_PARAMS,
                 'sql_minify' => true,
+                'result_datetime_to_time' => TimeLocal::class,
             ]
         );
         TestHelper::queryPrepareLogOnError($query);
@@ -115,6 +118,7 @@ class ResultTest extends TestCase
                 'name' => __FUNCTION__,
                 'validate_params' => static::VALIDATE_PARAMS,
                 'sql_minify' => true,
+                'result_datetime_to_time' => TimeLocal::class,
             ]
         );
         TestHelper::queryPrepareLogOnError($query);
@@ -136,6 +140,7 @@ class ResultTest extends TestCase
                 'name' => __FUNCTION__,
                 'validate_params' => static::VALIDATE_PARAMS,
                 'sql_minify' => true,
+                'result_datetime_to_time' => TimeLocal::class,
             ]
         );
         TestHelper::queryPrepareLogOnError($query);
@@ -168,6 +173,7 @@ class ResultTest extends TestCase
                 'name' => __FUNCTION__,
                 'validate_params' => static::VALIDATE_PARAMS,
                 'sql_minify' => true,
+                'result_datetime_to_time' => TimeLocal::class,
             ]
         );
         TestHelper::queryPrepareLogOnError($query);
@@ -197,6 +203,7 @@ class ResultTest extends TestCase
                 'name' => __FUNCTION__,
                 'validate_params' => static::VALIDATE_PARAMS,
                 'sql_minify' => true,
+                'result_datetime_to_time' => TimeLocal::class,
             ]
         );
         TestHelper::queryPrepareLogOnError($query);
@@ -221,6 +228,7 @@ class ResultTest extends TestCase
                 'name' => __FUNCTION__,
                 'validate_params' => static::VALIDATE_PARAMS,
                 'sql_minify' => true,
+                'result_datetime_to_time' => TimeLocal::class,
             ]
         );
         TestHelper::queryPrepareLogOnError($query);
@@ -244,6 +252,36 @@ class ResultTest extends TestCase
         static::assertEmpty($fetch_typed_w_args);
 
         //TestHelper::logVariable('fetch all objects, fetch all typed, fetch all typed with args', [$fetch_object, $fetch_typed, $fetch_typed_w_args]);
+    }
+
+    /**
+     * @see ClientTest::testInstantiation()
+     */
+    public function testEmptyFetchAllObjectsListByColumn()
+    {
+        $client = (new ClientTest())->testInstantiation();
+
+        $query = $client->query(
+            'SELECT * FROM typish',
+            [
+                'name' => __FUNCTION__,
+                'validate_params' => static::VALIDATE_PARAMS,
+                'sql_minify' => true,
+                'result_datetime_to_time' => TimeLocal::class,
+            ]
+        );
+        TestHelper::queryPrepareLogOnError($query);
+
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
+        static::assertInstanceOf(MsSqlResult::class, $result);
+        $fetch_assoc = $result->fetchAllObjects(null, '_3_varchar');
+        static::assertInternalType('array', $fetch_assoc);
+        static::assertEmpty($fetch_assoc);
+
+        //TestHelper::logVariable('fetch all arrays assoc+list by column', $fetch_assoc);
+
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
+        static::assertInstanceOf(MsSqlResult::class, $result);
     }
 
     /**
@@ -333,23 +371,24 @@ class ResultTest extends TestCase
                 'name' => __FUNCTION__,
                 'validate_params' => static::VALIDATE_PARAMS,
                 'sql_minify' => true,
+                'result_datetime_to_time' => TimeLocal::class,
             ]
         );
         TestHelper::queryPrepareLogOnError($query);
 
         $result = TestHelper::logOnError('query execute', $query, 'execute');
         static::assertInstanceOf(MsSqlResult::class, $result);
-        $column_by_index = $result->fetchColumn(4);
-        static::assertInternalType('string', $column_by_index);
-        static::assertNotEmpty($column_by_index);
+        $column_by_index = $result->fetchColumn(7);
+        static::assertInstanceOf(TimeLocal::class, $column_by_index);
+        //static::assertNotEmpty($column_by_index);
 
         $result = TestHelper::logOnError('query execute', $query, 'execute');
         static::assertInstanceOf(MsSqlResult::class, $result);
-        $column_by_name = $result->fetchColumn(0, '_3_varchar');
-        static::assertInternalType('string', $column_by_name);
-        static::assertNotEmpty($column_by_name);
+        $column_by_name = $result->fetchColumn(0, '_6_datetime');
+        static::assertInstanceOf(TimeLocal::class, $column_by_name);
+        //static::assertNotEmpty($column_by_name);
 
-        //TestHelper::logVariable('', [ $column_by_index, $column_by_name]);
+        TestHelper::logVariable('', [ $column_by_index, $column_by_name]);
 
         $query = $client->query(
             'SELECT * FROM typish
@@ -360,6 +399,7 @@ class ResultTest extends TestCase
                 'name' => __FUNCTION__,
                 'validate_params' => static::VALIDATE_PARAMS,
                 'sql_minify' => true,
+                'result_datetime_to_time' => TimeLocal::class,
             ]
         );
         TestHelper::queryPrepareLogOnError($query);
@@ -392,6 +432,7 @@ class ResultTest extends TestCase
                 'name' => __FUNCTION__,
                 'validate_params' => static::VALIDATE_PARAMS,
                 'sql_minify' => true,
+                'result_datetime_to_time' => TimeLocal::class,
             ]
         );
         TestHelper::queryPrepareLogOnError($query);
@@ -415,6 +456,7 @@ class ResultTest extends TestCase
                 'name' => __FUNCTION__,
                 'validate_params' => static::VALIDATE_PARAMS,
                 'sql_minify' => true,
+                'result_datetime_to_time' => TimeLocal::class,
             ]
         );
         TestHelper::queryPrepareLogOnError($query);
@@ -449,6 +491,7 @@ class ResultTest extends TestCase
                 'name' => __FUNCTION__,
                 'validate_params' => static::VALIDATE_PARAMS,
                 'sql_minify' => true,
+                'result_datetime_to_time' => TimeLocal::class,
             ]
         );
         TestHelper::queryPrepareLogOnError($query);
@@ -483,6 +526,7 @@ class ResultTest extends TestCase
                 'name' => __FUNCTION__,
                 'validate_params' => static::VALIDATE_PARAMS,
                 'sql_minify' => true,
+                'result_datetime_to_time' => TimeLocal::class,
             ]
         );
         TestHelper::queryPrepareLogOnError($query);
@@ -507,6 +551,7 @@ class ResultTest extends TestCase
                 'name' => __FUNCTION__,
                 'validate_params' => static::VALIDATE_PARAMS,
                 'sql_minify' => true,
+                'result_datetime_to_time' => TimeLocal::class,
             ]
         );
         TestHelper::queryPrepareLogOnError($query);
@@ -530,5 +575,35 @@ class ResultTest extends TestCase
         static::assertNotEmpty($fetch_typed_w_args);
 
         TestHelper::logVariable('fetch all objects, fetch all typed, fetch all typed with args', [$fetch_object, $fetch_typed, $fetch_typed_w_args]);
+    }
+
+    /**
+     * @see ClientTest::testInstantiation()
+     */
+    public function testFetchAllObjectsListByColumn()
+    {
+        $client = (new ClientTest())->testInstantiation();
+
+        $query = $client->query(
+            'SELECT * FROM typish',
+            [
+                'name' => __FUNCTION__,
+                'validate_params' => static::VALIDATE_PARAMS,
+                'sql_minify' => true,
+                'result_datetime_to_time' => TimeLocal::class,
+            ]
+        );
+        TestHelper::queryPrepareLogOnError($query);
+
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
+        static::assertInstanceOf(MsSqlResult::class, $result);
+        $fetch_assoc = $result->fetchAllObjects(null, '_3_varchar');
+        static::assertInternalType('array', $fetch_assoc);
+        static::assertNotEmpty($fetch_assoc);
+
+        TestHelper::logVariable('fetch all objects - list by column', $fetch_assoc);
+
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
+        static::assertInstanceOf(MsSqlResult::class, $result);
     }
 }
