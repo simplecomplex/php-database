@@ -46,6 +46,10 @@ class MsSqlError extends DbError
         // Cannot insert the value NULL into column '%.*ls', table '%.*ls'; column does not allow nulls. %ls fails.
         // 515,
 
+        // Cannot insert duplicate key row in object.
+        2601,
+        // Violation of UNIQUE KEY constraint.
+        2627,
         // Cannot truncate table '%s' because it is being referenced by a FOREIGN KEY constraint.
         4712,
     ];
