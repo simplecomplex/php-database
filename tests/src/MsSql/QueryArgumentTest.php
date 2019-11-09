@@ -74,7 +74,7 @@ class QueryArgumentTest extends TestCase
         $_2_decimal = '2.0';
         $_3_varchar = 'arguments referred';
         $_4_blob = sprintf("%08d", decbin(4));
-        $_5_date = method_exists($time, 'getDateISO') ? $time->getDateISO() : $time->getDateISOlocal();
+        $_5_date = $time->getDateISO();
         $_6_datetime = '' . $time;
         $_7_nvarchar = 'n varchar';
 
@@ -135,7 +135,7 @@ class QueryArgumentTest extends TestCase
             '2.0',
             'arguments indexed',
             sprintf("%08d", decbin(4)),
-            method_exists($time, 'getDateISO') ? $time->getDateISO() : $time->getDateISOlocal(),
+            $time->getDateISO(),
             '' . $time,
             'n varchar',
         ];
@@ -180,7 +180,7 @@ class QueryArgumentTest extends TestCase
             '_2_decimal' => '2.0',
             '_3_varchar' => 'arguments keyed',
             '_4_blob' => sprintf("%08d", decbin(4)),
-            '_5_date' => method_exists($time, 'getDateISO') ? $time->getDateISO() : $time->getDateISOlocal(),
+            '_5_date' => $time->getDateISO(),
             '_6_datetime' => '' . $time,
             '_7_nvarchar' => 'n varchar',
         ];
@@ -227,7 +227,7 @@ class QueryArgumentTest extends TestCase
             '_2_decimal' => '2.0',
             '_3_varchar' => 'stringable',
             '_4_blob' => sprintf("%08d", decbin(4)),
-            '_5_date' => method_exists($time, 'getDateISO') ? $time->getDateISO() : $time->getDateISOlocal(),
+            '_5_date' => $time->getDateISO(),
 
             // \DateTime gets successfully stringed.
             '_6_datetime' => new \DateTime('2000-01-01'),
@@ -732,9 +732,9 @@ class QueryArgumentTest extends TestCase
         $args['_1_float'][0] = '1.1';
         $args['_2_decimal'][0] ='2.2';
         $args['_3_varchar'][0] = 'type qualified strict updated';
-        $args['_5_date'][0] = method_exists($time, 'getDateISO') ? $time->getDateISO() : $time->getDateISOlocal();
+        $args['_5_date'][0] = $time->getDateISO();
         //$args['_5_date'][0] = 'cykel';
-        $args['_6_datetime'][0] = method_exists($time, 'getDateISO') ? $time->getDateISO() : $time->getDateISOlocal();
+        $args['_6_datetime'][0] = $time->getDateISO();
         $args['_8_bit'][0] = true;
         $result = TestHelper::logOnError('query execute', $query, 'execute');
         static::assertInstanceOf(MsSqlResult::class, $result);
@@ -789,9 +789,9 @@ class QueryArgumentTest extends TestCase
         $args['_1_float'][0] = '1.1';
         $args['_2_decimal'][0] ='2.2';
         $args['_3_varchar'][0] = 'type qualify helpers updated';
-        $args['_5_date'][0] = method_exists($time, 'getDateISO') ? $time->getDateISO() : $time->getDateISOlocal();
+        $args['_5_date'][0] = $time->getDateISO();
         //$args['_5_date'][0] = 'cykel';
-        $args['_6_datetime'][0] = method_exists($time, 'getDateISO') ? $time->getDateISO() : $time->getDateISOlocal();
+        $args['_6_datetime'][0] = $time->getDateISO();
         $args['_8_bit'][0] = true;
         $result = TestHelper::logOnError('query execute', $query, 'execute');
         static::assertInstanceOf(MsSqlResult::class, $result);
@@ -829,7 +829,7 @@ class QueryArgumentTest extends TestCase
             '_2_decimal' => '2.0',
             '_3_varchar' => 'simple stringable',
             '_4_blob' => sprintf("%08d", decbin(4)),
-            '_5_date' => method_exists($time, 'getDateISO') ? $time->getDateISO() : $time->getDateISOlocal(),
+            '_5_date' => $time->getDateISO(),
 
             // \DateTime gets successfully stringed.
             '_6_datetime' => new \DateTime('2000-01-01'),
@@ -882,7 +882,7 @@ class QueryArgumentTest extends TestCase
             '_2_decimal' => '2.0',
             '_3_varchar' => __FUNCTION__,
             '_4_blob' => sprintf("%08d", decbin(4)),
-            '_5_date' => method_exists($time, 'getDateISO') ? $time->getDateISO() : $time->getDateISOlocal(),
+            '_5_date' => $time->getDateISO(),
             '_6_datetime' => $time,
             '_7_nvarchar' => 'whatever',
         ];
@@ -927,7 +927,7 @@ class QueryArgumentTest extends TestCase
             '_2_decimal' => '2.0',
             '_3_varchar' => __FUNCTION__,
             '_4_blob' => sprintf("%08d", decbin(4)),
-            '_5_date' => method_exists($time, 'getDateISO') ? $time->getDateISO() : $time->getDateISOlocal(),
+            '_5_date' => $time->getDateISO(),
             '_6_datetime' => $time,
             '_7_nvarchar' => 'whatever',
         ];

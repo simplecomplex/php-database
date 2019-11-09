@@ -2,7 +2,7 @@
 /**
  * SimpleComplex PHP Database
  * @link      https://github.com/simplecomplex/php-database
- * @copyright Copyright (c) 2018 Jacob Friis Mathiasen
+ * @copyright Copyright (c) 2018-2019 Jacob Friis Mathiasen
  * @license   https://github.com/simplecomplex/php-database/blob/master/LICENSE (MIT License)
  */
 declare(strict_types=1);
@@ -333,7 +333,7 @@ class MsSqlResult extends DbResult
     }
 
     /**
-     * Get value of a single column in a single row.
+     * Fetch value of a single column in a single row.
      *
      * Nb: Don't call this more times for a single row using arg $name;
      * will move cursor to next row.
@@ -351,7 +351,7 @@ class MsSqlResult extends DbResult
      *      Result row has no such $index|$name.
      * @throws DbRuntimeException
      */
-    public function fetchColumn(int $index = 0, string $name = null)
+    public function fetchField(int $index = 0, string $name = null)
     {
         if (!@sqlsrv_has_rows($this->statement)) {
             $has_rows = false;
@@ -363,7 +363,7 @@ class MsSqlResult extends DbResult
                 if ($index < 0) {
                     $this->closeAndLog(__FUNCTION__);
                     throw new \InvalidArgumentException(
-                        $this->query->messagePrefix() . ' - failed fetching column, arg $index['
+                        $this->query->messagePrefix() . ' - failed fetching field, arg $index['
                         . $index . '] cannot be negative.'
                     );
                 }
@@ -371,7 +371,7 @@ class MsSqlResult extends DbResult
                     // No row at all.
                     $this->closeAndLog(__FUNCTION__);
                     throw new DbResultException(
-                        $this->query->messagePrefix() . ' - failed getting column by '
+                        $this->query->messagePrefix() . ' - failed getting field by '
                         . (!$name ? ('$index[' . $index . ']') : ('$name[' . $name . ']'))
                         . ', no result row at all.'
                     );
@@ -415,7 +415,7 @@ class MsSqlResult extends DbResult
                     $this->closeAndLog(__FUNCTION__);
                     throw new \OutOfRangeException(
                         $this->query->messagePrefix()
-                        . ' - failed fetching column, row has no $name[' . $name . '].'
+                        . ' - failed fetching field, row has no $name[' . $name . '].'
                     );
                 }
                 elseif ($row === null) {
@@ -431,7 +431,7 @@ class MsSqlResult extends DbResult
         $this->closeAndLog(__FUNCTION__);
         $cls_xcptn = $this->query->client->errorsToException($errors, DbResultException::class);
         throw new $cls_xcptn(
-            $this->query->messagePrefix() . ' - failed fetching column by '
+            $this->query->messagePrefix() . ' - failed fetching field by '
             . (!$name ? ('$index[' . $index . ']') : ('$name[' . $name . ']')) . ', error: '
             . $this->query->client->errorsToString($errors) . '.',
             $errors && reset($errors) ? key($errors) : 0
@@ -602,7 +602,7 @@ class MsSqlResult extends DbResult
      *      Non-empty arg $list_by_column when no such column exist.
      * @throws DbRuntimeException
      */
-    public function fetchAllArrays(int $as = DbResult::FETCH_ASSOC, string $list_by_column = null) : array
+    public function fetchArrayAll(int $as = DbResult::FETCH_ASSOC, string $list_by_column = null) : array
     {
         $list = [];
         if (!@sqlsrv_has_rows($this->statement)) {
@@ -724,7 +724,7 @@ class MsSqlResult extends DbResult
      *      Non-empty arg $list_by_column when no such column exist.
      * @throws DbRuntimeException
      */
-    public function fetchAllObjects(string $class = null, string $list_by_column = null, array $args = null) : array
+    public function fetchObjectAll(string $class = null, string $list_by_column = null, array $args = null) : array
     {
         if ($class && !class_exists($class)) {
             $this->closeAndLog(__FUNCTION__);

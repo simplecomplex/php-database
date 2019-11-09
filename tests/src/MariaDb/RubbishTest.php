@@ -2,7 +2,7 @@
 /**
  * SimpleComplex PHP Database
  * @link      https://github.com/simplecomplex/php-database
- * @copyright Copyright (c) 2018 Jacob Friis Mathiasen
+ * @copyright Copyright (c) 2018-2019 Jacob Friis Mathiasen
  * @license   https://github.com/simplecomplex/php-database/blob/master/LICENSE (MIT License)
  */
 declare(strict_types=1);
@@ -40,7 +40,7 @@ class RubbishTest extends TestCase
         $result = $query->execute();
         static::assertInstanceOf(MariaDbResult::class, $result);
 
-        $num_rows = count($result->fetchAllArrays(DbResult::FETCH_NUMERIC));
+        $num_rows = count($result->fetchArrayAll(DbResult::FETCH_NUMERIC));
 
         $num_rows = 0;
         while (($result->nextRow())) {

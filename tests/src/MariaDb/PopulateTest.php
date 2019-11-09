@@ -2,7 +2,7 @@
 /**
  * SimpleComplex PHP Database
  * @link      https://github.com/simplecomplex/php-database
- * @copyright Copyright (c) 2018 Jacob Friis Mathiasen
+ * @copyright Copyright (c) 2018-2019 Jacob Friis Mathiasen
  * @license   https://github.com/simplecomplex/php-database/blob/master/LICENSE (MIT License)
  */
 declare(strict_types=1);
@@ -97,7 +97,7 @@ class PopulateTest extends TestCase
         $result_select = $query_select->execute();
         $num_rows = $result_select->numRows();
         TestHelper::logVariable('num_rows', $num_rows);
-        $all_rows = $result_select->fetchAllArrays();
+        $all_rows = $result_select->fetchArrayAll();
         TestHelper::logVariable('count rows', count($all_rows));
     }
 

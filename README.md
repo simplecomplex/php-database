@@ -130,7 +130,7 @@ $somebody = $client->query('SELECT * FROM person WHERE personId > ? AND personId
 // Get all rows, using a simple statement, and list them by 'personId' column --
 $everybody = $client->query('SELECT * FROM person')
     ->execute()
-    ->fetchAllArrays(DbResult::FETCH_ASSOC, 'personId'));
+    ->fetchArrayAll(DbResult::FETCH_ASSOC, 'personId'));
 ```
 
 ### MS SQL ###
@@ -207,7 +207,7 @@ $somebody = $client->query('SELECT * FROM person WHERE personId > ? AND personId
 // Get all rows, using a simple statement, and list them by 'personId' column --
 $everybody = $client->query('SELECT * FROM person')
     ->execute()
-    ->fetchAllArrays(DbResult::FETCH_ASSOC, 'personId'));
+    ->fetchArrayAll(DbResult::FETCH_ASSOC, 'personId'));
 ```
 
 ## Requirements ##

@@ -50,7 +50,7 @@ class ResultTest extends TestCase
      * @see ClientTest::testInstantiation()
      * @see QueryArgumentTest::testQueryArgumentsReferred()
      */
-    public function testEmptyFetchColumn()
+    public function testEmptyFetchField()
     {
         $client = (new ClientTest())->testInstantiation();
 
@@ -66,12 +66,12 @@ class ResultTest extends TestCase
 
         $result = TestHelper::logOnError('query execute', $query, 'execute');
         static::assertInstanceOf(MsSqlResult::class, $result);
-        $column_by_index = $result->fetchColumn(4);
+        $column_by_index = $result->fetchField(4);
         static::assertNull($column_by_index);
 
         $result = TestHelper::logOnError('query execute', $query, 'execute');
         static::assertInstanceOf(MsSqlResult::class, $result);
-        $column_by_name = $result->fetchColumn(0, '_3_varchar');
+        $column_by_name = $result->fetchField(0, '_3_varchar');
         static::assertNull($column_by_index);
 
         //TestHelper::logVariable('', [ $column_by_index, $column_by_name]);
@@ -91,12 +91,12 @@ class ResultTest extends TestCase
 
         $result = TestHelper::logOnError('query execute', $query, 'execute');
         static::assertInstanceOf(MsSqlResult::class, $result);
-        $column_by_index = $result->fetchColumn(4);
+        $column_by_index = $result->fetchField(4);
         static::assertNull($column_by_index);
 
         $result = TestHelper::logOnError('query execute', $query, 'execute');
         static::assertInstanceOf(MsSqlResult::class, $result);
-        $column_by_name = $result->fetchColumn(0, '_3_varchar');
+        $column_by_name = $result->fetchField(0, '_3_varchar');
         static::assertNull($column_by_index);
 
         //TestHelper::logVariable('', [ $column_by_index, $column_by_name]);
@@ -142,13 +142,13 @@ class ResultTest extends TestCase
 
         $result = TestHelper::logOnError('query execute', $query, 'execute');
         static::assertInstanceOf(MsSqlResult::class, $result);
-        $fetch_assoc = $result->fetchAllArrays();
+        $fetch_assoc = $result->fetchArrayAll();
         static::assertInternalType('array', $fetch_assoc);
         static::assertEmpty($fetch_assoc);
 
         $result = TestHelper::logOnError('query execute', $query, 'execute');
         static::assertInstanceOf(MsSqlResult::class, $result);
-        $fetch_num = $result->fetchAllArrays(DbResult::FETCH_NUMERIC);
+        $fetch_num = $result->fetchArrayAll(DbResult::FETCH_NUMERIC);
         static::assertInternalType('array', $fetch_num);
         static::assertEmpty($fetch_num);
 
@@ -158,7 +158,7 @@ class ResultTest extends TestCase
     /**
      * @see ClientTest::testInstantiation()
      */
-    public function testEmptyFetchAllArraysListByColumn()
+    public function testEmptyFetchArrayAllListByColumn()
     {
         $client = (new ClientTest())->testInstantiation();
 
@@ -174,7 +174,7 @@ class ResultTest extends TestCase
 
         $result = TestHelper::logOnError('query execute', $query, 'execute');
         static::assertInstanceOf(MsSqlResult::class, $result);
-        $fetch_assoc = $result->fetchAllArrays(DbResult::FETCH_ASSOC, '_3_varchar');
+        $fetch_assoc = $result->fetchArrayAll(DbResult::FETCH_ASSOC, '_3_varchar');
         static::assertInternalType('array', $fetch_assoc);
         static::assertEmpty($fetch_assoc);
 
@@ -227,19 +227,19 @@ class ResultTest extends TestCase
 
         $result = TestHelper::logOnError('query execute', $query, 'execute');
         static::assertInstanceOf(MsSqlResult::class, $result);
-        $fetch_object = $result->fetchAllObjects();
+        $fetch_object = $result->fetchObjectAll();
         static::assertInternalType('array', $fetch_object);
         static::assertEmpty($fetch_object);
 
         $result = TestHelper::logOnError('query execute', $query, 'execute');
         static::assertInstanceOf(MsSqlResult::class, $result);
-        $fetch_typed = $result->fetchAllObjects(Typish::class);
+        $fetch_typed = $result->fetchObjectAll(Typish::class);
         static::assertInternalType('array', $fetch_typed);
         static::assertEmpty($fetch_typed);
 
         $result = TestHelper::logOnError('query execute', $query, 'execute');
         static::assertInstanceOf(MsSqlResult::class, $result);
-        $fetch_typed_w_args = $result->fetchAllObjects(Typish::class, '_3_varchar', ['hello']);
+        $fetch_typed_w_args = $result->fetchObjectAll(Typish::class, '_3_varchar', ['hello']);
         static::assertInternalType('array', $fetch_typed_w_args);
         static::assertEmpty($fetch_typed_w_args);
 
@@ -286,7 +286,7 @@ class ResultTest extends TestCase
             '_2_decimal' => '2.2',
             '_3_varchar' => 'insert id as int',
             '_4_blob' => sprintf("%08d", decbin(4)),
-            '_5_date' => method_exists($time, 'getDateISO') ? $time->getDateISO() : $time->getDateISOlocal(),
+            '_5_date' => $time->getDateISO(),
             '_6_datetime' => $time,
             '_7_nvarchar' => 'n varchar',
         ];
@@ -340,14 +340,14 @@ class ResultTest extends TestCase
         /** @var MsSqlResult $result */
         $result = TestHelper::logOnError('query execute', $query, 'execute');
         static::assertInstanceOf(MsSqlResult::class, $result);
-        $column_by_index = $result->fetchColumn(4);
+        $column_by_index = $result->fetchField(4);
         static::assertInternalType('string', $column_by_index);
         static::assertNotEmpty($column_by_index);
 
         /** @var MsSqlResult $result */
         $result = TestHelper::logOnError('query execute', $query, 'execute');
         static::assertInstanceOf(MsSqlResult::class, $result);
-        $column_by_name = $result->fetchColumn(0, '_3_varchar');
+        $column_by_name = $result->fetchField(0, '_3_varchar');
         static::assertInternalType('string', $column_by_name);
         static::assertNotEmpty($column_by_name);
 
@@ -369,14 +369,14 @@ class ResultTest extends TestCase
         /** @var MsSqlResult $result */
         $result = TestHelper::logOnError('query execute', $query, 'execute');
         static::assertInstanceOf(MsSqlResult::class, $result);
-        $column_by_index = $result->fetchColumn(4);
+        $column_by_index = $result->fetchField(4);
         static::assertInternalType('string', $column_by_index);
         static::assertNotEmpty($column_by_index);
 
         /** @var MsSqlResult $result */
         $result = TestHelper::logOnError('query execute', $query, 'execute');
         static::assertInstanceOf(MsSqlResult::class, $result);
-        $column_by_name = $result->fetchColumn(0, '_3_varchar');
+        $column_by_name = $result->fetchField(0, '_3_varchar');
         static::assertInternalType('string', $column_by_name);
         static::assertNotEmpty($column_by_name);
 
@@ -425,13 +425,13 @@ class ResultTest extends TestCase
 
         $result = TestHelper::logOnError('query execute', $query, 'execute');
         static::assertInstanceOf(MsSqlResult::class, $result);
-        $fetch_assoc = $result->fetchAllArrays();
+        $fetch_assoc = $result->fetchArrayAll();
         static::assertInternalType('array', $fetch_assoc);
         static::assertNotEmpty($fetch_assoc);
 
         $result = TestHelper::logOnError('query execute', $query, 'execute');
         static::assertInstanceOf(MsSqlResult::class, $result);
-        $fetch_num = $result->fetchAllArrays(DbResult::FETCH_NUMERIC);
+        $fetch_num = $result->fetchArrayAll(DbResult::FETCH_NUMERIC);
         static::assertInternalType('array', $fetch_num);
         static::assertNotEmpty($fetch_num);
 
@@ -443,7 +443,7 @@ class ResultTest extends TestCase
      *
      * @expectedException \InvalidArgumentException
      */
-    public function testFetchAllArraysListByColumn()
+    public function testFetchArrayAllListByColumn()
     {
         $client = (new ClientTest())->testInstantiation();
 
@@ -459,7 +459,7 @@ class ResultTest extends TestCase
 
         $result = TestHelper::logOnError('query execute', $query, 'execute');
         static::assertInstanceOf(MsSqlResult::class, $result);
-        $fetch_assoc = $result->fetchAllArrays(DbResult::FETCH_ASSOC, '_3_varchar');
+        $fetch_assoc = $result->fetchArrayAll(DbResult::FETCH_ASSOC, '_3_varchar');
         static::assertInternalType('array', $fetch_assoc);
         static::assertNotEmpty($fetch_assoc);
 
@@ -471,7 +471,7 @@ class ResultTest extends TestCase
          * Non-empty arg $list_by_column when arg $as is FETCH_NUMERIC.
          * @throws \InvalidArgumentException
          */
-        $result->fetchAllArrays(DbResult::FETCH_NUMERIC, '_3_varchar');
+        $result->fetchArrayAll(DbResult::FETCH_NUMERIC, '_3_varchar');
     }
 
     /**
@@ -517,19 +517,19 @@ class ResultTest extends TestCase
 
         $result = TestHelper::logOnError('query execute', $query, 'execute');
         static::assertInstanceOf(MsSqlResult::class, $result);
-        $fetch_object = $result->fetchAllObjects();
+        $fetch_object = $result->fetchObjectAll();
         static::assertInternalType('array', $fetch_object);
         static::assertNotEmpty($fetch_object);
 
         $result = TestHelper::logOnError('query execute', $query, 'execute');
         static::assertInstanceOf(MsSqlResult::class, $result);
-        $fetch_typed = $result->fetchAllObjects(Typish::class);
+        $fetch_typed = $result->fetchObjectAll(Typish::class);
         static::assertInternalType('array', $fetch_typed);
         static::assertNotEmpty($fetch_typed);
 
         $result = TestHelper::logOnError('query execute', $query, 'execute');
         static::assertInstanceOf(MsSqlResult::class, $result);
-        $fetch_typed_w_args = $result->fetchAllObjects(Typish::class, '_3_varchar', ['hello']);
+        $fetch_typed_w_args = $result->fetchObjectAll(Typish::class, '_3_varchar', ['hello']);
         static::assertInternalType('array', $fetch_typed_w_args);
         static::assertNotEmpty($fetch_typed_w_args);
 

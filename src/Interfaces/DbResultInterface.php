@@ -2,7 +2,7 @@
 /**
  * SimpleComplex PHP Database
  * @link      https://github.com/simplecomplex/php-database
- * @copyright Copyright (c) 2018 Jacob Friis Mathiasen
+ * @copyright Copyright (c) 2018-2019 Jacob Friis Mathiasen
  * @license   https://github.com/simplecomplex/php-database/blob/master/LICENSE (MIT License)
  */
 declare(strict_types=1);
@@ -77,10 +77,10 @@ interface DbResultInterface
     public function numColumns() : int;
 
     /**
-     * Get value of a single column in a single row.
+     * Fetch value of a single column in a single row.
      *
-     * @see MariaDbResult::fetchColumn()
-     * @see MsSqlResult::fetchColumn()
+     * @see MariaDbResult::fetchField()
+     * @see MsSqlResult::fetchField()
      *
      * @param int $index
      * @param string $name
@@ -89,7 +89,7 @@ interface DbResultInterface
      * @return mixed|null
      *      Null: No more rows.
      */
-    public function fetchColumn(int $index = 0, string $name = null);
+    public function fetchField(int $index = 0, string $name = null);
 
     /**
      * Associative (column-keyed) or numerically indexed array.
@@ -124,11 +124,29 @@ interface DbResultInterface
     public function fetchObject(string $class = null, array $args = null) /*: ?object*/;
 
     /**
+     * Fetch value of a single column of all rows.
+     *
+     * @see MariaDbResult::fetchField()
+     * @see MsSqlResult::fetchField()
+     *
+     * @param int $index
+     * @param string $name
+     *      Non-empty: fetch column by that name, ignore arg $index.
+     * @param string $list_by_column
+     *      Key list by that column's values; ignored if falsy arg $name.
+     *
+     * @return array
+     *      Empty on no rows.
+     *      Throws throwable on failure.
+     */
+    public function fetchFieldAll(int $index = 0, string $name = null, string $list_by_column = null) : array;
+
+    /**
      * Fetch all rows into a list of associative (column-keyed) or numerically
      * indexed arrays.
      *
-     * @see MariaDbResult::fetchAllArrays()
-     * @see MsSqlResult::fetchAllArrays()
+     * @see MariaDbResult::fetchArrayAll()
+     * @see MsSqlResult::fetchArrayAll()
      *
      * @param int $as
      *      Default: ~associative.
@@ -141,13 +159,13 @@ interface DbResultInterface
      *      Empty on no rows.
      *      Throws throwable on failure.
      */
-    public function fetchAllArrays(int $as = DbResult::FETCH_ASSOC, string $list_by_column = null) : array;
+    public function fetchArrayAll(int $as = DbResult::FETCH_ASSOC, string $list_by_column = null) : array;
 
     /**
      * Fetch all rows into a list of column-keyed objects.
      *
-     * @see MariaDbResult::fetchAllObjects()
-     * @see MsSqlResult::fetchAllObjects()
+     * @see MariaDbResult::fetchObjectAll()
+     * @see MsSqlResult::fetchObjectAll()
      *
      * @param string $class
      *      Optional class name; effective default stdClass.
@@ -161,7 +179,7 @@ interface DbResultInterface
      *      Empty on no rows.
      *      Throws throwable on failure.
      */
-    public function fetchAllObjects(string $class = null, string $list_by_column = null, array $args = null) : array;
+    public function fetchObjectAll(string $class = null, string $list_by_column = null, array $args = null) : array;
 
     /**
      * Move cursor to next result set.

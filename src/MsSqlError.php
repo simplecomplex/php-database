@@ -2,7 +2,7 @@
 /**
  * SimpleComplex PHP Database
  * @link      https://github.com/simplecomplex/php-database
- * @copyright Copyright (c) 2018 Jacob Friis Mathiasen
+ * @copyright Copyright (c) 2018-2019 Jacob Friis Mathiasen
  * @license   https://github.com/simplecomplex/php-database/blob/master/LICENSE (MIT License)
  */
 declare(strict_types=1);

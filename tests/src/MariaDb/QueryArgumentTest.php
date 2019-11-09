@@ -2,7 +2,7 @@
 /**
  * SimpleComplex PHP Database
  * @link      https://github.com/simplecomplex/php-database
- * @copyright Copyright (c) 2018 Jacob Friis Mathiasen
+ * @copyright Copyright (c) 2018-2019 Jacob Friis Mathiasen
  * @license   https://github.com/simplecomplex/php-database/blob/master/LICENSE (MIT License)
  */
 declare(strict_types=1);
@@ -76,7 +76,7 @@ class QueryArgumentTest extends TestCase
         $_2_decimal = '2.0';
         $_3_varchar = 'arguments referred';
         $_4_blob = sprintf("%08d", decbin(4));
-        $_5_date = method_exists($time, 'getDateISO') ? $time->getDateISO() : $time->getDateISOlocal();
+        $_5_date = $time->getDateISO();
         $_6_datetime = '' . $time;
         
         $args = [
@@ -132,7 +132,7 @@ class QueryArgumentTest extends TestCase
             '2.0',
             'arguments indexed',
             sprintf("%08d", decbin(4)),
-            method_exists($time, 'getDateISO') ? $time->getDateISO() : $time->getDateISOlocal(),
+            $time->getDateISO(),
             '' . $time,
         ];
         TestHelper::queryPrepareLogOnError($query, $types, $args);
@@ -175,7 +175,7 @@ class QueryArgumentTest extends TestCase
             '_2_decimal' => '2.0',
             '_3_varchar' => 'arguments keyed',
             '_4_blob' => sprintf("%08d", decbin(4)),
-            '_5_date' => method_exists($time, 'getDateISO') ? $time->getDateISO() : $time->getDateISOlocal(),
+            '_5_date' => $time->getDateISO(),
             // This doesn't work when called outside phpunit context.
             '_6_datetime' => '' . $time,
         ];
@@ -221,7 +221,7 @@ class QueryArgumentTest extends TestCase
             '_2_decimal' => '2.0',
             '_3_varchar' => 'stringable',
             '_4_blob' => sprintf("%08d", decbin(4)),
-            '_5_date' => method_exists($time, 'getDateISO') ? $time->getDateISO() : $time->getDateISOlocal(),
+            '_5_date' => $time->getDateISO(),
             '_6_datetime' => '' . $time,
             '_7_text' => '',
         ];
@@ -281,7 +281,7 @@ class QueryArgumentTest extends TestCase
             '_2_decimal' => '2.0',
             '_3_varchar' => 'arguments types detected',
             //'_4_blob' => sprintf("%08d", decbin(4)),
-            '_5_date' => method_exists($time, 'getDateISO') ? $time->getDateISO() : $time->getDateISOlocal(),
+            '_5_date' => $time->getDateISO(),
             '_6_datetime' => '' . $time,
         ];
         TestHelper::queryPrepareLogOnError($query, $types, $args);
@@ -320,7 +320,7 @@ class QueryArgumentTest extends TestCase
             '_2_decimal' => '2.0',
             '_3_varchar' => 'simple stringable',
             '_4_blob' => sprintf("%08d", decbin(4)),
-            '_5_date' => method_exists($time, 'getDateISO') ? $time->getDateISO() : $time->getDateISOlocal(),
+            '_5_date' => $time->getDateISO(),
             /**
              * But MySQLi doesn't check if object has __toString() method.
              *
@@ -372,8 +372,8 @@ class QueryArgumentTest extends TestCase
             '_2_decimal' => '2.0',
             '_3_varchar' => 'simple reusable',
             '_4_blob' => sprintf("%08d", decbin(4)),
-            '_5_date' => method_exists($time, 'getDateISO') ? $time->getDateISO() : $time->getDateISOlocal(),
-            '_6_datetime' => method_exists($time, 'getDateISO') ? $time->getDateISO() : $time->getDateISOlocal(),
+            '_5_date' => $time->getDateISO(),
+            '_6_datetime' => $time->getDateISO(),
         ];
         TestHelper::queryParametersLogOnError($query, $types, $args);
         $result = TestHelper::logOnError('query execute', $query, 'execute');
@@ -416,8 +416,8 @@ class QueryArgumentTest extends TestCase
             '_2_decimal' => '2.0',
             '_3_varchar' => 'simple validate failure',
             '_4_blob' => sprintf("%08d", decbin(4)),
-            '_5_date' => method_exists($time, 'getDateISO') ? $time->getDateISO() : $time->getDateISOlocal(),
-            '_6_datetime' => method_exists($time, 'getDateISO') ? $time->getDateISO() : $time->getDateISOlocal(),
+            '_5_date' => $time->getDateISO(),
+            '_6_datetime' => $time->getDateISO(),
         ];
         TestHelper::queryParametersLogOnError($query, $types, $args);
         $result = TestHelper::logOnError('query execute', $query, 'execute');

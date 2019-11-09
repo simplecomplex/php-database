@@ -2,7 +2,7 @@
 /**
  * SimpleComplex PHP Database
  * @link      https://github.com/simplecomplex/php-database
- * @copyright Copyright (c) 2018 Jacob Friis Mathiasen
+ * @copyright Copyright (c) 2018-2019 Jacob Friis Mathiasen
  * @license   https://github.com/simplecomplex/php-database/blob/master/LICENSE (MIT License)
  */
 declare(strict_types=1);
@@ -75,8 +75,8 @@ class StoredProcedureTest extends TestCase
             '_2_decimal' => '2.0',
             '_3_varchar' => __FUNCTION__,
             '_4_blob' => sprintf("%08d", decbin(4)),
-            '_5_date' => method_exists($time, 'getDateISO') ? $time->getDateISO() : $time->getDateISOlocal(),
-            '_6_datetime' => method_exists($time, 'getDateISO') ? $time->getDateISO() : $time->getDateISOlocal(),
+            '_5_date' => $time->getDateISO(),
+            '_6_datetime' => $time->getDateISO(),
             '_7_text' => 'MySQLi is not convincing',
         ];
         TestHelper::queryPrepareLogOnError($query, $types, $args);
@@ -111,8 +111,8 @@ class StoredProcedureTest extends TestCase
             '_2_decimal' => '2.0',
             '_3_varchar' => __FUNCTION__,
             '_4_blob' => sprintf("%08d", decbin(4)),
-            '_5_date' => method_exists($time, 'getDateISO') ? $time->getDateISO() : $time->getDateISOlocal(),
-            '_6_datetime' => method_exists($time, 'getDateISO') ? $time->getDateISO() : $time->getDateISOlocal(),
+            '_5_date' => $time->getDateISO(),
+            '_6_datetime' => $time->getDateISO(),
             '_7_text' => 'MySQLi is not convincing',
         ];
         TestHelper::queryPrepareLogOnError($query, $types, $args);
@@ -153,8 +153,8 @@ class StoredProcedureTest extends TestCase
             '_2_decimal' => '2.0',
             '_3_varchar' => __FUNCTION__,
             '_4_blob' => sprintf("%08d", decbin(4)),
-            '_5_date' => method_exists($time, 'getDateISO') ? $time->getDateISO() : $time->getDateISOlocal(),
-            '_6_datetime' => method_exists($time, 'getDateISO') ? $time->getDateISO() : $time->getDateISOlocal(),
+            '_5_date' => $time->getDateISO(),
+            '_6_datetime' => $time->getDateISO(),
             '_7_text' => 'MySQLi is not convincing',
         ];
         TestHelper::queryPrepareLogOnError($query, $types, $args);
@@ -165,7 +165,7 @@ class StoredProcedureTest extends TestCase
 
         //$this->assertSame(1, $result->nextSet());
 
-        $insert_id = $result->fetchColumn();
+        $insert_id = $result->fetchField();
         static::assertInternalType('int', $insert_id);
         TestHelper::logVariable(__FUNCTION__, $insert_id);
 

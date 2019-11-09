@@ -2,7 +2,7 @@
 /**
  * SimpleComplex PHP Database
  * @link      https://github.com/simplecomplex/php-database
- * @copyright Copyright (c) 2018 Jacob Friis Mathiasen
+ * @copyright Copyright (c) 2018-2019 Jacob Friis Mathiasen
  * @license   https://github.com/simplecomplex/php-database/blob/master/LICENSE (MIT License)
  */
 declare(strict_types=1);
@@ -276,7 +276,7 @@ class MariaDbResult extends DbResult
     }
 
     /**
-     * Get value of a single column in a single row.
+     * Fetch value of a single column in a single row.
      *
      * Nb: Don't call this more times for a single row;
      * will move cursor to next row.
@@ -294,7 +294,7 @@ class MariaDbResult extends DbResult
      *      Result row has no such $index or $name.
      * @throws DbRuntimeException
      */
-    public function fetchColumn(int $index = 0, string $name = null)
+    public function fetchField(int $index = 0, string $name = null)
     {
         // Result set routine; don't change or move.
         ++$this->rowIndex;
@@ -310,7 +310,7 @@ class MariaDbResult extends DbResult
             }
             $this->closeAndLog(__FUNCTION__);
             throw new $cls_xcptn(
-                $this->query->messagePrefix() . ' - failed fetching column by '
+                $this->query->messagePrefix() . ' - failed fetching field by '
                 . (!$name ? ('$index[' . $index . ']') : ('$name[' . $name . ']'))
                 . ', no result set' . $msg . '.',
                 $errors && reset($errors) ? key($errors) : 0
@@ -322,7 +322,7 @@ class MariaDbResult extends DbResult
             if ($index < 0) {
                 $this->closeAndLog(__FUNCTION__);
                 throw new \InvalidArgumentException(
-                    $this->query->messagePrefix() . ' - failed fetching column, arg $index['
+                    $this->query->messagePrefix() . ' - failed fetching field, arg $index['
                     . $index . '] is negative.'
                 );
             }
@@ -343,7 +343,7 @@ class MariaDbResult extends DbResult
             }
             $this->closeAndLog(__FUNCTION__);
             throw new \OutOfRangeException(
-                $this->query->messagePrefix() . ' - failed fetching column, row '
+                $this->query->messagePrefix() . ' - failed fetching field, row '
                 . (!$name ? (' length[' .  $length . '] has no column $index[' . $index . '].') :
                     ('has no column $name[' . $name . '].')
                 )
@@ -356,7 +356,7 @@ class MariaDbResult extends DbResult
         $this->closeAndLog(__FUNCTION__);
         $cls_xcptn = $this->query->client->errorsToException($errors, DbResultException::class);
         throw new $cls_xcptn(
-            $this->query->messagePrefix() . ' - failed fetching column by '
+            $this->query->messagePrefix() . ' - failed fetching field by '
             . (!$name ? ('$index[' . $index . ']') : ('$name[' . $name . ']')) . ', error: '
             . $this->query->client->errorsToString($errors) . '.',
             $errors && reset($errors) ? key($errors) : 0
@@ -486,7 +486,7 @@ class MariaDbResult extends DbResult
      *      Non-empty arg $list_by_column when no such column exist.
      * @throws DbRuntimeException
      */
-    public function fetchAllArrays(int $as = DbResult::FETCH_ASSOC, string $list_by_column = null) : array
+    public function fetchArrayAll(int $as = DbResult::FETCH_ASSOC, string $list_by_column = null) : array
     {
         // Result set routine; don't change or move.
         if (!$this->result && !($load = $this->loadResult())) {
@@ -599,7 +599,7 @@ class MariaDbResult extends DbResult
      *      Non-empty arg $list_by_column when no such column exist.
      * @throws DbRuntimeException
      */
-    public function fetchAllObjects(string $class = null, string $list_by_column = null, array $args = null) : array
+    public function fetchObjectAll(string $class = null, string $list_by_column = null, array $args = null) : array
     {
         // Result set routine; don't change or move.
         if (!$this->result && !($load = $this->loadResult())) {

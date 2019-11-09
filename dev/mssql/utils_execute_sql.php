@@ -148,7 +148,7 @@ $id_last = 4;
 
 //$query->parameters('ii', [$id_first, $id_last]);
 $result = $query->execute();
-$variable = $result->fetchAllArrays(DbResult::FETCH_ASSOC, 'MedarbejderNR');
+$variable = $result->fetchArrayAll(DbResult::FETCH_ASSOC, 'MedarbejderNR');
 $logger->debug('' . "\n" . $inspect->variable($variable));
 
 $query->close();
