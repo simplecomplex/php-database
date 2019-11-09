@@ -124,12 +124,14 @@ class ResultTest extends TestCase
         );
         TestHelper::queryPrepareLogOnError($query);
 
+        /** @var MariaDbResult $result */
         $result = TestHelper::logOnError('query execute', $query, 'execute');
         static::assertInstanceOf(MariaDbResult::class, $result);
         $column_by_index = $result->fetchColumn(4);
         static::assertInternalType('string', $column_by_index);
         static::assertNotEmpty($column_by_index);
 
+        /** @var MariaDbResult $result */
         $result = TestHelper::logOnError('query execute', $query, 'execute');
         static::assertInstanceOf(MariaDbResult::class, $result);
         $column_by_name = $result->fetchColumn(0, '_3_varchar');
@@ -149,12 +151,14 @@ class ResultTest extends TestCase
         );
         TestHelper::queryPrepareLogOnError($query);
 
+        /** @var MariaDbResult $result */
         $result = TestHelper::logOnError('query execute', $query, 'execute');
         static::assertInstanceOf(MariaDbResult::class, $result);
         $column_by_index = $result->fetchColumn(4);
         static::assertInternalType('string', $column_by_index);
         static::assertNotEmpty($column_by_index);
 
+        /** @var MariaDbResult $result */
         $result = TestHelper::logOnError('query execute', $query, 'execute');
         static::assertInstanceOf(MariaDbResult::class, $result);
         $column_by_name = $result->fetchColumn(0, '_3_varchar');

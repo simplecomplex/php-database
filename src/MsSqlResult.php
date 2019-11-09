@@ -671,7 +671,9 @@ class MsSqlResult extends DbResult
                                 );
                             }
                         }
-                        $list[$row[$list_by_column]] = $row;
+                        // Fails if non-stringable object.
+                        $key = '' . $row[$list_by_column];
+                        $list[$key] = $row;
                     }
                 }
                 if ($this->setIndex < 0) {
@@ -796,7 +798,9 @@ class MsSqlResult extends DbResult
                             $o->{$column} = $to_time && $value instanceof \DateTime ?
                                 Time::createFromDateTime($value) : $value;
                         }
-                        $list[$row->{$list_by_column}] = $o;
+                        // Fails if non-stringable object.
+                        $key = '' . $row->{$list_by_column};
+                        $list[$key] = $o;
                     }
                     else {
                         if ($row && $to_time) {
@@ -807,7 +811,9 @@ class MsSqlResult extends DbResult
                             }
                             unset($val);
                         }
-                        $list[$row->{$list_by_column}] = $row;
+                        // Fails if non-stringable object.
+                        $key = '' . $row->{$list_by_column};
+                        $list[$key] = $row;
                     }
                 }
             }

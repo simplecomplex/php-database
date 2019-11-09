@@ -560,7 +560,9 @@ class MariaDbResult extends DbResult
                     );
                 }
             }
-            $list[$row[$list_by_column]] = $row;
+            // Fails if non-stringable object.
+            $key = '' . $row[$list_by_column];
+            $list[$key] = $row;
         }
         ++$this->rowIndex;
         // Last fetched row must be null; no more rows.
@@ -646,7 +648,9 @@ class MariaDbResult extends DbResult
                         );
                     }
                 }
-                $list[$row->{$list_by_column}] = $row;
+                // Fails if non-stringable object.
+                $key = '' . $row->{$list_by_column};
+                $list[$key] = $row;
             }
         }
         ++$this->rowIndex;

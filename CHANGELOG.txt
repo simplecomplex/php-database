@@ -1,3 +1,8 @@
+SimpleComplex/Database 1.x, 2019-11-09
+--------------------------------------
+- MsSql result fetchers implementing list-by-column shan't fail
+  when column value is non-stringable object.
+
 SimpleComplex/Database 1.x, 2019-09-23
 --------------------------------------
 - MS Sql unique key constraint error codes.

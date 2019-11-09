@@ -337,12 +337,14 @@ class ResultTest extends TestCase
         );
         TestHelper::queryPrepareLogOnError($query);
 
+        /** @var MsSqlResult $result */
         $result = TestHelper::logOnError('query execute', $query, 'execute');
         static::assertInstanceOf(MsSqlResult::class, $result);
         $column_by_index = $result->fetchColumn(4);
         static::assertInternalType('string', $column_by_index);
         static::assertNotEmpty($column_by_index);
 
+        /** @var MsSqlResult $result */
         $result = TestHelper::logOnError('query execute', $query, 'execute');
         static::assertInstanceOf(MsSqlResult::class, $result);
         $column_by_name = $result->fetchColumn(0, '_3_varchar');
@@ -364,12 +366,14 @@ class ResultTest extends TestCase
         );
         TestHelper::queryPrepareLogOnError($query);
 
+        /** @var MsSqlResult $result */
         $result = TestHelper::logOnError('query execute', $query, 'execute');
         static::assertInstanceOf(MsSqlResult::class, $result);
         $column_by_index = $result->fetchColumn(4);
         static::assertInternalType('string', $column_by_index);
         static::assertNotEmpty($column_by_index);
 
+        /** @var MsSqlResult $result */
         $result = TestHelper::logOnError('query execute', $query, 'execute');
         static::assertInstanceOf(MsSqlResult::class, $result);
         $column_by_name = $result->fetchColumn(0, '_3_varchar');
