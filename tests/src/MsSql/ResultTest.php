@@ -323,7 +323,7 @@ class ResultTest extends TestCase
      * @see ClientTest::testInstantiation()
      * @see QueryArgumentTest::testQueryArgumentsReferred()
      */
-    public function testFetchColumn()
+    public function testFetchField()
     {
         $client = (new ClientTest())->testInstantiation();
 
@@ -503,7 +503,7 @@ class ResultTest extends TestCase
         $fetch_typed_w_args = $result->fetchObject(Typish::class, ['hello']);
         static::assertInstanceOf(Typish::class, $fetch_typed_w_args);
 
-        TestHelper::logVariable('fetch object, fetch typed', [$fetch_object, $fetch_typed, $fetch_typed_w_args]);
+        //TestHelper::logVariable('fetch object, fetch typed', [$fetch_object, $fetch_typed, $fetch_typed_w_args]);
 
         $query = $client->query(
             'SELECT * FROM typish',
@@ -533,6 +533,48 @@ class ResultTest extends TestCase
         static::assertInternalType('array', $fetch_typed_w_args);
         static::assertNotEmpty($fetch_typed_w_args);
 
-        TestHelper::logVariable('fetch all objects, fetch all typed, fetch all typed with args', [$fetch_object, $fetch_typed, $fetch_typed_w_args]);
+        //TestHelper::logVariable('fetch all objects, fetch all typed, fetch all typed with args', [$fetch_object, $fetch_typed, $fetch_typed_w_args]);
+    }
+
+    /**
+     * @see ClientTest::testInstantiation()
+     */
+    public function testFetchFieldAll()
+    {
+        $client = (new ClientTest())->testInstantiation();
+
+        $query = $client->query(
+            'SELECT * FROM typish',
+            [
+                'name' => __FUNCTION__,
+                'validate_params' => static::VALIDATE_PARAMS,
+                'sql_minify' => true,
+            ]
+        );
+        TestHelper::queryPrepareLogOnError($query);
+
+        /** @var MsSqlResult $result */
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
+        static::assertInstanceOf(MsSqlResult::class, $result);
+        $fetch_index = $result->fetchFieldAll(4);
+        static::assertInternalType('array', $fetch_index);
+        static::assertNotEmpty($fetch_index);
+        //TestHelper::logVariable('fetch index', $fetch_index);
+
+        /** @var MsSqlResult $result */
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
+        static::assertInstanceOf(MsSqlResult::class, $result);
+        $fetch_name = $result->fetchFieldAll(0, '_3_varchar');
+        static::assertInternalType('array', $fetch_name);
+        static::assertNotEmpty($fetch_name);
+        //TestHelper::logVariable('fetch name', $fetch_name);
+
+        /** @var MsSqlResult $result */
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
+        static::assertInstanceOf(MsSqlResult::class, $result);
+        $fetch_name_listbyname = $result->fetchFieldAll(0, '_3_varchar', '_2_decimal');
+        static::assertInternalType('array', $fetch_name_listbyname);
+        static::assertNotEmpty($fetch_name_listbyname);
+        TestHelper::logVariable('fetch name list by column', $fetch_name_listbyname);
     }
 }
