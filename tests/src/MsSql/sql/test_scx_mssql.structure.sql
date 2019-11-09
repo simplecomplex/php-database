@@ -27,6 +27,8 @@ IF EXISTS ( SELECT [name] FROM sys.tables WHERE [name] = 'parent' )
     DROP TABLE parent;
 IF EXISTS ( SELECT [name] FROM sys.tables WHERE [name] = 'typish' )
     DROP TABLE typish;
+IF EXISTS ( SELECT [name] FROM sys.tables WHERE [name] = 'emptyish' )
+    DROP TABLE emptyish;
 
 CREATE TABLE parent (
     id INT IDENTITY(1,1),
@@ -93,5 +95,11 @@ CREATE TABLE typish (
     _8_bit BIT,
     _9_time TIME,
     _10_uuid UNIQUEIDENTIFIER
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE emptyish (
+    id INT IDENTITY(1,1),
+    whatever VARCHAR(255) NOT NULL,
     PRIMARY KEY (id)
 );

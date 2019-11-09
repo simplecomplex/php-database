@@ -575,6 +575,39 @@ class ResultTest extends TestCase
         $fetch_name_listbyname = $result->fetchFieldAll(0, '_3_varchar', '_2_decimal');
         static::assertInternalType('array', $fetch_name_listbyname);
         static::assertNotEmpty($fetch_name_listbyname);
-        TestHelper::logVariable('fetch name list by column', $fetch_name_listbyname);
+        //TestHelper::logVariable('fetch name list by column', $fetch_name_listbyname);
+    }
+
+    /**
+     * @see ClientTest::testInstantiation()
+     */
+    public function testFetchFieldNoRow()
+    {
+        $client = (new ClientTest())->testInstantiation();
+
+        $query = $client->query(
+            'SELECT * FROM emptyish',
+            [
+                'name' => __FUNCTION__,
+                'validate_params' => static::VALIDATE_PARAMS,
+                'sql_minify' => true,
+            ]
+        );
+        TestHelper::queryPrepareLogOnError($query);
+
+        /** @var MsSqlResult $result */
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
+        static::assertInstanceOf(MsSqlResult::class, $result);
+        $fetch_index = $result->fetchField(1);
+        static::assertNull($fetch_index);
+        //TestHelper::logVariable('fetch index', $fetch_index);
+
+        /** @var MsSqlResult $result */
+        $result = TestHelper::logOnError('query execute', $query, 'execute');
+        static::assertInstanceOf(MsSqlResult::class, $result);
+        $fetch_index = $result->fetchFieldAll(1);
+        static::assertInternalType('array', $fetch_index);
+        static::assertEmpty($fetch_index);
+        //TestHelper::logVariable('fetch all index', $fetch_index);
     }
 }

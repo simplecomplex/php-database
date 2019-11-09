@@ -1,3 +1,12 @@
+SimpleComplex/Database 2.x, 2019-11-09
+--------------------------------------
+- Result fetchers renamed: fetchField, fetchArrayAll, fetchObjectAll
+  instead of fetchColumn, fetchAllArrays, fetchAllObjects;
+  old methods preserved as deprecated and they do elicit deprecation error.
+- New result fetcher fetchFieldAll, for fetching full column of a result
+  set table.
+- SCX Utils and Validate dependencies updated to current versions.
+
 SimpleComplex/Database 1.x, 2019-11-09
 --------------------------------------
 - MsSql result fetchers implementing list-by-column shan't fail

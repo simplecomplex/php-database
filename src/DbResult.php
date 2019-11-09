@@ -128,6 +128,8 @@ abstract class DbResult extends Explorable implements DbResultInterface
      * Elicits E_USER_DEPRECATED error and relays to fetchField.
      *
      * @deprecated Use fetchField().
+     * @see MariaDbResult::fetchField()
+     * @see MsSqlResult::fetchField()
      *
      * @param int $index
      * @param string $name
@@ -149,7 +151,9 @@ abstract class DbResult extends Explorable implements DbResultInterface
     /**
      * Fetch value of a single column of all rows.
      *
-     * To get value of a single column of a single row, see fetchField().
+     * In other words, fetch full column of a result set table.
+     *
+     * To get value from a single row, see fetchField().
      * @see MariaDbResult::fetchField()
      * @see MsSqlResult::fetchField()
      *
@@ -181,26 +185,9 @@ abstract class DbResult extends Explorable implements DbResultInterface
                     . Utils::getType($list_by_column) . '] must be empty when fetching all fields by numeric index.'
                 );
             }
-            if ($index < 0) {
-                $this->closeAndLog(__FUNCTION__);
-                throw new \InvalidArgumentException(
-                    $this->query->messagePrefix() . ' - failed fetching all fields, arg $index['
-                    . $index . '] cannot be negative.'
-                );
-            }
-            $rows = $this->fetchArrayAll(DbResult::FETCH_NUMERIC);
-            if (!$rows) {
-                return $rows;
-            }
-            $list = [];
-            $row = reset($rows);
-            $length = count($row);
-            if ($index < $length) {
-                foreach ($rows as $row) {
-                    $list[] = $row[$index];
-                }
-                return $list;
-            }
+            // Algo separated because some DBMSs (like MsSql) supply more
+            // efficient means for fetching by index, than fetching full rows.
+            return $this->fetchFieldAllByIndex($index);
         }
         else {
             $rows = $this->fetchArrayAll(DbResult::FETCH_ASSOC);
@@ -236,9 +223,56 @@ abstract class DbResult extends Explorable implements DbResultInterface
         $this->closeAndLog(__FUNCTION__);
         throw new \OutOfRangeException(
             $this->query->messagePrefix() . ' - failed fetching all fields, rows '
-            . (!$name ? (' length[' .  $length . '] have no column $index[' . $index . '].') :
+            . (!$name ? ('length[' .  $length . '] have no column $index[' . $index . '].') :
                 ('have no column $name[' . $name . '].')
             )
+        );
+    }
+
+    /**
+     * Fetches value of a single column of all rows, by index of column.
+     *
+     * Algo separated because some DBMSs (like MsSql) supply more
+     * efficient means for fetching by index, than fetching full rows.
+     *
+     * @param int $index
+     *
+     * @return array
+     *      Empty on no rows.
+     *      Throws throwable on failure.
+     *
+     * @throws \InvalidArgumentException
+     *      Arg $index negative.
+     * @throws \OutOfRangeException
+     *      Result row has no such $index|$name.
+     * @throws DbRuntimeException
+     */
+    protected function fetchFieldAllByIndex(int $index = 0) : array
+    {
+        if ($index < 0) {
+            $this->closeAndLog(__FUNCTION__);
+            throw new \InvalidArgumentException(
+                $this->query->messagePrefix() . ' - failed fetching all fields by index, arg $index['
+                . $index . '] cannot be negative.'
+            );
+        }
+        $rows = $this->fetchArrayAll(DbResult::FETCH_NUMERIC);
+        if (!$rows) {
+            return $rows;
+        }
+        $list = [];
+        $row = reset($rows);
+        $length = count($row);
+        if ($index < $length) {
+            foreach ($rows as $row) {
+                $list[] = $row[$index];
+            }
+            return $list;
+        }
+        $this->closeAndLog(__FUNCTION__);
+        throw new \OutOfRangeException(
+            $this->query->messagePrefix() . ' - failed fetching all fields by index, rows '
+            . 'length[' .  $length . '] have no column $index[' . $index . '].'
         );
     }
 
@@ -246,6 +280,8 @@ abstract class DbResult extends Explorable implements DbResultInterface
      * Elicits E_USER_DEPRECATED error and relays to fetchArrayAll.
      *
      * @deprecated Use fetchArrayAll().
+     * @see MariaDbResult::fetchArrayAll()
+     * @see MsSqlResult::fetchArrayAll()
      *
      * @param int $as
      * @param string $list_by_column
@@ -268,6 +304,8 @@ abstract class DbResult extends Explorable implements DbResultInterface
      * Elicits E_USER_DEPRECATED error and relays to fetchObjectAll.
      *
      * @deprecated Use fetchObjectAll().
+     * @see MariaDbResult::fetchObjectAll()
+     * @see MsSqlResult::fetchObjectAll()
      *
      * @param string $class
      * @param string $list_by_column

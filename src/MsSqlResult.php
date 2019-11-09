@@ -439,6 +439,83 @@ class MsSqlResult extends DbResult
     }
 
     /**
+     * Fetches value of a single column of all rows, by index of column.
+     *
+     * Algo separated from fetchFieldAll because fetching via sqlsrv_get_field()
+     * is more efficient than working via this lib's fetchArrayAll().
+     *
+     * @param int $index
+     *
+     * @return array
+     *      Empty on no rows.
+     *      Throws throwable on failure.
+     *
+     * @throws \InvalidArgumentException
+     *      Arg $index negative.
+     * @throws \OutOfRangeException
+     *      Result row has no such $index|$name.
+     * @throws DbRuntimeException
+     */
+    protected function fetchFieldAllByIndex(int $index = 0) : array
+    {
+        if ($index < 0) {
+            $this->closeAndLog(__FUNCTION__);
+            throw new \InvalidArgumentException(
+                $this->query->messagePrefix() . ' - failed fetching all fields by index, arg $index['
+                . $index . '] cannot be negative.'
+            );
+        }
+        if (!@sqlsrv_has_rows($this->statement)) {
+            $has_rows = false;
+        }
+        else {
+            $has_rows = true;
+            if ($this->rowIndex < 0 && !$this->nextRow()) {
+                // No row at all.
+                $this->closeAndLog(__FUNCTION__);
+                throw new DbResultException(
+                    $this->query->messagePrefix() . ' - failed getting all fields by '
+                    . '$index[' . $index . '], no result row at all.'
+                );
+            }
+            $err = false;
+            $a = [];
+            $to_time = $this->query->resultDateTimeToTime;
+            do {
+                $value = @sqlsrv_get_field($this->statement, $index);
+                if ($value) {
+                    if ($to_time && $value instanceof \DateTime) {
+                        $a[] = Time::createFromDateTime($value);
+                    } else {
+                        $a[] = $value;
+                    }
+                }
+                elseif ($value !== false) {
+                    $a[] = $value;
+                } else {
+                    $err = true;
+                    break;
+                }
+            } while($this->nextRow());
+            if (!$err) {
+                return $a;
+            }
+        }
+        $errors = $this->query->client->getErrors();
+        if (!$has_rows && !$errors) {
+            return [];
+        }
+        $this->closeAndLog(__FUNCTION__);
+        $cls_xcptn = $this->query->client->errorsToException($errors, DbResultException::class);
+        throw new $cls_xcptn(
+            $this->query->messagePrefix() . ' - failed fetching all fields by '
+            . '$index[' . $index . '], error: '
+            . $this->query->client->errorsToString($errors) . '.',
+            $errors && reset($errors) ? key($errors) : 0
+        );
+    }
+
+    /**
      * Fetch row as associative (column-keyed) or numerically indexed array.
      *
      * @param int $as

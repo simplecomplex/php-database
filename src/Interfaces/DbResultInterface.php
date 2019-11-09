@@ -126,8 +126,10 @@ interface DbResultInterface
     /**
      * Fetch value of a single column of all rows.
      *
-     * @see MariaDbResult::fetchField()
-     * @see MsSqlResult::fetchField()
+     * In other words, fetch full column of a result set table.
+     *
+     * @see DbResult::fetchFieldAll()
+     * @see MsSqlResult::fetchFieldAll()
      *
      * @param int $index
      * @param string $name
