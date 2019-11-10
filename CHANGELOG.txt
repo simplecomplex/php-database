@@ -1,3 +1,7 @@
+SimpleComplex/Database 2.x, 2019-11-10
+--------------------------------------
+- Release 2.0.
+
 SimpleComplex/Database 2.x, 2019-11-09
 --------------------------------------
 - Result fetchers renamed: fetchField, fetchArrayAll, fetchObjectAll
