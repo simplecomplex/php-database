@@ -7,19 +7,19 @@ USE test_scx_mariadb;
 
 DROP TABLE IF EXISTS parent;
 CREATE TABLE parent (
-    id int(11) NOT NULL AUTO_INCREMENT,
-    lastName varchar(128) NOT NULL,
-    firstName varchar(128) NOT NULL,
-    birthday date NOT NULL,
+    id INT(11) NOT NULL AUTO_INCREMENT,
+    lastName VARCHAR(128) NOT NULL,
+    firstName VARCHAR(128) NOT NULL,
+    birthday DATE NOT NULL,
     PRIMARY KEY (id)
-) ENGINE=InnoDB;
+);
 
 DROP TABLE IF EXISTS relationship;
 CREATE TABLE relationship (
-    spouseA int(11) NOT NULL,
-    spouseB int(11) NOT NULL,
-    active tinyint(1) UNSIGNED NOT NULL DEFAULT 1,
-    since datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    spouseA INT(11) NOT NULL,
+    spouseB INT(11) NOT NULL,
+    active TINYINT(1) UNSIGNED NOT NULL DEFAULT 1,
+    since DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (spouseA, spouseB),
     INDEX fk_resres_parent_id_a(spouseA),
     INDEX fk_resres_parent_id_b(spouseB),
@@ -31,16 +31,16 @@ CREATE TABLE relationship (
     REFERENCES parent(id)
         ON DELETE RESTRICT
         ON UPDATE RESTRICT
-) ENGINE=InnoDB;
+);
 
 DROP TABLE IF EXISTS child;
 CREATE TABLE child (
-    id int(11) NOT NULL AUTO_INCREMENT,
-    parentA int(11) NOT NULL,
-    parentB int(11) DEFAULT NULL,
-    lastName varchar(128) NOT NULL,
-    firstName varchar(128) NOT NULL,
-    birthday datetime NOT NULL,
+    id INT(11) NOT NULL AUTO_INCREMENT,
+    parentA INT(11) NOT NULL,
+    parentB INT(11) DEFAULT NULL,
+    lastName VARCHAR(128) NOT NULL,
+    firstName VARCHAR(128) NOT NULL,
+    birthday DATETIME(6) NOT NULL,
     PRIMARY KEY (id),
     INDEX (parentA, parentB),
     INDEX fk_resres_parent_id_a(parentA),
@@ -53,7 +53,7 @@ CREATE TABLE child (
     REFERENCES parent(id)
         ON DELETE RESTRICT
         ON UPDATE RESTRICT
-) ENGINE=InnoDB;
+);
 
 DROP TABLE IF EXISTS typish;
 CREATE TABLE typish (
@@ -64,19 +64,26 @@ CREATE TABLE typish (
     _3_varchar VARCHAR(255) NOT NULL,
     _4_blob BLOB,
     _5_date DATE NOT NULL,
-    _6_datetime DATETIME NOT NULL,
+    _6_datetime DATETIME(6) NOT NULL,
     _7_text TEXT,
     PRIMARY KEY (id)
-) ENGINE=InnoDB;
+);
+
+DROP TABLE IF EXISTS emptyish;
+CREATE TABLE emptyish (
+    id INT(11) NOT NULL AUTO_INCREMENT,
+    whatever VARCHAR(255) NOT NULL,
+    PRIMARY KEY (id)
+);
 
 DROP TABLE IF EXISTS rubbish;
 CREATE TABLE rubbish (
-    id int(11) NOT NULL AUTO_INCREMENT,
+    id INT(11) NOT NULL AUTO_INCREMENT,
     PRIMARY KEY (id)
-) ENGINE=InnoDB;
+);
 
 DROP TABLE IF EXISTS trash;
 CREATE TABLE trash (
-    id int(11) NOT NULL AUTO_INCREMENT,
+    id INT(11) NOT NULL AUTO_INCREMENT,
     PRIMARY KEY (id)
-) ENGINE=InnoDB;
+);
