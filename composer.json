@@ -13,6 +13,7 @@
     ],
     "require": {
         "php": ">=7.0",
+        "ext-ctype": "*",
         "psr/log": "^1.0",
         "simplecomplex/utils": "^2.2 || dev-develop",
         "simplecomplex/validate": "^2.5 || dev-develop"
