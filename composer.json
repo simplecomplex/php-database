@@ -15,8 +15,12 @@
         "php": ">=7.0",
         "ext-ctype": "*",
         "psr/log": "^1.0",
+        "simplecomplex/time": "^1 || dev-develop",
         "simplecomplex/utils": "^2.2 || dev-develop",
         "simplecomplex/validate": "^2.5 || dev-develop"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^8"
     },
     "suggest": {
         "ext-mysqli": "PHP MySQLi extension is required when using MySQL/MariaDB databases.",

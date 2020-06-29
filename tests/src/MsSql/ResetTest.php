@@ -125,11 +125,11 @@ REFERENCES parent(id)
 
         // Get .sql file containing inserts.
         $file_path = TestHelper::fileFind('MsSql/sql/test_scx_mssql.structure.sql', 'tests');
-        static::assertInternalType('string', $file_path);
+        static::assertIsString($file_path);
         static::assertNotEmpty($file_path);
 
         $sql = file_get_contents($file_path);
-        static::assertInternalType('string', $sql);
+        static::assertIsString($sql);
         static::assertNotEmpty($sql);
 
         /** @var MsSqlQuery $query */
@@ -162,11 +162,11 @@ REFERENCES parent(id)
 
         // Get .sql file containing inserts.
         $file_path = TestHelper::fileFind('MsSql/sql/test_scx_mssql.data.sql', 'tests');
-        static::assertInternalType('string', $file_path);
+        static::assertIsString($file_path);
         static::assertNotEmpty($file_path);
 
         $sql = file_get_contents($file_path);
-        static::assertInternalType('string', $sql);
+        static::assertIsString($sql);
         static::assertNotEmpty($sql);
 
         /** @var MsSqlQuery $query */

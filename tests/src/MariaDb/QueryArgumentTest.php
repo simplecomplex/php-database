@@ -13,7 +13,7 @@ use PHPUnit\Framework\TestCase;
 use SimpleComplex\Tests\Database\TestHelper;
 use SimpleComplex\Tests\Database\Stringable;
 
-use SimpleComplex\Utils\Time;
+use SimpleComplex\Time\Time;
 
 use SimpleComplex\Database\MariaDbClient;
 use SimpleComplex\Database\DbQuery;
@@ -76,7 +76,7 @@ class QueryArgumentTest extends TestCase
         $_2_decimal = '2.0';
         $_3_varchar = 'arguments referred';
         $_4_blob = sprintf("%08d", decbin(4));
-        $_5_date = $time->getDateISO();
+        $_5_date = $time->dateISO;
         $_6_datetime = '' . $time;
         
         $args = [
@@ -93,7 +93,7 @@ class QueryArgumentTest extends TestCase
         $result = TestHelper::logOnError('query execute', $query, 'execute');
         static::assertInstanceOf(MariaDbResult::class, $result);
         $affected_rows = $result->affectedRows();
-        static::assertInternalType('int', $affected_rows);
+        static::assertIsInt($affected_rows);
         static::assertSame(1, $affected_rows);
 
         $_1_float = 1.1;
@@ -132,7 +132,7 @@ class QueryArgumentTest extends TestCase
             '2.0',
             'arguments indexed',
             sprintf("%08d", decbin(4)),
-            $time->getDateISO(),
+            $time->dateISO,
             '' . $time,
         ];
         TestHelper::queryPrepareLogOnError($query, $types, $args);
@@ -175,7 +175,7 @@ class QueryArgumentTest extends TestCase
             '_2_decimal' => '2.0',
             '_3_varchar' => 'arguments keyed',
             '_4_blob' => sprintf("%08d", decbin(4)),
-            '_5_date' => $time->getDateISO(),
+            '_5_date' => $time->dateISO,
             // This doesn't work when called outside phpunit context.
             '_6_datetime' => '' . $time,
         ];
@@ -221,7 +221,7 @@ class QueryArgumentTest extends TestCase
             '_2_decimal' => '2.0',
             '_3_varchar' => 'stringable',
             '_4_blob' => sprintf("%08d", decbin(4)),
-            '_5_date' => $time->getDateISO(),
+            '_5_date' => $time->dateISO,
             '_6_datetime' => '' . $time,
             '_7_text' => '',
         ];
@@ -281,7 +281,7 @@ class QueryArgumentTest extends TestCase
             '_2_decimal' => '2.0',
             '_3_varchar' => 'arguments types detected',
             //'_4_blob' => sprintf("%08d", decbin(4)),
-            '_5_date' => $time->getDateISO(),
+            '_5_date' => $time->dateISO,
             '_6_datetime' => '' . $time,
         ];
         TestHelper::queryPrepareLogOnError($query, $types, $args);
@@ -320,7 +320,7 @@ class QueryArgumentTest extends TestCase
             '_2_decimal' => '2.0',
             '_3_varchar' => 'simple stringable',
             '_4_blob' => sprintf("%08d", decbin(4)),
-            '_5_date' => $time->getDateISO(),
+            '_5_date' => $time->dateISO,
             /**
              * But MySQLi doesn't check if object has __toString() method.
              *
@@ -372,8 +372,8 @@ class QueryArgumentTest extends TestCase
             '_2_decimal' => '2.0',
             '_3_varchar' => 'simple reusable',
             '_4_blob' => sprintf("%08d", decbin(4)),
-            '_5_date' => $time->getDateISO(),
-            '_6_datetime' => $time->getDateISO(),
+            '_5_date' => $time->dateISO,
+            '_6_datetime' => $time->dateISO,
         ];
         TestHelper::queryParametersLogOnError($query, $types, $args);
         $result = TestHelper::logOnError('query execute', $query, 'execute');
@@ -416,8 +416,8 @@ class QueryArgumentTest extends TestCase
             '_2_decimal' => '2.0',
             '_3_varchar' => 'simple validate failure',
             '_4_blob' => sprintf("%08d", decbin(4)),
-            '_5_date' => $time->getDateISO(),
-            '_6_datetime' => $time->getDateISO(),
+            '_5_date' => $time->dateISO,
+            '_6_datetime' => $time->dateISO,
         ];
         TestHelper::queryParametersLogOnError($query, $types, $args);
         $result = TestHelper::logOnError('query execute', $query, 'execute');

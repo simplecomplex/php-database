@@ -61,7 +61,7 @@ class PopulateTest extends TestCase
         static::assertSame(1, $result_insert->affectedRows());
         $insert_id = $result_insert->insertId('i');
         TestHelper::logVariable('insert ID', $insert_id);
-        static::assertInternalType('integer', $insert_id);
+        static::assertIsInt($insert_id);
 
         $args_select = [
             'id' => $insert_id,
@@ -72,7 +72,7 @@ class PopulateTest extends TestCase
         static::assertInstanceOf(MariaDbResult::class, $result_select);
         $row_select = $result_select->fetchArray();
         TestHelper::logVariable('row select', $row_select);
-        static::assertInternalType('array', $row_select);
+        static::assertIsArray($row_select);
         $result_select->free();
 
         $args_insert['firstName'] = 'Praenomeno';
@@ -81,7 +81,7 @@ class PopulateTest extends TestCase
         static::assertInstanceOf(MariaDbResult::class, $result_insert);
         static::assertSame(1, $result_insert->affectedRows());
         $insert_id = $result_insert->insertId('i');
-        static::assertInternalType('integer', $insert_id);
+        static::assertIsInt($insert_id);
 
         $query_select->close();
         /** @noinspection SqlResolve */

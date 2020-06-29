@@ -17,7 +17,7 @@ use SimpleComplex\Database\MsSqlClient;
 use SimpleComplex\Database\DbQuery;
 use SimpleComplex\Database\MsSqlQuery;
 use SimpleComplex\Database\MsSqlResult;
-use SimpleComplex\Utils\Time;
+use SimpleComplex\Time\Time;
 
 /**
  * @code
@@ -74,7 +74,7 @@ class QueryArgumentTest extends TestCase
         $_2_decimal = '2.0';
         $_3_varchar = 'arguments referred';
         $_4_blob = sprintf("%08d", decbin(4));
-        $_5_date = $time->getDateISO();
+        $_5_date = $time->dateISO;
         $_6_datetime = '' . $time;
         $_7_nvarchar = 'n varchar';
 
@@ -95,7 +95,7 @@ class QueryArgumentTest extends TestCase
         $result = TestHelper::logOnError('query execute', $query, 'execute');
         static::assertInstanceOf(MsSqlResult::class, $result);
         $affected_rows = $result->affectedRows();
-        static::assertInternalType('int', $affected_rows);
+        static::assertIsInt($affected_rows);
         static::assertSame(1, $affected_rows);
 
         $_1_float = 1.1;
@@ -135,7 +135,7 @@ class QueryArgumentTest extends TestCase
             '2.0',
             'arguments indexed',
             sprintf("%08d", decbin(4)),
-            $time->getDateISO(),
+            $time->dateISO,
             '' . $time,
             'n varchar',
         ];
@@ -180,7 +180,7 @@ class QueryArgumentTest extends TestCase
             '_2_decimal' => '2.0',
             '_3_varchar' => 'arguments keyed',
             '_4_blob' => sprintf("%08d", decbin(4)),
-            '_5_date' => $time->getDateISO(),
+            '_5_date' => $time->dateISO,
             '_6_datetime' => '' . $time,
             '_7_nvarchar' => 'n varchar',
         ];
@@ -227,7 +227,7 @@ class QueryArgumentTest extends TestCase
             '_2_decimal' => '2.0',
             '_3_varchar' => 'stringable',
             '_4_blob' => sprintf("%08d", decbin(4)),
-            '_5_date' => $time->getDateISO(),
+            '_5_date' => $time->dateISO,
 
             // \DateTime gets successfully stringed.
             '_6_datetime' => new \DateTime('2000-01-01'),
@@ -732,9 +732,9 @@ class QueryArgumentTest extends TestCase
         $args['_1_float'][0] = '1.1';
         $args['_2_decimal'][0] ='2.2';
         $args['_3_varchar'][0] = 'type qualified strict updated';
-        $args['_5_date'][0] = $time->getDateISO();
+        $args['_5_date'][0] = $time->dateISO;
         //$args['_5_date'][0] = 'cykel';
-        $args['_6_datetime'][0] = $time->getDateISO();
+        $args['_6_datetime'][0] = $time->dateISO;
         $args['_8_bit'][0] = true;
         $result = TestHelper::logOnError('query execute', $query, 'execute');
         static::assertInstanceOf(MsSqlResult::class, $result);
@@ -789,9 +789,9 @@ class QueryArgumentTest extends TestCase
         $args['_1_float'][0] = '1.1';
         $args['_2_decimal'][0] ='2.2';
         $args['_3_varchar'][0] = 'type qualify helpers updated';
-        $args['_5_date'][0] = $time->getDateISO();
+        $args['_5_date'][0] = $time->dateISO;
         //$args['_5_date'][0] = 'cykel';
-        $args['_6_datetime'][0] = $time->getDateISO();
+        $args['_6_datetime'][0] = $time->dateISO;
         $args['_8_bit'][0] = true;
         $result = TestHelper::logOnError('query execute', $query, 'execute');
         static::assertInstanceOf(MsSqlResult::class, $result);
@@ -829,7 +829,7 @@ class QueryArgumentTest extends TestCase
             '_2_decimal' => '2.0',
             '_3_varchar' => 'simple stringable',
             '_4_blob' => sprintf("%08d", decbin(4)),
-            '_5_date' => $time->getDateISO(),
+            '_5_date' => $time->dateISO,
 
             // \DateTime gets successfully stringed.
             '_6_datetime' => new \DateTime('2000-01-01'),
@@ -882,7 +882,7 @@ class QueryArgumentTest extends TestCase
             '_2_decimal' => '2.0',
             '_3_varchar' => __FUNCTION__,
             '_4_blob' => sprintf("%08d", decbin(4)),
-            '_5_date' => $time->getDateISO(),
+            '_5_date' => $time->dateISO,
             '_6_datetime' => $time,
             '_7_nvarchar' => 'whatever',
         ];
@@ -927,7 +927,7 @@ class QueryArgumentTest extends TestCase
             '_2_decimal' => '2.0',
             '_3_varchar' => __FUNCTION__,
             '_4_blob' => sprintf("%08d", decbin(4)),
-            '_5_date' => $time->getDateISO(),
+            '_5_date' => $time->dateISO,
             '_6_datetime' => $time,
             '_7_nvarchar' => 'whatever',
         ];

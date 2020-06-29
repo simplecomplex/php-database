@@ -83,6 +83,6 @@ class SslTest extends TestCase
 
         //TestHelper::logVariable('SSL connection result data', $data);
 
-        static::assertInternalType('array', $data);
+        static::assertIsArray($data);
     }
 }

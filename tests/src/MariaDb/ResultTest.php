@@ -12,7 +12,7 @@ namespace SimpleComplex\Tests\Database\MariaDb;
 use PHPUnit\Framework\TestCase;
 use SimpleComplex\Tests\Database\TestHelper;
 
-use SimpleComplex\Utils\Time;
+use SimpleComplex\Time\Time;
 
 use SimpleComplex\Database\MariaDbClient;
 use SimpleComplex\Database\DbQuery;
@@ -74,15 +74,15 @@ class ResultTest extends TestCase
             '_2_decimal' => '2.2',
             '_3_varchar' => 'insert id as int',
             '_4_blob' => sprintf("%08d", decbin(4)),
-            '_5_date' => $time->getDateISO(),
-            '_6_datetime' => $time->getDateISO(),
+            '_5_date' => $time->dateISO,
+            '_6_datetime' => $time->dateISO,
         ];
         TestHelper::queryPrepareLogOnError($query, $types, $args);
 
         $result = TestHelper::logOnError('query execute', $query, 'execute');
         static::assertInstanceOf(MariaDbResult::class, $result);
         $insert_id = $result->insertId('i');
-        static::assertInternalType('int', $insert_id);
+        static::assertIsInt($insert_id);
         static::assertNotEmpty($insert_id);
 
         $args['_0_int'] = 1;
@@ -92,7 +92,7 @@ class ResultTest extends TestCase
         $result = TestHelper::logOnError('query execute', $query, 'execute');
         static::assertInstanceOf(MariaDbResult::class, $result);
         $insert_id = $result->insertId('d');
-        static::assertInternalType('float', $insert_id);
+        static::assertIsFloat($insert_id);
         static::assertNotEmpty($insert_id);
 
         $args['_0_int'] = 2;
@@ -102,7 +102,7 @@ class ResultTest extends TestCase
         $result = TestHelper::logOnError('query execute', $query, 'execute');
         static::assertInstanceOf(MariaDbResult::class, $result);
         $insert_id = $result->insertId('s');
-        static::assertInternalType('string', $insert_id);
+        static::assertIsString($insert_id);
         static::assertNotEmpty($insert_id);
     }
 
@@ -128,14 +128,14 @@ class ResultTest extends TestCase
         $result = TestHelper::logOnError('query execute', $query, 'execute');
         static::assertInstanceOf(MariaDbResult::class, $result);
         $column_by_index = $result->fetchField(4);
-        static::assertInternalType('string', $column_by_index);
+        static::assertIsString($column_by_index);
         static::assertNotEmpty($column_by_index);
 
         /** @var MariaDbResult $result */
         $result = TestHelper::logOnError('query execute', $query, 'execute');
         static::assertInstanceOf(MariaDbResult::class, $result);
         $column_by_name = $result->fetchField(0, '_3_varchar');
-        static::assertInternalType('string', $column_by_name);
+        static::assertIsString($column_by_name);
         static::assertNotEmpty($column_by_name);
 
         //TestHelper::logVariable('', [ $column_by_index, $column_by_name]);
@@ -155,14 +155,14 @@ class ResultTest extends TestCase
         $result = TestHelper::logOnError('query execute', $query, 'execute');
         static::assertInstanceOf(MariaDbResult::class, $result);
         $column_by_index = $result->fetchField(4);
-        static::assertInternalType('string', $column_by_index);
+        static::assertIsString($column_by_index);
         static::assertNotEmpty($column_by_index);
 
         /** @var MariaDbResult $result */
         $result = TestHelper::logOnError('query execute', $query, 'execute');
         static::assertInstanceOf(MariaDbResult::class, $result);
         $column_by_name = $result->fetchField(0, '_3_varchar');
-        static::assertInternalType('string', $column_by_name);
+        static::assertIsString($column_by_name);
         static::assertNotEmpty($column_by_name);
 
         //TestHelper::logVariable('', [ $column_by_index, $column_by_name]);
@@ -188,11 +188,11 @@ class ResultTest extends TestCase
         $result = TestHelper::logOnError('query execute', $query, 'execute');
         static::assertInstanceOf(MariaDbResult::class, $result);
         $fetch_assoc = $result->fetchArray();
-        static::assertInternalType('array', $fetch_assoc);
+        static::assertIsArray($fetch_assoc);
         static::assertNotEmpty($fetch_assoc);
 
         $fetch_num = $result->fetchArray(DbResult::FETCH_NUMERIC);
-        static::assertInternalType('array', $fetch_num);
+        static::assertIsArray($fetch_num);
         static::assertNotEmpty($fetch_num);
 
         //TestHelper::logVariable('fetch array assoc, fetch array num', [ $fetch_assoc, $fetch_num]);
@@ -210,13 +210,13 @@ class ResultTest extends TestCase
         $result = TestHelper::logOnError('query execute', $query, 'execute');
         static::assertInstanceOf(MariaDbResult::class, $result);
         $fetch_assoc = $result->fetchArrayAll();
-        static::assertInternalType('array', $fetch_assoc);
+        static::assertIsArray($fetch_assoc);
         static::assertNotEmpty($fetch_assoc);
 
         $result = TestHelper::logOnError('query execute', $query, 'execute');
         static::assertInstanceOf(MariaDbResult::class, $result);
         $fetch_num = $result->fetchArrayAll(DbResult::FETCH_NUMERIC);
-        static::assertInternalType('array', $fetch_num);
+        static::assertIsArray($fetch_num);
         static::assertNotEmpty($fetch_num);
 
         //TestHelper::logVariable('fetch all arrays assoc, fetch all arrays num', [ $fetch_assoc, $fetch_num]);
@@ -244,7 +244,7 @@ class ResultTest extends TestCase
         $result = TestHelper::logOnError('query execute', $query, 'execute');
         static::assertInstanceOf(MariaDbResult::class, $result);
         $fetch_assoc = $result->fetchArrayAll(DbResult::FETCH_ASSOC, '_3_varchar');
-        static::assertInternalType('array', $fetch_assoc);
+        static::assertIsArray($fetch_assoc);
         static::assertNotEmpty($fetch_assoc);
 
         //TestHelper::logVariable('fetch all arrays assoc+list by column', $fetch_assoc);
@@ -302,19 +302,19 @@ class ResultTest extends TestCase
         $result = TestHelper::logOnError('query execute', $query, 'execute');
         static::assertInstanceOf(MariaDbResult::class, $result);
         $fetch_object = $result->fetchObjectAll();
-        static::assertInternalType('array', $fetch_object);
+        static::assertIsArray($fetch_object);
         static::assertNotEmpty($fetch_object);
 
         $result = TestHelper::logOnError('query execute', $query, 'execute');
         static::assertInstanceOf(MariaDbResult::class, $result);
         $fetch_typed = $result->fetchObjectAll(Typish::class);
-        static::assertInternalType('array', $fetch_typed);
+        static::assertIsArray($fetch_typed);
         static::assertNotEmpty($fetch_typed);
 
         $result = TestHelper::logOnError('query execute', $query, 'execute');
         static::assertInstanceOf(MariaDbResult::class, $result);
         $fetch_typed_w_args = $result->fetchObjectAll(Typish::class, '_3_varchar', ['hello']);
-        static::assertInternalType('array', $fetch_typed_w_args);
+        static::assertIsArray($fetch_typed_w_args);
         static::assertNotEmpty($fetch_typed_w_args);
 
         //TestHelper::logVariable('fetch all objects, fetch all typed, fetch all typed with args', [$fetch_object, $fetch_typed, $fetch_typed_w_args]);
@@ -341,7 +341,7 @@ class ResultTest extends TestCase
         $result = TestHelper::logOnError('query execute', $query, 'execute');
         static::assertInstanceOf(MariaDbResult::class, $result);
         $fetch_index = $result->fetchFieldAll(4);
-        static::assertInternalType('array', $fetch_index);
+        static::assertIsArray($fetch_index);
         static::assertNotEmpty($fetch_index);
         //TestHelper::logVariable('fetch index', $fetch_index);
 
@@ -349,7 +349,7 @@ class ResultTest extends TestCase
         $result = TestHelper::logOnError('query execute', $query, 'execute');
         static::assertInstanceOf(MariaDbResult::class, $result);
         $fetch_name = $result->fetchFieldAll(0, '_3_varchar');
-        static::assertInternalType('array', $fetch_name);
+        static::assertIsArray($fetch_name);
         static::assertNotEmpty($fetch_name);
         //TestHelper::logVariable('fetch name', $fetch_name);
 
@@ -357,7 +357,7 @@ class ResultTest extends TestCase
         $result = TestHelper::logOnError('query execute', $query, 'execute');
         static::assertInstanceOf(MariaDbResult::class, $result);
         $fetch_name_listbyname = $result->fetchFieldAll(0, '_3_varchar', '_2_decimal');
-        static::assertInternalType('array', $fetch_name_listbyname);
+        static::assertIsArray($fetch_name_listbyname);
         static::assertNotEmpty($fetch_name_listbyname);
         //TestHelper::logVariable('fetch name list by column', $fetch_name_listbyname);
     }
@@ -390,7 +390,7 @@ class ResultTest extends TestCase
         $result = TestHelper::logOnError('query execute', $query, 'execute');
         static::assertInstanceOf(MariaDbResult::class, $result);
         $fetch_index = $result->fetchFieldAll(1);
-        static::assertInternalType('array', $fetch_index);
+        static::assertIsArray($fetch_index);
         static::assertEmpty($fetch_index);
         //TestHelper::logVariable('fetch all index', $fetch_index);
     }

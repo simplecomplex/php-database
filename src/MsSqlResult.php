@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace SimpleComplex\Database;
 
 use SimpleComplex\Utils\Utils;
-use SimpleComplex\Utils\Time;
+use SimpleComplex\Time\Time;
 
 use SimpleComplex\Database\Interfaces\DbQueryInterface;
 
@@ -350,6 +350,8 @@ class MsSqlResult extends DbResult
      * @throws \OutOfRangeException
      *      Result row has no such $index|$name.
      * @throws DbRuntimeException
+     * @throws \Exception
+     *      Propagated; Time.
      */
     public function fetchField(int $index = 0, string $name = null)
     {
@@ -455,6 +457,8 @@ class MsSqlResult extends DbResult
      * @throws \OutOfRangeException
      *      Result row has no such $index|$name.
      * @throws DbRuntimeException
+     * @throws \Exception
+     *      Propagated; Time.
      */
     protected function fetchFieldAllByIndex(int $index = 0) : array
     {
@@ -526,6 +530,8 @@ class MsSqlResult extends DbResult
      *      Null: No more rows.
      *
      * @throws DbRuntimeException
+     * @throws \Exception
+     *      Propagated; Time.
      */
     public function fetchArray(int $as = DbResult::FETCH_ASSOC) /*: ?array*/
     {
@@ -591,6 +597,8 @@ class MsSqlResult extends DbResult
      * @throws \InvalidArgumentException
      *      Non-empty arg $class when such class doesn't exist.
      * @throws DbRuntimeException
+     * @throws \Exception
+     *      Propagated; Time.
      */
     public function fetchObject(string $class = null, array $args = null) /*: ?object*/
     {
@@ -678,6 +686,8 @@ class MsSqlResult extends DbResult
      *      Non-empty arg $list_by_column when arg $as is FETCH_NUMERIC.
      *      Non-empty arg $list_by_column when no such column exist.
      * @throws DbRuntimeException
+     * @throws \Exception
+     *      Propagated; Time.
      */
     public function fetchArrayAll(int $as = DbResult::FETCH_ASSOC, string $list_by_column = null) : array
     {
@@ -800,6 +810,8 @@ class MsSqlResult extends DbResult
      *      Non-empty arg $class when such class doesn't exist.
      *      Non-empty arg $list_by_column when no such column exist.
      * @throws DbRuntimeException
+     * @throws \Exception
+     *      Propagated; Time.
      */
     public function fetchObjectAll(string $class = null, string $list_by_column = null, array $args = null) : array
     {

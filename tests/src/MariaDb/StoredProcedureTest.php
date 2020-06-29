@@ -15,7 +15,7 @@ use SimpleComplex\Tests\Database\Stringable;
 
 use SimpleComplex\Utils\Bootstrap;
 use SimpleComplex\Utils\Dependency;
-use SimpleComplex\Utils\Time;
+use SimpleComplex\Time\Time;
 
 use SimpleComplex\Database\MariaDbClient;
 use SimpleComplex\Database\DbQuery;
@@ -75,8 +75,8 @@ class StoredProcedureTest extends TestCase
             '_2_decimal' => '2.0',
             '_3_varchar' => __FUNCTION__,
             '_4_blob' => sprintf("%08d", decbin(4)),
-            '_5_date' => $time->getDateISO(),
-            '_6_datetime' => $time->getDateISO(),
+            '_5_date' => $time->dateISO,
+            '_6_datetime' => $time->dateISO,
             '_7_text' => 'MySQLi is not convincing',
         ];
         TestHelper::queryPrepareLogOnError($query, $types, $args);
@@ -111,8 +111,8 @@ class StoredProcedureTest extends TestCase
             '_2_decimal' => '2.0',
             '_3_varchar' => __FUNCTION__,
             '_4_blob' => sprintf("%08d", decbin(4)),
-            '_5_date' => $time->getDateISO(),
-            '_6_datetime' => $time->getDateISO(),
+            '_5_date' => $time->dateISO,
+            '_6_datetime' => $time->dateISO,
             '_7_text' => 'MySQLi is not convincing',
         ];
         TestHelper::queryPrepareLogOnError($query, $types, $args);
@@ -124,7 +124,7 @@ class StoredProcedureTest extends TestCase
         //$this->assertSame(1, $result->nextSet());
 
         $record = $result->fetchArray();
-        static::assertInternalType('array', $record);
+        static::assertIsArray($record);
         TestHelper::logVariable(__FUNCTION__, $record);
     }
 
@@ -153,8 +153,8 @@ class StoredProcedureTest extends TestCase
             '_2_decimal' => '2.0',
             '_3_varchar' => __FUNCTION__,
             '_4_blob' => sprintf("%08d", decbin(4)),
-            '_5_date' => $time->getDateISO(),
-            '_6_datetime' => $time->getDateISO(),
+            '_5_date' => $time->dateISO,
+            '_6_datetime' => $time->dateISO,
             '_7_text' => 'MySQLi is not convincing',
         ];
         TestHelper::queryPrepareLogOnError($query, $types, $args);
@@ -166,12 +166,12 @@ class StoredProcedureTest extends TestCase
         //$this->assertSame(1, $result->nextSet());
 
         $insert_id = $result->fetchField();
-        static::assertInternalType('int', $insert_id);
+        static::assertIsInt($insert_id);
         TestHelper::logVariable(__FUNCTION__, $insert_id);
 
         static::assertSame(true, $result->nextSet());
         $record = $result->fetchArray();
-        static::assertInternalType('array', $record);
+        static::assertIsArray($record);
 
         TestHelper::logVariable(__FUNCTION__, $record);
     }

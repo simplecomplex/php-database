@@ -55,7 +55,7 @@ class ClientTest extends TestCase
     public function testConnection(DbClientInterface $client)
     {
         $connection = $client->getConnection(true);
-        static::assertInternalType('resource', $connection);
+        static::assertIsResource($connection);
     }
 
     /**

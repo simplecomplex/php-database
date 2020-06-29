@@ -1012,7 +1012,7 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
                                     // __toString().
                                     if (method_exists($value, '__toString')) {
                                         $valid = true;
-                                    };
+                                    }
                                 }
                                 else {
                                     if (static::AUTO_STRINGIFIES_OBJECT && method_exists($value, '__toString')) {

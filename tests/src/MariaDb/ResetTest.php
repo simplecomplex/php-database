@@ -98,11 +98,11 @@ class ResetTest extends TestCase
 
         // Get .sql file containing inserts.
         $file_path = TestHelper::fileFind('MariaDb/sql/test_scx_mariadb.structure.sql', 'tests');
-        static::assertInternalType('string', $file_path);
+        static::assertIsString($file_path);
         static::assertNotEmpty($file_path);
 
         $sql = file_get_contents($file_path);
-        static::assertInternalType('string', $sql);
+        static::assertIsString($sql);
         static::assertNotEmpty($sql);
 
         /** @var MariaDbQuery $query */
@@ -192,11 +192,11 @@ class ResetTest extends TestCase
 
         // Get .sql file containing inserts.
         $file_path = TestHelper::fileFind('MariaDb/sql/test_scx_mariadb.data.sql', 'tests');
-        static::assertInternalType('string', $file_path);
+        static::assertIsString($file_path);
         static::assertNotEmpty($file_path);
 
         $sql = file_get_contents($file_path);
-        static::assertInternalType('string', $sql);
+        static::assertIsString($sql);
         static::assertNotEmpty($sql);
 
         /** @var MariaDbQuery $query */

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 
 use SimpleComplex\Utils\Dependency;
-use SimpleComplex\Utils\Time;
+use SimpleComplex\Time\Time;
 use SimpleComplex\Database\DbQuery;
 use SimpleComplex\Tests\Database\Stringable;
 
@@ -58,8 +58,8 @@ use SimpleComplex\Tests\Database\Stringable;
         // Yes, MySQLi attempts to stringify object.
         '_3_varchar' => new Stringable('stringable from execute'),
         '_4_blob' => sprintf("%08d", decbin(4)),
-        '_5_date' => $time->getDateISOlocal(),
-        '_6_datetime' => '' . $time->getDateISOlocal(),
+        '_5_date' => $time->toDateISOLocal(),
+        '_6_datetime' => '' . $time->toDateISOLocal(),
         // But MySQLi doesn't check if object has __toString() method.
         '_7_text' => new stdClass(),
     ];

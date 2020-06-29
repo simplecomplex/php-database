@@ -95,7 +95,7 @@ class ConfigurationTest extends TestCase
             $database_info = static::DATABASE_INFO['mariadb'];
         }
 
-        static::assertInternalType('array', $database_info);
+        static::assertIsArray($database_info);
         static::assertNotEmpty($database_info);
         if (is_array($database_info) && $database_info) {
             $requireds = DbClient::DATABASE_INFO;
@@ -124,7 +124,7 @@ class ConfigurationTest extends TestCase
             $database_info = static::DATABASE_INFO['mssql'];
         }
 
-        static::assertInternalType('array', $database_info);
+        static::assertIsArray($database_info);
         static::assertNotEmpty($database_info);
         if (is_array($database_info) && $database_info) {
             $requireds = DbClient::DATABASE_INFO;

@@ -194,7 +194,7 @@ class MsSqlQuery extends DbQuery
          * Convert result \DateTime to Time, to secure JSON serialization
          * to ISO-8601 (instead of PHP-only interoperable object),
          * and better diff features.
-         * @see \SimpleComplex\Utils\Time::jsonSerialize()
+         * @see \SimpleComplex\Time\Time::jsonSerialize()
          */
         'result_datetime_to_time',
     ];
