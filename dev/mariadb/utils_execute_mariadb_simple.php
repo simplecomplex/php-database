@@ -58,7 +58,7 @@ use SimpleComplex\Tests\Database\Stringable;
         // Yes, MySQLi attempts to stringify object.
         '_3_varchar' => new Stringable('stringable from execute'),
         '_4_blob' => sprintf("%08d", decbin(4)),
-        '_5_date' => $time->toDateISOLocal()(),
+        '_5_date' => $time->toISOLocalDate()(),
         //'_6_datetime' => '' . $time->getDateISOlocal(),
         '_6_datetime' => new Time('2000-01-01'),
         // But MySQLi doesn't check if object has __toString() method.

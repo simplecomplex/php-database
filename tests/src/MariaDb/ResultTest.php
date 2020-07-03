@@ -74,8 +74,8 @@ class ResultTest extends TestCase
             '_2_decimal' => '2.2',
             '_3_varchar' => 'insert id as int',
             '_4_blob' => sprintf("%08d", decbin(4)),
-            '_5_date' => $time->dateISO,
-            '_6_datetime' => $time->dateISO,
+            '_5_date' => $time->ISODate,
+            '_6_datetime' => $time->ISODate,
         ];
         TestHelper::queryPrepareLogOnError($query, $types, $args);
 
