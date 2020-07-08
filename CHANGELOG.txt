@@ -1,3 +1,8 @@
+SimpleComplex/Database 3.x, 2020-07-08
+--------------------------------------
+- Use simplecomplex/time's time classes instead of simplecomplex/utils' ditto.
+- Release 3.0.
+
 SimpleComplex/Database 2.x, 2019-11-10
 --------------------------------------
 - Release 2.0.
