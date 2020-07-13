@@ -30,6 +30,8 @@ class MsSqlError extends DbError
     const CONNECTION_CODES = [
         // Cannot open database ”%s” requested by the login. The login failed.
         4060,
+        // Login timeout expired.
+        10057,
         // Login failed for user ’%s’.
         18456,
     ];

@@ -22,7 +22,7 @@ use SimpleComplex\Database\MsSqlResult;
 /**
  * @code
  * // CLI, in document root:
- * backend/vendor/bin/phpunit backend/vendor/simplecomplex/database/tests/src/MsSql/ResultTest.php
+ * backend/vendor/bin/phpunit --do-not-cache-result backend/vendor/simplecomplex/database/tests/src/MsSql/ResultTest.php
  * @endcode
  *
  * @package SimpleComplex\Tests\Database
