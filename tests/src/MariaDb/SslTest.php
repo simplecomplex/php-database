@@ -11,7 +11,6 @@ namespace SimpleComplex\Tests\Database\MariaDb;
 
 use PHPUnit\Framework\TestCase;
 
-use SimpleComplex\Tests\Database\TestHelper;
 use SimpleComplex\Tests\Database\BrokerTest;
 
 use SimpleComplex\Database\DatabaseBroker;
@@ -21,7 +20,7 @@ use SimpleComplex\Database\MariaDbClient;
 /**
  * @code
  * // CLI, in document root:
- * backend/vendor/bin/phpunit backend/vendor/simplecomplex/database/tests/src/MariaDb/SslTest.php
+ * backend/vendor/bin/phpunit --do-not-cache-result backend/vendor/simplecomplex/database/tests/src/MariaDb/SslTest.php
  * @endcode
  *
  * @package SimpleComplex\Tests\Database
@@ -75,13 +74,9 @@ class SslTest extends TestCase
         /** @var MariaDbClient $client */
         $client = (new static())->testInstantiation();
 
-        //TestHelper::logVariable('Client', $client);
-
         $data = $client->query(
             'SELECT * FROM child LIMIT 1'
         )->execute()->fetchArray();
-
-        //TestHelper::logVariable('SSL connection result data', $data);
 
         static::assertIsArray($data);
     }

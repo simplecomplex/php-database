@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace SimpleComplex\Tests\Database\MariaDb;
 
 use PHPUnit\Framework\TestCase;
-use SimpleComplex\Tests\Database\TestHelper;
+
 use SimpleComplex\Tests\Database\BrokerTest;
 use SimpleComplex\Tests\Database\ConfigurationTest;
 
@@ -22,7 +22,7 @@ use SimpleComplex\Database\MariaDbClient;
  *
  * @code
  * // CLI, in document root:
- * vendor/bin/phpunit vendor/simplecomplex/database/tests/src/MariaDb/ClientTest.php
+ * backend/vendor/bin/phpunit --do-not-cache-result backend/vendor/simplecomplex/database/tests/src/MariaDb/ClientTest.php
  * @endcode
  *
  * @package SimpleComplex\Tests\Database
@@ -63,8 +63,6 @@ class ClientTest extends TestCase
      *
      * @see BrokerTest::testInstantiation()
      * @see ConfigurationTest::testMariaDb()
-     *
-     * @expectedException \LogicException
      */
     public function testOptionEmpty()
     {
@@ -77,6 +75,7 @@ class ClientTest extends TestCase
          * @throws \LogicException
          *     Database arg databaseInfo key[pass] is empty.
          */
+        static::expectException(\LogicException::class);
         $db_broker->getClient('option-empty-client', 'mariadb', $database_info);
     }
 
@@ -85,8 +84,6 @@ class ClientTest extends TestCase
      *
      * @see BrokerTest::testInstantiation()
      * @see ConfigurationTest::testMariaDb()
-     *
-     * @expectedException \SimpleComplex\Database\Exception\DbConnectionException
      */
     public function testMalConnectionDatabaseNonexist()
     {
@@ -102,10 +99,10 @@ class ClientTest extends TestCase
         static::assertSame(false, $client->isConnected());
         $errors = $client->getErrors();
         static::assertNotEmpty($errors);
-        TestHelper::logVariable('Connection errors', $errors);
         /**
          * @throws \SimpleComplex\Database\Exception\DbConnectionException
          */
+        static::expectException(\SimpleComplex\Database\Exception\DbConnectionException::class);
         $client->query('SELECT * FROM parent')->execute();
     }
 }

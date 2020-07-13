@@ -10,7 +10,6 @@ declare(strict_types=1);
 namespace SimpleComplex\Tests\Database\MariaDb;
 
 use PHPUnit\Framework\TestCase;
-use SimpleComplex\Tests\Database\TestHelper;
 
 use SimpleComplex\Database\Interfaces\DbClientInterface;
 use SimpleComplex\Database\MariaDbClient;
@@ -20,7 +19,7 @@ use SimpleComplex\Database\MariaDbResult;
 /**
  * @code
  * // CLI, in document root:
- * backend/vendor/bin/phpunit backend/vendor/simplecomplex/database/tests/src/MariaDb/ResetTest.php
+ * backend/vendor/bin/phpunit --do-not-cache-result backend/vendor/simplecomplex/database/tests/src/MariaDb/ResetTest.php
  * @endcode
  *
  * @package SimpleComplex\Tests\Database
@@ -31,8 +30,6 @@ class ResetTest extends TestCase
      * Throw DbQueryException: can't truncate due to foreign key constraint.
      *
      * @see ClientTest::testInstantiation
-     *
-     * @expectedException \SimpleComplex\Database\Exception\DbQueryException
      */
     public function testMalTruncateForeignKeys()
     {
@@ -55,6 +52,7 @@ class ResetTest extends TestCase
          * @throws \SimpleComplex\Database\Exception\DbQueryException
          *      Due to foreign key constraint.
          */
+        static::expectException(\SimpleComplex\Database\Exception\DbQueryException::class);
         while($result->nextSet() !== null) {}
     }
 
@@ -81,7 +79,7 @@ class ResetTest extends TestCase
         static::assertInstanceOf(MariaDbResult::class, $result);
         // Do traverse all result sets; an erroring query in a MariaDB/MySQL
         // multi-query might not materialize until traversed.
-        TestHelper::logOnError('traverse all result sets', $result, 'depleteSets');
+        $result->depleteSets();
     }
 
     /**
@@ -97,7 +95,7 @@ class ResetTest extends TestCase
         $client = (new ClientTest())->testInstantiation();
 
         // Get .sql file containing inserts.
-        $file_path = TestHelper::fileFind('MariaDb/sql/test_scx_mariadb.structure.sql', 'tests');
+        $file_path = dirname(__FILE__) . '/sql/test_scx_mariadb.structure.sql';
         static::assertIsString($file_path);
         static::assertNotEmpty($file_path);
 
@@ -117,10 +115,10 @@ class ResetTest extends TestCase
         static::assertInstanceOf(MariaDbResult::class, $result);
         // Do traverse all result sets; an erroring query in a MariaDB/MySQL
         // multi-query might not materialize until traversed.
-        TestHelper::logOnError('traverse all result sets', $result, 'depleteSets');
+        $result->depleteSets();
 
         // Get .sql file containing inserts.
-        $file_path = TestHelper::fileFind('MariaDb/sql/routines/test_scx_mariadb.drop.sql', 'tests');
+        $file_path = dirname(__FILE__) . '/sql/routines/test_scx_mariadb.drop.sql';
         $sql = file_get_contents($file_path);
         /** @var MariaDbQuery $query */
         $query = $client->query($sql, [
@@ -131,9 +129,9 @@ class ResetTest extends TestCase
         static::assertInstanceOf(MariaDbResult::class, $result);
         // Do traverse all result sets; an erroring query in a MariaDB/MySQL
         // multi-query might not materialize until traversed.
-        TestHelper::logOnError('traverse all result sets', $result, 'depleteSets');
+        $result->depleteSets();
 
-        $file_path = TestHelper::fileFind('MariaDb/sql/routines/test_scx_mariadb.typish-insert.sql', 'tests');
+        $file_path = dirname(__FILE__) . '/sql/routines/test_scx_mariadb.typish-insert.sql';
         $sql = file_get_contents($file_path);
         /** @var MariaDbQuery $query */
         $query = $client->query($sql, [
@@ -147,7 +145,7 @@ class ResetTest extends TestCase
         $result = $query->execute();
         static::assertInstanceOf(MariaDbResult::class, $result);
 
-        $file_path = TestHelper::fileFind('MariaDb/sql/routines/test_scx_mariadb.typish-insert-select.sql', 'tests');
+        $file_path = dirname(__FILE__) . '/sql/routines/test_scx_mariadb.typish-insert-select.sql';
         $sql = file_get_contents($file_path);
         /** @var MariaDbQuery $query */
         $query = $client->query($sql, [
@@ -161,7 +159,7 @@ class ResetTest extends TestCase
         $result = $query->execute();
         static::assertInstanceOf(MariaDbResult::class, $result);
 
-        $file_path = TestHelper::fileFind('MariaDb/sql/routines/test_scx_mariadb.typish-insert-select-select.sql', 'tests');
+        $file_path = dirname(__FILE__) . '/sql/routines/test_scx_mariadb.typish-insert-select-select.sql';
         $sql = file_get_contents($file_path);
         /** @var MariaDbQuery $query */
         $query = $client->query($sql, [
@@ -191,7 +189,7 @@ class ResetTest extends TestCase
         $client = (new ClientTest())->testInstantiation();
 
         // Get .sql file containing inserts.
-        $file_path = TestHelper::fileFind('MariaDb/sql/test_scx_mariadb.data.sql', 'tests');
+        $file_path = dirname(__FILE__) . '/sql/test_scx_mariadb.data.sql';
         static::assertIsString($file_path);
         static::assertNotEmpty($file_path);
 
@@ -212,7 +210,7 @@ class ResetTest extends TestCase
         static::assertInstanceOf(MariaDbResult::class, $result);
         // Do traverse all result sets; an erroring query in a MariaDB/MySQL
         // multi-query might not materialize until traversed.
-        TestHelper::logOnError('traverse all result sets', $result, 'depleteSets');
+        $result->depleteSets();
 
         return $client;
     }

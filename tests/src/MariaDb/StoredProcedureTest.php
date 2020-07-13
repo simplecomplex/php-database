@@ -10,22 +10,17 @@ declare(strict_types=1);
 namespace SimpleComplex\Tests\Database\MariaDb;
 
 use PHPUnit\Framework\TestCase;
-use SimpleComplex\Tests\Database\TestHelper;
-use SimpleComplex\Tests\Database\Stringable;
 
-use SimpleComplex\Utils\Bootstrap;
-use SimpleComplex\Utils\Dependency;
 use SimpleComplex\Time\Time;
 
 use SimpleComplex\Database\MariaDbClient;
 use SimpleComplex\Database\DbQuery;
-use SimpleComplex\Database\MariaDbQuery;
 use SimpleComplex\Database\MariaDbResult;
 
 /**
  * @code
  * // CLI, in document root:
- * backend/vendor/bin/phpunit backend/vendor/simplecomplex/database/tests/src/MariaDb/StoredProcedureTest.php
+ * backend/vendor/bin/phpunit --do-not-cache-result backend/vendor/simplecomplex/database/tests/src/MariaDb/StoredProcedureTest.php
  * @endcode
  *
  * @package SimpleComplex\Tests\Database
@@ -77,10 +72,10 @@ class StoredProcedureTest extends TestCase
             '_4_blob' => sprintf("%08d", decbin(4)),
             '_5_date' => $time->ISODate,
             '_6_datetime' => $time->ISODate,
-            '_7_text' => 'MySQLi is not convincing',
+            '_7_text' => 'whatever',
         ];
-        TestHelper::queryPrepareLogOnError($query, $types, $args);
-        $result = TestHelper::logOnError('query execute', $query, 'execute');
+        $query->prepare($types, $args);
+        $result = $query->execute();
         static::assertInstanceOf(MariaDbResult::class, $result);
 
         static::assertSame(1, $result->affectedRows());
@@ -113,10 +108,10 @@ class StoredProcedureTest extends TestCase
             '_4_blob' => sprintf("%08d", decbin(4)),
             '_5_date' => $time->ISODate,
             '_6_datetime' => $time->ISODate,
-            '_7_text' => 'MySQLi is not convincing',
+            '_7_text' => 'whatever',
         ];
-        TestHelper::queryPrepareLogOnError($query, $types, $args);
-        $result = TestHelper::logOnError('query execute', $query, 'execute');
+        $query->prepare($types, $args);
+        $result = $query->execute();
         static::assertInstanceOf(MariaDbResult::class, $result);
 
         //$this->assertSame(1, $result->affectedRows());
@@ -125,7 +120,7 @@ class StoredProcedureTest extends TestCase
 
         $record = $result->fetchArray();
         static::assertIsArray($record);
-        TestHelper::logVariable(__FUNCTION__, $record);
+        //\SimpleComplex\Inspect\Inspect::getInstance()->variable($record)->log();
     }
 
     /**
@@ -155,10 +150,10 @@ class StoredProcedureTest extends TestCase
             '_4_blob' => sprintf("%08d", decbin(4)),
             '_5_date' => $time->ISODate,
             '_6_datetime' => $time->ISODate,
-            '_7_text' => 'MySQLi is not convincing',
+            '_7_text' => 'whatever',
         ];
-        TestHelper::queryPrepareLogOnError($query, $types, $args);
-        $result = TestHelper::logOnError('query execute', $query, 'execute');
+        $query->prepare($types, $args);
+        $result = $query->execute();
         static::assertInstanceOf(MariaDbResult::class, $result);
 
         //$this->assertSame(1, $result->affectedRows());
@@ -167,13 +162,10 @@ class StoredProcedureTest extends TestCase
 
         $insert_id = $result->fetchField();
         static::assertIsInt($insert_id);
-        TestHelper::logVariable(__FUNCTION__, $insert_id);
 
         static::assertSame(true, $result->nextSet());
         $record = $result->fetchArray();
         static::assertIsArray($record);
-
-        TestHelper::logVariable(__FUNCTION__, $record);
     }
 
 }

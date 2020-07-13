@@ -10,7 +10,6 @@ declare(strict_types=1);
 namespace SimpleComplex\Tests\Database\MariaDb;
 
 use PHPUnit\Framework\TestCase;
-use SimpleComplex\Tests\Database\TestHelper;
 
 use SimpleComplex\Database\MariaDbClient;
 use SimpleComplex\Database\MariaDbQuery;
@@ -19,7 +18,7 @@ use SimpleComplex\Database\MariaDbResult;
 /**
  * @code
  * // CLI, in document root:
- * vendor/bin/phpunit vendor/simplecomplex/database/tests/src/MariaDb/PopulateTest.php
+ * backend/vendor/bin/phpunit --do-not-cache-result backend/vendor/simplecomplex/database/tests/src/MariaDb/PopulateTest.php
  * @endcode
  *
  * @package SimpleComplex\Tests\Database
@@ -57,10 +56,8 @@ class PopulateTest extends TestCase
         /** @var MariaDbResult $result_insert */
         $result_insert = $query_insert->execute();
         static::assertInstanceOf(MariaDbResult::class, $result_insert);
-        TestHelper::logVariable('set type', $result_insert);
         static::assertSame(1, $result_insert->affectedRows());
         $insert_id = $result_insert->insertId('i');
-        TestHelper::logVariable('insert ID', $insert_id);
         static::assertIsInt($insert_id);
 
         $args_select = [
@@ -71,7 +68,6 @@ class PopulateTest extends TestCase
         $result_select = $query_select->execute();
         static::assertInstanceOf(MariaDbResult::class, $result_select);
         $row_select = $result_select->fetchArray();
-        TestHelper::logVariable('row select', $row_select);
         static::assertIsArray($row_select);
         $result_select->free();
 
@@ -93,12 +89,10 @@ class PopulateTest extends TestCase
             ]
         );
         /** @var MariaDbResult $result_select */
-        $args = [];
         $result_select = $query_select->execute();
         $num_rows = $result_select->numRows();
-        TestHelper::logVariable('num_rows', $num_rows);
         $all_rows = $result_select->fetchArrayAll();
-        TestHelper::logVariable('count rows', count($all_rows));
+        //\SimpleComplex\Inspect\Inspect::getInstance()->variable([$num_rows, count($all_rows)])->log();
     }
 
 }

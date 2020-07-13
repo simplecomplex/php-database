@@ -97,6 +97,8 @@ class MariaDbClient extends DbClient
         'connect_timeout' => 'MYSQLI_OPT_CONNECT_TIMEOUT',
         // str. default: CHARACTER_SET
         'character_set' => 'character_set',
+        // 0|1. default: 1.
+        'result_typed_int_float' => 'MYSQLI_OPT_INT_AND_FLOAT_NATIVE',
         // SSL (TLS) connection vars:
         // ssl_private_key triggers detection of all SSL vars.
         // And do consider using flag MYSQLI_CLIENT_SSL_DONT_VERIFY_SERVER_CERT.
@@ -114,6 +116,22 @@ class MariaDbClient extends DbClient
         // by MariaDb/MySQL server. Required if ssl_private_key.
         'ssl_cipher' => 'ssl_cipher',
     ];
+
+    /**
+     * Whether to get typed ints and floats in results sets of non-prepared
+     * statements.
+     *
+     * Apparantly result set of prepared statement always types ints and floats
+     * when using the mysqlnd driver.
+     *
+     * Constructor $databaseInfo option (bool) result_typed_int_float.
+     *
+     * @see https://www.php.net/manual/en/mysqli.options.php
+     *
+     * @var int
+     *      0|1.
+     */
+    const RESULT_TYPED_FLOAT_INT = 1;
 
     /**
      * @var string
@@ -467,6 +485,7 @@ class MariaDbClient extends DbClient
             /**
              * Ensure connection timeout.
              * @see MariaDbClient::OPTION_SHORTHANDS
+             * @see DbClient::CONNECT_TIMEOUT
              */
             if (!empty($options['connect_timeout'])) {
                 $options['MYSQLI_OPT_CONNECT_TIMEOUT'] = (int) $options['connect_timeout'];
@@ -475,6 +494,19 @@ class MariaDbClient extends DbClient
                 $options['MYSQLI_OPT_CONNECT_TIMEOUT'] = static::CONNECT_TIMEOUT;
             }
             unset($options['connect_timeout']);
+
+            /**
+             * Result typed int and float.
+             * @see MariaDbClient::OPTION_SHORTHANDS
+             * @see MariaDbClient::RESULT_TYPED_FLOAT_INT
+             */
+            if (isset($options['result_typed_int_float'])) {
+                $options['MYSQLI_OPT_INT_AND_FLOAT_NATIVE'] = (int) $options['result_typed_int_float'];
+                unset($options['result_typed_int_float']);
+            }
+            elseif (!isset($options['MYSQLI_OPT_INT_AND_FLOAT_NATIVE'])) {
+                $options['MYSQLI_OPT_INT_AND_FLOAT_NATIVE'] = static::RESULT_TYPED_FLOAT_INT;
+            }
 
             // SSL (TLS) connection vars.
             if (!empty($options['ssl_private_key'])) {

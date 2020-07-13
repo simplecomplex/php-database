@@ -1,3 +1,9 @@
+SimpleComplex/Database 3.x, 2020-07-13
+--------------------------------------
+- DbQuery::setValidateParams() to alter validateParams option upon
+  instantiation.
+- MariaDb simple query fetch typed ints and floats.
+
 SimpleComplex/Database 3.x, 2020-07-08
 --------------------------------------
 - Use simplecomplex/time's time classes instead of simplecomplex/utils' ditto.

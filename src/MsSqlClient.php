@@ -358,7 +358,8 @@ class MsSqlClient extends DbClient
 
             /**
              * Secure connection timeout.
-             * @see MariaDbClient::OPTION_SHORTHANDS
+             * @see MsSqlClient::OPTION_SHORTHANDS
+             * @see DbClient::CONNECT_TIMEOUT
              */
             if (!empty($options['connect_timeout'])) {
                 $options['LoginTimeout'] = (int) $options['connect_timeout'];

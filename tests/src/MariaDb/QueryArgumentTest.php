@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace SimpleComplex\Tests\Database\MariaDb;
 
 use PHPUnit\Framework\TestCase;
-use SimpleComplex\Tests\Database\TestHelper;
+
 use SimpleComplex\Tests\Database\Stringable;
 
 use SimpleComplex\Time\Time;
@@ -23,16 +23,15 @@ use SimpleComplex\Database\MariaDbResult;
 /**
  * @code
  * // CLI, in document root:
- * backend/vendor/bin/phpunit backend/vendor/simplecomplex/database/tests/src/MariaDb/QueryArgumentTest.php
+ * backend/vendor/bin/phpunit --do-not-cache-result backend/vendor/simplecomplex/database/tests/src/MariaDb/QueryArgumentTest.php
  * @endcode
  *
  * @package SimpleComplex\Tests\Database
  */
 class QueryArgumentTest extends TestCase
 {
-
     /**
-     * @see \SimpleComplex\Database\DbQuery::VALIDATE_PARAMS
+     * @see DbQuery::VALIDATE_PARAMS
      */
     const VALIDATE_PARAMS = DbQuery::VALIDATE_FAILURE | DbQuery::VALIDATE_STRINGABLE_EXEC;
 
@@ -78,7 +77,7 @@ class QueryArgumentTest extends TestCase
         $_4_blob = sprintf("%08d", decbin(4));
         $_5_date = $time->ISODate;
         $_6_datetime = '' . $time;
-        
+
         $args = [
             &$_0_int,
             &$_1_float,
@@ -88,9 +87,9 @@ class QueryArgumentTest extends TestCase
             &$_5_date,
             &$_6_datetime,
         ];
-        TestHelper::queryPrepareLogOnError($query, $types, $args);
+        $query->prepare($types, $args);
         /** @var MariaDbResult $result */
-        $result = TestHelper::logOnError('query execute', $query, 'execute');
+        $result = $query->execute();
         static::assertInstanceOf(MariaDbResult::class, $result);
         $affected_rows = $result->affectedRows();
         static::assertIsInt($affected_rows);
@@ -99,7 +98,7 @@ class QueryArgumentTest extends TestCase
         $_1_float = 1.1;
         $_2_decimal = '2.2';
         $_3_varchar = 'arguments referred 2';
-        $result = TestHelper::logOnError('query execute', $query, 'execute');
+        $result = $query->execute();
         static::assertInstanceOf(MariaDbResult::class, $result);
         static::assertSame(1, $result->affectedRows());
     }
@@ -135,14 +134,14 @@ class QueryArgumentTest extends TestCase
             $time->ISODate,
             '' . $time,
         ];
-        TestHelper::queryPrepareLogOnError($query, $types, $args);
-        $result = TestHelper::logOnError('query execute', $query, 'execute');
+        $query->prepare($types, $args);
+        $result = $query->execute();
         static::assertInstanceOf(MariaDbResult::class, $result);
         static::assertSame(1, $result->affectedRows());
 
         $args[1] = 1.1;
         $args[2] = '2.2';
-        $result = TestHelper::logOnError('query execute', $query, 'execute');
+        $result = $query->execute();
         static::assertInstanceOf(MariaDbResult::class, $result);
         static::assertSame(1, $result->affectedRows());
     }
@@ -179,29 +178,28 @@ class QueryArgumentTest extends TestCase
             // This doesn't work when called outside phpunit context.
             '_6_datetime' => '' . $time,
         ];
-        TestHelper::queryPrepareLogOnError($query, $types, $args);
-        $result = TestHelper::logOnError('query execute', $query, 'execute');
+        $query->prepare($types, $args);
+        $result = $query->execute();
         static::assertInstanceOf(MariaDbResult::class, $result);
         static::assertSame(1, $result->affectedRows());
 
         $args['_1_float'] = 1.1;
         $args['_2_decimal'] = '2.2';
-        $result = TestHelper::logOnError('query execute', $query, 'execute');
+        $result = $query->execute();
         static::assertInstanceOf(MariaDbResult::class, $result);
         static::assertSame(1, $result->affectedRows());
     }
 
     /**
-     * Does the DBMS stringify objects having __toString() method?
+     * Does the DBMS stringify objects missing __toString() method?
      *
      * @see ClientTest::testInstantiation()
-     *
-     * @expectedException \SimpleComplex\Database\Exception\DbRuntimeException
      */
-    public function testQueryArgumentsStringable()
+    public function testQueryArgumentsNonStringable()
     {
         $client = (new ClientTest())->testInstantiation();
 
+        /** @var MariaDbQuery $query */
         $query = $client->query(
             'INSERT INTO typish (_0_int, _1_float, _2_decimal, _3_varchar, _4_blob, _5_date, _6_datetime, _7_text)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
@@ -225,30 +223,68 @@ class QueryArgumentTest extends TestCase
             '_6_datetime' => '' . $time,
             '_7_text' => '',
         ];
-        TestHelper::queryPrepareLogOnError($query, $types, $args);
-        $result = TestHelper::logOnError('query execute', $query, 'execute');
+        $query->prepare($types, $args);
+        $result = $query->execute();
         static::assertInstanceOf(MariaDbResult::class, $result);
         static::assertSame(1, $result->affectedRows());
 
-        /**
-         * But MySQLi doesn't check if object has __toString() method.
-         *
-         * If
-         * @see DbQuery::VALIDATE_PARAMS
-         * is
-         * @see DbQuery::VALIDATE_ALWAYS
-         * @throws \SimpleComplex\Database\Exception\DbQueryArgumentException
-         *
-         * Else
-         * throws fatal error :-(
-         *
-         * @throws \SimpleComplex\Database\Exception\DbRuntimeException
-         */
         $args['_6_datetime'] = new \DateTime('2000-01-01');
-        // Yes, MySQLi attempts to stringify object.
+        $query->setValidateParams(DbQuery::VALIDATE_STRINGABLE_EXEC);
+        // Yes, MariaDb does attempts to stringify \DateTime, without checking for __toString() method.
+        // Without stringable validation we would get fatal error.
+        //$query->setValidateParams(0); // <- fatal error.
+        static::expectException(\SimpleComplex\Database\Exception\DbQueryArgumentException::class);
+        $result = $query->execute();
+
+        static::assertInstanceOf(MariaDbResult::class, $result);
+        static::assertSame(1, $result->affectedRows());
+    }
+
+    /**
+     * Does the DBMS stringify objects having __toString() method?
+     *
+     * @see ClientTest::testInstantiation()
+     */
+    public function testQueryArgumentsStringable()
+    {
+        $client = (new ClientTest())->testInstantiation();
+
+        /** @var MariaDbQuery $query */
+        $query = $client->query(
+            'INSERT INTO typish (_0_int, _1_float, _2_decimal, _3_varchar, _4_blob, _5_date, _6_datetime, _7_text)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            [
+                'validate_params' => static::VALIDATE_PARAMS,
+                'sql_minify' => true,
+                'affected_rows' => true,
+            ]
+        );
+
+        $types = 'idssbsss';
+
+        $time = new Time();
+        $args = [
+            '_0_int' => 0,
+            '_1_float' => 1.0,
+            '_2_decimal' => '2.0',
+            '_3_varchar' => 'stringable',
+            '_4_blob' => sprintf("%08d", decbin(4)),
+            '_5_date' => $time->ISODate,
+            '_6_datetime' => '' . $time,
+            '_7_text' => '',
+        ];
+        $query->prepare($types, $args);
+        $result = $query->execute();
+        static::assertInstanceOf(MariaDbResult::class, $result);
+        static::assertSame(1, $result->affectedRows());
+
         $args['_7_text'] = new Stringable('stringable');
-        
-        $result = TestHelper::logOnError('query execute', $query, 'execute');
+        $query->setValidateParams(DbQuery::VALIDATE_STRINGABLE_EXEC);
+        // Yes, MariaDb does attempts to stringify stringable, without checking for __toString() method.
+        // No error when no validation because Stringable is stringable.
+        $query->setValidateParams(0);
+        $result = $query->execute();
+
         static::assertInstanceOf(MariaDbResult::class, $result);
         static::assertSame(1, $result->affectedRows());
     }
@@ -284,20 +320,21 @@ class QueryArgumentTest extends TestCase
             '_5_date' => $time->ISODate,
             '_6_datetime' => '' . $time,
         ];
-        TestHelper::queryPrepareLogOnError($query, $types, $args);
-        $result = TestHelper::logOnError('query execute', $query, 'execute');
+        $query->prepare($types, $args);
+        $result = $query->execute();
         static::assertInstanceOf(MariaDbResult::class, $result);
         static::assertSame(1, $result->affectedRows());
     }
 
     /**
-     * Does the DBMS stringify objects having __toString() method?
+     * Test that this abstraction always check for non-stringable object
+     * parameter.
+     *
+     * @see DbQuery::substituteParametersByArgs()
      *
      * @see ClientTest::testInstantiation()
-     *
-     * @expectedException \SimpleComplex\Database\Exception\DbRuntimeException
      */
-    public function testSimpleQueryArgumentsStringable()
+    public function testSimpleQueryArgumentsNonStringable()
     {
         $client = (new ClientTest())->testInstantiation();
 
@@ -305,7 +342,7 @@ class QueryArgumentTest extends TestCase
             'INSERT INTO typish (_0_int, _1_float, _2_decimal, _3_varchar, _4_blob, _5_date, _6_datetime, _7_text)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
             [
-                'validate_params' => 0, //static::VALIDATE_PARAMS,
+                'validate_params' => static::VALIDATE_PARAMS,
                 'sql_minify' => true,
                 'affected_rows' => true,
             ]
@@ -321,26 +358,59 @@ class QueryArgumentTest extends TestCase
             '_3_varchar' => 'simple stringable',
             '_4_blob' => sprintf("%08d", decbin(4)),
             '_5_date' => $time->ISODate,
-            /**
-             * But MySQLi doesn't check if object has __toString() method.
-             *
-             * If
-             * @see DbQuery::VALIDATE_PARAMS
-             * is
-             * @see DbQuery::VALIDATE_ALWAYS
-             * @throws \SimpleComplex\Database\Exception\DbQueryArgumentException
-             *
-             * Else
-             * throws fatal error :-(
-             *
-             * @throws \SimpleComplex\Database\Exception\DbRuntimeException
-             */
             '_6_datetime' => new \DateTime('2000-01-01'),
-            // Yes, MySQLi attempts to stringify object.
+        ];
+
+        $query->setValidateParams(DbQuery::VALIDATE_STRINGABLE_EXEC);
+        $query->setValidateParams(0); // <- no effect, validates anyway.
+        static::expectException(\SimpleComplex\Database\Exception\DbQueryArgumentException::class);
+        $query->parameters($types, $args);
+
+        $result = $query->execute();
+        static::assertInstanceOf(MariaDbResult::class, $result);
+        static::assertSame(1, $result->affectedRows());
+    }
+
+    /**
+     * Does the DBMS stringify objects having __toString() method?
+     *
+     * @see ClientTest::testInstantiation()
+     */
+    public function testSimpleQueryArgumentsStringable()
+    {
+        $client = (new ClientTest())->testInstantiation();
+
+        $query = $client->query(
+            'INSERT INTO typish (_0_int, _1_float, _2_decimal, _3_varchar, _4_blob, _5_date, _6_datetime, _7_text)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            [
+                'validate_params' => static::VALIDATE_PARAMS,
+                'sql_minify' => true,
+                'affected_rows' => true,
+            ]
+        );
+
+        $types = 'idssbsss';
+
+        $time = new Time();
+        $args = [
+            '_0_int' => 0,
+            '_1_float' => 1.0,
+            '_2_decimal' => '2.0',
+            '_3_varchar' => 'simple stringable',
+            '_4_blob' => sprintf("%08d", decbin(4)),
+            '_5_date' => $time->ISODate,
+            '_6_datetime' => $time,
+            // Yes, MariaDb attempts to stringify object.
             '_7_text' => new Stringable('simple stringable'),
         ];
-        TestHelper::queryParametersLogOnError($query, $types, $args);
-        $result = TestHelper::logOnError('query execute', $query, 'execute');
+
+        $query->setValidateParams(DbQuery::VALIDATE_STRINGABLE_EXEC);
+        $query->setValidateParams(0);
+        //static::expectException(\SimpleComplex\Database\Exception\DbQueryArgumentException::class);
+        $query->parameters($types, $args);
+
+        $result = $query->execute();
         static::assertInstanceOf(MariaDbResult::class, $result);
         static::assertSame(1, $result->affectedRows());
     }
@@ -375,23 +445,21 @@ class QueryArgumentTest extends TestCase
             '_5_date' => $time->ISODate,
             '_6_datetime' => $time->ISODate,
         ];
-        TestHelper::queryParametersLogOnError($query, $types, $args);
-        $result = TestHelper::logOnError('query execute', $query, 'execute');
+        $query->parameters($types, $args);
+        $result = $query->execute();
         static::assertInstanceOf(MariaDbResult::class, $result);
         static::assertSame(1, $result->affectedRows());
 
         $args['_1_float'] = 1.1;
         $args['_2_decimal'] = '2.2';
-        TestHelper::queryParametersLogOnError($query, $types, $args);
-        $result = TestHelper::logOnError('query execute', $query, 'execute');
+        $query->parameters($types, $args);
+        $result = $query->execute();
         static::assertInstanceOf(MariaDbResult::class, $result);
         static::assertSame(1, $result->affectedRows());
     }
 
     /**
      * @see ClientTest::testInstantiation()
-     *
-     * @expectedException \SimpleComplex\Database\Exception\DbQueryException
      */
     public function testSimpleQueryValidateFailureNone()
     {
@@ -419,8 +487,9 @@ class QueryArgumentTest extends TestCase
             '_5_date' => $time->ISODate,
             '_6_datetime' => $time->ISODate,
         ];
-        TestHelper::queryParametersLogOnError($query, $types, $args);
-        $result = TestHelper::logOnError('query execute', $query, 'execute');
+        $query->parameters($types, $args);
+        static::expectException(\SimpleComplex\Database\Exception\DbQueryException::class);
+        $result = $query->execute();
         static::assertInstanceOf(MariaDbResult::class, $result);
         static::assertSame(1, $result->affectedRows());
     }

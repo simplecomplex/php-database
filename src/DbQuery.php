@@ -510,6 +510,38 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
     }
 
     /**
+     * Set parameter validation option.
+     *
+     * @see DbQuery::$validateParams
+     * @see DbQuery::VALIDATE_FAILURE
+     * @see DbQuery::VALIDATE_PREPARE
+     * @see DbQuery::VALIDATE_EXECUTE
+     * @see DbQuery::VALIDATE_STRINGABLE_EXEC
+     * @see DbQuery::VALIDATE_ALWAYS
+     *
+     * @param int $option
+     *      Zero: turns all parameter validation off.
+     *
+     * @return DbQuery|$this
+     */
+    public function setValidateParams(int $option) : DbQuery
+    {
+        switch ($option) {
+            case 0:
+            case static::VALIDATE_FAILURE:
+            case static::VALIDATE_PREPARE:
+            case static::VALIDATE_EXECUTE:
+            case static::VALIDATE_STRINGABLE_EXEC:
+            case static::VALIDATE_ALWAYS:
+                $this->validateParams = $option;
+                return $this;
+        }
+        throw new \InvalidArgumentException(
+            $this->messagePrefix() . ' - arg $option value[' . $option . '] is not supported.'
+        );
+    }
+
+    /**
      * Flag that the sql contains LIKE clause(s).
      *
      * Affects parameter escaping: chars %_ won't be escaped.
@@ -893,6 +925,9 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
                     );
                 }
             }
+            // @todo: what about null?
+            // @todo: really shouldn't check when validateParams:0.
+
             switch ($tps{$i}) {
                 case 's':
                 case 'b':

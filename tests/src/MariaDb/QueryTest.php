@@ -17,7 +17,7 @@ use SimpleComplex\Database\MariaDbQuery;
 /**
  * @code
  * // CLI, in document root:
- * backend/vendor/bin/phpunit backend/vendor/simplecomplex/database/tests/src/MariaDb/QueryTest.php
+ * backend/vendor/bin/phpunit --do-not-cache-result backend/vendor/simplecomplex/database/tests/src/MariaDb/QueryTest.php
  * @endcode
  *
  * @package SimpleComplex\Tests\Database
@@ -28,8 +28,6 @@ class QueryTest extends TestCase
      * Throw \InvalidArgumentException: query arg $sql effectively empty.
      *
      * @see ClientTest::testInstantiation()
-     *
-     * @expectedException \InvalidArgumentException
      */
     public function testMalArgSqlEmpty()
     {
@@ -40,6 +38,7 @@ class QueryTest extends TestCase
          * @throws \InvalidArgumentException
          *      Arg $sql resolves to empty.
          */
+        static::expectException(\InvalidArgumentException::class);
         $client->query(MariaDbQuery::SQL_TRIM . MariaDbQuery::SQL_TRIM);
     }
 
@@ -47,8 +46,6 @@ class QueryTest extends TestCase
      * Throw \InvalidArgumentException: query option[result_mode] value invalid.
      *
      * @see ClientTest::testInstantiation()
-     *
-     * @expectedException \InvalidArgumentException
      */
     public function testMalOptionCursorModeBad()
     {
@@ -59,6 +56,7 @@ class QueryTest extends TestCase
          * @throws \InvalidArgumentException
          *      Arg $option['result_mode'] invalid.
          */
+        static::expectException(\InvalidArgumentException::class);
         $client->query(MariaDbQuery::SQL_SNIPPET['select_uuid'], [
             'result_mode' => 'rubbish',
         ]);

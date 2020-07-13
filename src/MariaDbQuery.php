@@ -95,7 +95,7 @@ class MariaDbQuery extends DbQuery
     const CLASS_RESULT = MariaDbResult::class;
 
     /**
-     * MySQLi attempts to stringify object, and fails (fatally)
+     * MariaDb attempts to stringify object, and fails (fatally)
      * if no __toString() method.
      *
      * @see DbQuery::AUTO_STRINGIFIES_OBJECT
