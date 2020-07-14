@@ -17,7 +17,7 @@ use SimpleComplex\Database\MsSqlQuery;
 /**
  * @code
  * // CLI, in document root:
- * backend/vendor/bin/phpunit --do-not-cache-result backend/vendor/simplecomplex/database/tests/src/MsSql/QueryTest.php
+backend/vendor/bin/phpunit --do-not-cache-result backend/vendor/simplecomplex/database/tests/src/MsSql/QueryTest.php
  * @endcode
  *
  * @package SimpleComplex\Tests\Database
@@ -28,8 +28,6 @@ class QueryTest extends TestCase
      * Throw \InvalidArgumentException: query arg $sql effectively empty.
      *
      * @see ClientTest::testInstantiation()
-     *
-     * @expectedException \InvalidArgumentException
      */
     public function testMalArgSqlEmpty()
     {
@@ -40,6 +38,7 @@ class QueryTest extends TestCase
          * @throws \InvalidArgumentException
          *      Arg $sql resolves to empty.
          */
+        static::expectException(\InvalidArgumentException::class);
         $client->query(MsSqlQuery::SQL_TRIM . MsSqlQuery::SQL_TRIM);
     }
 
@@ -47,8 +46,6 @@ class QueryTest extends TestCase
      * Throw \InvalidArgumentException: query option[result_mode] value invalid.
      *
      * @see ClientTest::testInstantiation()
-     *
-     * @expectedException \InvalidArgumentException
      */
     public function testMalOptionCursorModeBad()
     {
@@ -59,6 +56,7 @@ class QueryTest extends TestCase
          * @throws \InvalidArgumentException
          *      Arg $option['result_mode'] invalid.
          */
+        static::expectException(\InvalidArgumentException::class);
         $client->query(MsSqlQuery::SQL_SNIPPET['select_uuid'], [
             'result_mode' => 'rubbish',
         ]);

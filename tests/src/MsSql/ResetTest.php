@@ -19,7 +19,7 @@ use SimpleComplex\Database\MsSqlResult;
 /**
  * @code
  * // CLI, in document root:
- * backend/vendor/bin/phpunit --do-not-cache-result backend/vendor/simplecomplex/database/tests/src/MsSql/ResetTest.php
+backend/vendor/bin/phpunit --do-not-cache-result backend/vendor/simplecomplex/database/tests/src/MsSql/ResetTest.php
  * @endcode
  *
  * @package SimpleComplex\Tests\Database
@@ -41,16 +41,13 @@ class ResetTest extends TestCase
             'TRUNCATE TABLE child; TRUNCATE TABLE relationship; TRUNCATE TABLE parent'
         );
 
-        /** @var MsSqlResult $result */
-        $result = $query->execute();
-        static::assertInstanceOf(MsSqlResult::class, $result);
-
         /**
          * @throws \SimpleComplex\Database\Exception\DbQueryException
          *      Due to foreign key constraint.
          */
         static::expectException(\SimpleComplex\Database\Exception\DbQueryException::class);
-        while($result->nextSet() !== null) {}
+        $result = $query->execute();
+        static::assertInstanceOf(MsSqlResult::class, $result);
     }
 
     /**

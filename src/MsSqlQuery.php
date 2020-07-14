@@ -1591,7 +1591,7 @@ class MsSqlQuery extends DbQuery
                                 }
                                 if (!$valid) {
                                     $em = 'type[' . Utils::getType($value)
-                                        . '] is not string, integer, float or stringable object';
+                                        . '] is not string, integer, float or auto-stringable object';
                                 }
                             }
                             break;
@@ -1732,7 +1732,7 @@ class MsSqlQuery extends DbQuery
                                         case static::OUT_STRING_CODE_PAGE:
                                         case self::OUT_STRING_BINARY:
                                             $em = 'type[' . Utils::getType($value)
-                                                . '] is not string, integer, float or stringable object';
+                                                . '] is not string, integer, float or auto-stringable object';
                                             break;
                                         default:
                                             $type_supported = false;

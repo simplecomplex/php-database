@@ -254,21 +254,6 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
     const VALIDATE_STRINGABLE_EXEC = 64;
 
     /**
-     * Validate query parameters all-sorts:
-     * - on creation
-     * - before execution
-     * - on query failure
-     *
-     * And do all other checks (like VALIDATE_PARAMS_STRINGABLE_EXEC)
-     * if relevant and applicable for the DBMS context.
-     *
-     * Bitmask value.
-     *
-     * @see DbQuery::VALIDATE_PARAMS
-     */
-    const VALIDATE_ALWAYS = 127;
-
-    /**
      * Ought to be protected, but too costly since result instance
      * may use it repetetively; via the query instance.
      *
@@ -517,7 +502,6 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
      * @see DbQuery::VALIDATE_PREPARE
      * @see DbQuery::VALIDATE_EXECUTE
      * @see DbQuery::VALIDATE_STRINGABLE_EXEC
-     * @see DbQuery::VALIDATE_ALWAYS
      *
      * @param int $option
      *      Zero: turns all parameter validation off.
@@ -532,7 +516,6 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
             case static::VALIDATE_PREPARE:
             case static::VALIDATE_EXECUTE:
             case static::VALIDATE_STRINGABLE_EXEC:
-            case static::VALIDATE_ALWAYS:
                 $this->validateParams = $option;
                 return $this;
         }

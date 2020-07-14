@@ -21,7 +21,7 @@ use SimpleComplex\Time\Time;
 /**
  * @code
  * // CLI, in document root:
- * backend/vendor/bin/phpunit --do-not-cache-result backend/vendor/simplecomplex/database/tests/src/MsSql/QueryArgumentTest.php
+backend/vendor/bin/phpunit --do-not-cache-result backend/vendor/simplecomplex/database/tests/src/MsSql/QueryArgumentTest.php
  * @endcode
  *
  * @package SimpleComplex\Tests\Database
@@ -89,9 +89,9 @@ class QueryArgumentTest extends TestCase
             &$_6_datetime,
             &$_7_nvarchar,
         ];
-        TestHelper::queryPrepareLogOnError($query, $types, $args);
+        $query->prepare($types, $args);
         /** @var MsSqlResult $result */
-        $result = TestHelper::logOnError('query execute', $query, 'execute');
+        $result = $query->execute();
         static::assertInstanceOf(MsSqlResult::class, $result);
         $affected_rows = $result->affectedRows();
         static::assertIsInt($affected_rows);
@@ -100,7 +100,7 @@ class QueryArgumentTest extends TestCase
         $_1_float = 1.1;
         $_2_decimal = '2.2';
         $_3_varchar = 'arguments referred 2';
-        $result = TestHelper::logOnError('query execute', $query, 'execute');
+        $result = $query->execute();
         static::assertInstanceOf(MsSqlResult::class, $result);
         static::assertSame(1, $result->affectedRows());
     }
@@ -138,14 +138,14 @@ class QueryArgumentTest extends TestCase
             '' . $time,
             'n varchar',
         ];
-        TestHelper::queryPrepareLogOnError($query, $types, $args);
-        $result = TestHelper::logOnError('query execute', $query, 'execute');
+        $query->prepare($types, $args);
+        $result = $query->execute();
         static::assertInstanceOf(MsSqlResult::class, $result);
         static::assertSame(1, $result->affectedRows());
 
         $args[1] = 1.1;
         $args[2] = '2.2';
-        $result = TestHelper::logOnError('query execute', $query, 'execute');
+        $result = $query->execute();
         static::assertInstanceOf(MsSqlResult::class, $result);
         static::assertSame(1, $result->affectedRows());
     }
@@ -183,35 +183,35 @@ class QueryArgumentTest extends TestCase
             '_6_datetime' => '' . $time,
             '_7_nvarchar' => 'n varchar',
         ];
-        TestHelper::queryPrepareLogOnError($query, $types, $args);
-        $result = TestHelper::logOnError('query execute', $query, 'execute');
+        $query->prepare($types, $args);
+        $result = $query->execute();
         static::assertInstanceOf(MsSqlResult::class, $result);
         static::assertSame(1, $result->affectedRows());
 
         $args['_1_float'] = 1.1;
         $args['_2_decimal'] = 2.2;
-        $result = TestHelper::logOnError('query execute', $query, 'execute');
+        $result = $query->execute();
         static::assertInstanceOf(MsSqlResult::class, $result);
         static::assertSame(1, $result->affectedRows());
     }
 
     /**
      * Does the DBMS stringify objects having __toString() method?
+     * No.
      *
      * @see ClientTest::testInstantiation()
-     *
-     * @expectedException \SimpleComplex\Database\Exception\DbRuntimeException
      */
     public function testQueryArgumentsStringable()
     {
         $client = (new ClientTest())->testInstantiation();
 
+        /** @var MsSqlQuery $query */
         $query = $client->query(
             'INSERT INTO typish (_0_int, _1_float, _2_decimal, _3_varchar, _4_blob, _5_date, _6_datetime, _7_nvarchar)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
             [
                 'name' => __FUNCTION__,
-                'validate_params' => static::VALIDATE_PARAMS,
+                'validate_params' => 0,
                 'sql_minify' => true,
                 'affected_rows' => true,
             ]
@@ -231,30 +231,15 @@ class QueryArgumentTest extends TestCase
             // \DateTime gets successfully stringed.
             '_6_datetime' => new \DateTime('2000-01-01'),
 
-            '_7_nvarchar' => new \DateTime('2000-01-01'), //'stringable', //new Stringable('stringable'),
+            //'_7_nvarchar' => new \DateTime('2000-01-01'), //'stringable', //new Stringable('stringable'),
+            '_7_nvarchar' => new Stringable('stringable'),
         ];
-        TestHelper::queryPrepareLogOnError($query, $types, $args);
-        $result = TestHelper::logOnError('query execute', $query, 'execute');
-        static::assertInstanceOf(MsSqlResult::class, $result);
-        static::assertSame(1, $result->affectedRows());
 
-        /**
-         * Sqlsrv apparantly doesn't use an object's __toString() method.
-         * Sqlsrv \DateTime handling must be class specific;
-         * see \DateTime argument right above.
-         *
-         * If
-         * @see DbQuery::VALIDATE_PARAMS
-         * is
-         * @see DbQuery::VALIDATE_ALWAYS
-         * @throws \SimpleComplex\Database\Exception\DbQueryArgumentException
-         *
-         * Else
-         * @throws \SimpleComplex\Database\Exception\DbRuntimeException
-         */
-        $args['_7_nvarchar'] = new Stringable('stringable');
-
-        $result = TestHelper::logOnError('query execute', $query, 'execute');
+//        static::expectException(\SimpleComplex\Database\Exception\DbQueryArgumentException::class);
+//        $query->setValidateParams(DbQuery::VALIDATE_PREPARE)->prepare($types, $args);
+        $query->setValidateParams(DbQuery::VALIDATE_FAILURE)->prepare($types, $args);
+        static::expectException(\SimpleComplex\Database\Exception\DbRuntimeException::class);
+        $result = $query->execute();
         static::assertInstanceOf(MsSqlResult::class, $result);
         static::assertSame(1, $result->affectedRows());
     }
@@ -342,14 +327,14 @@ class QueryArgumentTest extends TestCase
                 SQLSRV_SQLTYPE_NVARCHAR('max'),
             ],
         ];
-        TestHelper::queryPrepareLogOnError($query, $types, $args);
-        $result = TestHelper::logOnError('query execute', $query, 'execute');
+        $query->prepare($types, $args);
+        $result = $query->execute();
         static::assertInstanceOf(MsSqlResult::class, $result);
         static::assertSame(1, $result->affectedRows());
 
         $_1_float = 1.1;
         $_2_decimal = '2.2';
-        $result = TestHelper::logOnError('query execute', $query, 'execute');
+        $result = $query->execute();
         static::assertInstanceOf(MsSqlResult::class, $result);
         static::assertSame(1, $result->affectedRows());
     }
@@ -428,14 +413,14 @@ class QueryArgumentTest extends TestCase
                 SQLSRV_SQLTYPE_NVARCHAR('max'),
             ],
         ];
-        TestHelper::queryPrepareLogOnError($query, $types, $args);
-        $result = TestHelper::logOnError('query execute', $query, 'execute');
+        $query->prepare($types, $args);
+        $result = $query->execute();
         static::assertInstanceOf(MsSqlResult::class, $result);
         static::assertSame(1, $result->affectedRows());
 
         $args[1][0] = 1.1;
         $args[2][0] = '2.2';
-        $result = TestHelper::logOnError('query execute', $query, 'execute');
+        $result = $query->execute();
         static::assertInstanceOf(MsSqlResult::class, $result);
         static::assertSame(1, $result->affectedRows());
     }
@@ -514,14 +499,14 @@ class QueryArgumentTest extends TestCase
                 SQLSRV_SQLTYPE_NVARCHAR('max'),
             ],
         ];
-        TestHelper::queryPrepareLogOnError($query, $types, $args);
-        $result = TestHelper::logOnError('query execute', $query, 'execute');
+        $query->prepare($types, $args);
+        $result = $query->execute();
         static::assertInstanceOf(MsSqlResult::class, $result);
         static::assertSame(1, $result->affectedRows());
 
         $args['_1_float'][0] = 1.1;
         $args['_2_decimal'][0] ='2.2';
-        $result = TestHelper::logOnError('query execute', $query, 'execute');
+        $result = $query->execute();
         static::assertInstanceOf(MsSqlResult::class, $result);
         static::assertSame(1, $result->affectedRows());
     }
@@ -564,8 +549,8 @@ class QueryArgumentTest extends TestCase
             '_6_datetime' => $time,
             '_7_nvarchar' => 'n varchar',
         ];
-        TestHelper::queryPrepareLogOnError($query, $types, $args);
-        $result = TestHelper::logOnError('query execute', $query, 'execute');
+        $query->prepare($types, $args);
+        $result = $query->execute();
         static::assertInstanceOf(MsSqlResult::class, $result);
         static::assertSame(1, $result->affectedRows());
     }
@@ -616,11 +601,11 @@ class QueryArgumentTest extends TestCase
             ],
             '_7_nvarchar' => 'n varchar',
         ];
-        TestHelper::queryPrepareLogOnError($query, $types, $args);
+        $query->prepare($types, $args);
 
         //TestHelper::logVariable(__FUNCTION__ . ' query', $query);
 
-        $result = TestHelper::logOnError('query execute', $query, 'execute');
+        $result = $query->execute();
         static::assertInstanceOf(MsSqlResult::class, $result);
         static::assertSame(1, $result->affectedRows());
     }
@@ -642,7 +627,7 @@ class QueryArgumentTest extends TestCase
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [
                 'name' => __FUNCTION__,
-                'validate_params' => static::VALIDATE_PARAMS,
+                'validate_params' => DbQuery::VALIDATE_FAILURE,
                 'sql_minify' => true,
                 'affected_rows' => true,
             ]
@@ -684,16 +669,16 @@ class QueryArgumentTest extends TestCase
                 SQLSRV_SQLTYPE_VARBINARY('max'),
             ],
             '_5_date' => [
-                $time,
+                $time->ISODate,
                 SQLSRV_PARAM_IN,
                 null,
                 SQLSRV_SQLTYPE_DATE,
             ],
             '_6_datetime' => [
-                $time,
+                $time->ISODateTime,
                 SQLSRV_PARAM_IN,
                 null,
-                //SQLSRV_SQLTYPE_DATETIME2,
+                // Not SQLSRV_SQLTYPE_DATETIME2,
                 SQLSRV_SQLTYPE_DATETIME,
             ],
             '_7_nvarchar' => [
@@ -721,8 +706,8 @@ class QueryArgumentTest extends TestCase
                 SQLSRV_SQLTYPE_UNIQUEIDENTIFIER,
             ],
         ];
-        TestHelper::queryPrepareLogOnError($query, $types, $args);
-        $result = TestHelper::logOnError('query execute', $query, 'execute');
+        $query->prepare($types, $args);
+        $result = $query->execute();
         static::assertInstanceOf(MsSqlResult::class, $result);
         static::assertSame(1, $result->affectedRows());
 
@@ -731,11 +716,15 @@ class QueryArgumentTest extends TestCase
         $args['_1_float'][0] = '1.1';
         $args['_2_decimal'][0] ='2.2';
         $args['_3_varchar'][0] = 'type qualified strict updated';
-        $args['_5_date'][0] = $time->ISODate;
-        //$args['_5_date'][0] = 'cykel';
-        $args['_6_datetime'][0] = $time->ISODate;
+        // OK: SQLSRV_SQLTYPE_DATE accepts full ISO.
+        $args['_5_date'][0] = $time;
+        // Fails: SQLSRV_SQLTYPE_DATETIME (not SQLSRV_SQLTYPE_DATETIME2)
+        // doesn't accept Time stringified to full ISO; should be YYYY-MM-DD HH:ii:ss.
+        $args['_6_datetime'][0] = $time;
         $args['_8_bit'][0] = true;
-        $result = TestHelper::logOnError('query execute', $query, 'execute');
+
+        static::expectException(\SimpleComplex\Database\Exception\DbRuntimeException::class);
+        $result = $query->execute();
         static::assertInstanceOf(MsSqlResult::class, $result);
         static::assertSame(1, $result->affectedRows());
     }
@@ -772,14 +761,14 @@ class QueryArgumentTest extends TestCase
             '_3_varchar' => MsSqlQuery::argIn(MsSqlQuery::IN_VARCHAR, 'type qualify helpers'),
             '_4_blob' => MsSqlQuery::argIn(MsSqlQuery::IN_VARBINARY, sprintf("%08d", decbin(4))),
             '_5_date' => MsSqlQuery::argIn(MsSqlQuery::IN_DATE, $time),
-            '_6_datetime' => MsSqlQuery::argIn(MsSqlQuery::IN_DATETIME, $time),
+            '_6_datetime' => MsSqlQuery::argIn(MsSqlQuery::IN_DATETIME2, $time),
             '_7_nvarchar' => MsSqlQuery::argIn(MsSqlQuery::IN_NVARCHAR, 'n varchar'),
             '_8_bit' => MsSqlQuery::argIn(MsSqlQuery::IN_BIT, 0),
             '_9_time' => MsSqlQuery::argIn(MsSqlQuery::IN_TIME, '10:30:01'),
             '_10_uuid' => MsSqlQuery::argIn(MsSqlQuery::IN_UUID, '123e4567-e89b-12d3-a456-426655440000'),
         ];
-        TestHelper::queryPrepareLogOnError($query, $types, $args);
-        $result = TestHelper::logOnError('query execute', $query, 'execute');
+        $query->prepare($types, $args);
+        $result = $query->execute();
         static::assertInstanceOf(MsSqlResult::class, $result);
         static::assertSame(1, $result->affectedRows());
 
@@ -792,7 +781,7 @@ class QueryArgumentTest extends TestCase
         //$args['_5_date'][0] = 'cykel';
         $args['_6_datetime'][0] = $time->ISODate;
         $args['_8_bit'][0] = true;
-        $result = TestHelper::logOnError('query execute', $query, 'execute');
+        $result = $query->execute();
         static::assertInstanceOf(MsSqlResult::class, $result);
         static::assertSame(1, $result->affectedRows());
     }
@@ -801,8 +790,6 @@ class QueryArgumentTest extends TestCase
      * Does the DBMS stringify objects having __toString() method?
      *
      * @see ClientTest::testInstantiation()
-     *
-     * @expectedException \SimpleComplex\Database\Exception\DbRuntimeException
      */
     public function testSimpleQueryArgumentsStringable()
     {
@@ -848,8 +835,9 @@ class QueryArgumentTest extends TestCase
              */
             '_7_nvarchar' => new Stringable('simple stringable'),
         ];
-        TestHelper::queryParametersLogOnError($query, $types, $args);
-        $result = TestHelper::logOnError('query execute', $query, 'execute');
+        $query->parameters($types, $args);
+        static::expectException(\SimpleComplex\Database\Exception\DbRuntimeException::class);
+        $result = $query->execute();
         static::assertInstanceOf(MsSqlResult::class, $result);
         static::assertSame(1, $result->affectedRows());
     }
@@ -885,23 +873,21 @@ class QueryArgumentTest extends TestCase
             '_6_datetime' => $time,
             '_7_nvarchar' => 'whatever',
         ];
-        TestHelper::queryParametersLogOnError($query, $types, $args);
-        $result = TestHelper::logOnError('query execute', $query, 'execute');
+        $query->parameters($types, $args);
+        $result = $query->execute();
         static::assertInstanceOf(MsSqlResult::class, $result);
         static::assertSame(1, $result->affectedRows());
 
         $args['_1_float'] = 1.1;
         $args['_2_decimal'] = '2.2';
-        TestHelper::queryParametersLogOnError($query, $types, $args);
-        $result = TestHelper::logOnError('query execute', $query, 'execute');
+        $query->parameters($types, $args);
+        $result = $query->execute();
         static::assertInstanceOf(MsSqlResult::class, $result);
         static::assertSame(1, $result->affectedRows());
     }
 
     /**
      * @see ClientTest::testInstantiation()
-     *
-     * @expectedException \SimpleComplex\Database\Exception\DbQueryException
      */
     public function testSimpleQueryValidateFailureNone()
     {
@@ -930,8 +916,9 @@ class QueryArgumentTest extends TestCase
             '_6_datetime' => $time,
             '_7_nvarchar' => 'whatever',
         ];
-        TestHelper::queryParametersLogOnError($query, $types, $args);
-        $result = TestHelper::logOnError('query execute', $query, 'execute');
+        $query->parameters($types, $args);
+        static::expectException(\SimpleComplex\Database\Exception\DbQueryException::class);
+        $result = $query->execute();
         static::assertInstanceOf(MsSqlResult::class, $result);
         static::assertSame(1, $result->affectedRows());
     }
