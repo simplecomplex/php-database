@@ -98,7 +98,7 @@ class MariaDbClient extends DbClient
         // str. default: CHARACTER_SET
         'character_set' => 'character_set',
         // 0|1. default: 1.
-        'result_typed_int_float' => 'MYSQLI_OPT_INT_AND_FLOAT_NATIVE',
+        'result_typed_numbers' => 'MYSQLI_OPT_INT_AND_FLOAT_NATIVE',
         // SSL (TLS) connection vars:
         // ssl_private_key triggers detection of all SSL vars.
         // And do consider using flag MYSQLI_CLIENT_SSL_DONT_VERIFY_SERVER_CERT.
@@ -124,14 +124,14 @@ class MariaDbClient extends DbClient
      * Apparantly result set of prepared statement always types ints and floats
      * when using the mysqlnd driver.
      *
-     * Constructor $databaseInfo option (bool) result_typed_int_float.
+     * Constructor $databaseInfo option (bool) result_typed_numbers.
      *
      * @see https://www.php.net/manual/en/mysqli.options.php
      *
      * @var int
      *      0|1.
      */
-    const RESULT_TYPED_FLOAT_INT = 1;
+    const RESULT_TYPED_NUMBERS = 1;
 
     /**
      * @var string
@@ -498,14 +498,14 @@ class MariaDbClient extends DbClient
             /**
              * Result typed int and float.
              * @see MariaDbClient::OPTION_SHORTHANDS
-             * @see MariaDbClient::RESULT_TYPED_FLOAT_INT
+             * @see MariaDbClient::RESULT_TYPED_NUMBERS
              */
-            if (isset($options['result_typed_int_float'])) {
-                $options['MYSQLI_OPT_INT_AND_FLOAT_NATIVE'] = (int) $options['result_typed_int_float'];
-                unset($options['result_typed_int_float']);
+            if (isset($options['result_typed_numbers'])) {
+                $options['MYSQLI_OPT_INT_AND_FLOAT_NATIVE'] = (int) $options['result_typed_numbers'];
+                unset($options['result_typed_numbers']);
             }
             elseif (!isset($options['MYSQLI_OPT_INT_AND_FLOAT_NATIVE'])) {
-                $options['MYSQLI_OPT_INT_AND_FLOAT_NATIVE'] = static::RESULT_TYPED_FLOAT_INT;
+                $options['MYSQLI_OPT_INT_AND_FLOAT_NATIVE'] = static::RESULT_TYPED_NUMBERS;
             }
 
             // SSL (TLS) connection vars.
