@@ -21,7 +21,7 @@ use SimpleComplex\Database\MsSqlClient;
  *
  * @code
  * // CLI, in document root:
- * backend/vendor/bin/phpunit --do-not-cache-result backend/vendor/simplecomplex/database/tests/src/MsSql/ClientTest.php
+backend/vendor/bin/phpunit --do-not-cache-result backend/vendor/simplecomplex/database/tests/src/MsSql/ClientTest.php
  * @endcode
  *
  * @package SimpleComplex\Tests\Database

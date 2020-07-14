@@ -86,11 +86,12 @@ class MsSqlResult extends DbResult
         $count = @sqlsrv_rows_affected(
             $this->statement
         );
-        // sqlsrv_rows_affected() moves to first result set.
-        // However doesn't move to next on later call.
-        if ($this->setIndex < 0) {
-            ++$this->setIndex;
-        }
+        /**
+         * sqlsrv_rows_affected() doesn't move neither result set nor row.
+         * @see \sqlsrv_rows_affected()
+         * @see MsSqlResult::$setIndex
+         * @see MsSqlResult::$rowIndex
+         */
         if (($count && $count > 0) || $count === 0) {
             return $count;
         }
@@ -129,7 +130,7 @@ class MsSqlResult extends DbResult
      * @see https://blogs.msdn.microsoft.com/nickhodge/2008/09/22/sql-server-driver-for-php-last-inserted-row-id/
      * @see https://docs.microsoft.com/en-us/sql/t-sql/functions/scope-identity-transact-sql
      *
-     *@param string|null $getAsType
+     * @param string|null $getAsType
      *      Values: i|int|integer|d|float|s|string.
      *
      * @return string|int|float|null

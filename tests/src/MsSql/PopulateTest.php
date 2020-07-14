@@ -56,11 +56,9 @@ class PopulateTest extends TestCase
         /** @var MsSqlResult $result_insert */
         $result_insert = $query_insert->execute();
         static::assertInstanceOf(MsSqlResult::class, $result_insert);
-        static::assertSame(1, $result_insert->affectedRows());
-
-        // insertId() doesn't work currently :-(
-//        $insert_id = $result_insert->insertId('i');
-//        static::assertIsInt($insert_id);
+        $insert_id = $result_insert->insertId('i');
+        static::assertIsInt($insert_id, 'insertId');
+        static::assertSame(1, $insert_id);
 
         /** @noinspection SqlResolve */
         /** @var MsSqlQuery $query_select */
@@ -68,9 +66,7 @@ class PopulateTest extends TestCase
             'SELECT * FROM parent WHERE id = ?'
         );
         $args_select = [
-            // insertId() doesn't work currently :-(
-            //'id' => $insert_id,
-            'id' => 1,
+            'id' => $insert_id,
         ];
         $query_select->prepare('i', $args_select);
         /** @var MsSqlResult $result_select */
@@ -84,10 +80,6 @@ class PopulateTest extends TestCase
         $args_insert['birthday'] = '1970-01-02';
         $result_insert = $query_insert->execute();
         static::assertInstanceOf(MsSqlResult::class, $result_insert);
-        static::assertSame(1, $result_insert->affectedRows());
-
-        // insertId() doesn't work currently :-(
-        static::expectException(\SimpleComplex\Database\Exception\DbResultException::class);
         $insert_id = $result_insert->insertId('i');
         static::assertIsInt($insert_id);
 
@@ -101,10 +93,9 @@ class PopulateTest extends TestCase
             ]
         );
         /** @var MsSqlResult $result_select */
-        $args = [];
         $result_select = $query_select->execute();
         $num_rows = $result_select->numRows();
-        $all_rows = $result_select->fetchArrayAll();
+        static::assertSame(2, $num_rows);
     }
 
 }

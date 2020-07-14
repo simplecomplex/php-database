@@ -1,0 +1,58 @@
+<?php
+/**
+ * SimpleComplex PHP Database
+ * @link      https://github.com/simplecomplex/php-database
+ * @copyright Copyright (c) 2018-2020 Jacob Friis Mathiasen
+ * @license   https://github.com/simplecomplex/php-database/blob/master/LICENSE (MIT License)
+ */
+declare(strict_types=1);
+
+namespace SimpleComplex\Tests\Database\MsSql;
+
+use PHPUnit\Framework\TestCase;
+
+// No do because static::expectException() doesn't work.
+
+/**
+ * @code
+ * // CLI, in document root:
+backend/vendor/bin/phpunit --do-not-cache-result backend/vendor/simplecomplex/database/tests/src/MsSql/AllTest.php
+ * @endcode
+ *
+ * @package SimpleComplex\Tests\Database
+ */
+class AllTest extends TestCase
+{
+    /**
+     * Throw \InvalidArgumentException: query arg $sql effectively empty.
+     *
+     * @see ClientTest::testInstantiation()
+     */
+    public function testAll()
+    {
+
+        $classes = [
+            'ClientTest',
+            'ResetTest',
+            'PopulateTest',
+            'QueryTest',
+            'QueryArgumentTest',
+            'ResultTest',
+        ];
+
+        foreach ($classes as $class) {
+            $qualified = __NAMESPACE__ . '\\' . $class;
+            $o = new $qualified();
+
+            $rflct = new \ReflectionClass($qualified);
+            $methods = $rflct->getMethods(\ReflectionMethod::IS_PUBLIC);
+            foreach ($methods as $method) {
+                if (!$method->isStatic()) {
+                    $o->{$method->name}();
+                }
+            }
+        }
+
+        static::assertSame(true, true);
+    }
+}

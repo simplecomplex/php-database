@@ -279,6 +279,8 @@ class ResultTest extends TestCase
 
         $result = $query->execute();
         static::assertInstanceOf(MsSqlResult::class, $result);
+        // affectedRows() _before_ insertId().
+        static::assertSame(1, $result->affectedRows());
         $insert_id = $result->insertId('i');
         static::assertIsInt($insert_id);
         static::assertNotEmpty($insert_id);
@@ -292,6 +294,8 @@ class ResultTest extends TestCase
         $insert_id = $result->insertId('d');
         static::assertIsFloat($insert_id);
         static::assertNotEmpty($insert_id);
+        // affectedRows() _after_ insertId().
+        static::assertSame(1, $result->affectedRows());
 
         $args['_0_int'] = 2;
         $args['_1_float'] = 3.3;
@@ -302,6 +306,21 @@ class ResultTest extends TestCase
         $insert_id = $result->insertId('s');
         static::assertIsString($insert_id);
         static::assertNotEmpty($insert_id);
+
+        // Insert none.
+        $result = $client->query(
+'INSERT INTO typish (_0_int, _1_float, _2_decimal, _3_varchar, _4_blob, _5_date, _6_datetime, _7_nvarchar)
+SELECT ?, ?, ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT * FROM parent WHERE id = 0)'
+,
+            [
+                'name' => __FUNCTION__,
+                'validate_params' => static::VALIDATE_PARAMS,
+                'insert_id' => true,
+            ]
+        )->prepare($types, $args)->execute();
+        static::assertSame(0, $result->affectedRows());
+        $insert_id = $result->insertId('i');
+        static::assertNull($insert_id);
     }
 
     /**

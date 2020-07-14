@@ -20,7 +20,7 @@ use SimpleComplex\Database\MariaDbClient;
 /**
  * @code
  * // CLI, in document root:
- * backend/vendor/bin/phpunit --do-not-cache-result backend/vendor/simplecomplex/database/tests/src/MariaDb/SslTest.php
+backend/vendor/bin/phpunit --do-not-cache-result backend/vendor/simplecomplex/database/tests/src/MariaDb/SslTest.php
  * @endcode
  *
  * @package SimpleComplex\Tests\Database

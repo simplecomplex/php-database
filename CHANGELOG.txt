@@ -4,6 +4,9 @@ SimpleComplex/Database 3.x, 2020-07-14
 - MariaDb simple query parameters shan't validate parameters on preparation
   unless validateParams options says so.
 - DbQuery::VALIDATE_ALWAYS constant removed; effect never implemented.
+- MsSql affectedRows() does _not_ move result set or row; fixed that
+  insertId() didn't work when called after affectedRows().
+- Tests phpunit 8 compatible; and working.
 
 SimpleComplex/Database 3.x, 2020-07-13
 --------------------------------------
