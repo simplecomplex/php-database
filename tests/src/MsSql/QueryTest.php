@@ -17,7 +17,7 @@ use SimpleComplex\Database\MsSqlQuery;
 /**
  * @code
  * // CLI, in document root:
- * vendor/bin/phpunit vendor/simplecomplex/database/tests/src/MsSql/QueryTest.php
+ * backend/vendor/bin/phpunit --do-not-cache-result backend/vendor/simplecomplex/database/tests/src/MsSql/QueryTest.php
  * @endcode
  *
  * @package SimpleComplex\Tests\Database

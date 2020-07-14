@@ -327,6 +327,57 @@ class QueryArgumentTest extends TestCase
     }
 
     /**
+     * @see ClientTest::testInstantiation()
+     */
+    public function testQueryArgumentsNull()
+    {
+        $client = (new ClientTest())->testInstantiation();
+
+        /** @var MariaDbQuery $query */
+        $query = $client->query(
+            'INSERT INTO typish_null (_0_int, _1_float, _2_decimal, _3_varchar, _4_blob, _5_date, _6_datetime, _7_text)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            [
+                'validate_params' => 0,//static::VALIDATE_PARAMS,
+            ]
+        );
+        $query_smpl = clone $query;
+
+        $types = 'idssbsss';
+
+        $_0_int = null;
+        $_1_float = null;
+        $_2_decimal = null;
+        $_3_varchar = null;
+        $_4_blob = null;
+        $_5_date = null;
+        $_6_datetime = null;
+        $_7_text = null;
+
+        $args = [
+            &$_0_int,
+            &$_1_float,
+            &$_2_decimal,
+            &$_3_varchar,
+            &$_4_blob,
+            &$_5_date,
+            &$_6_datetime,
+            &$_7_text,
+        ];
+        $query->prepare($types, $args);
+        /** @var MariaDbResult $result */
+        $result = $query->execute();
+        static::assertInstanceOf(MariaDbResult::class, $result);
+
+        $result = $query_smpl->parameters($types, $args)->execute();
+        static::assertInstanceOf(MariaDbResult::class, $result);
+
+        static::expectException(\SimpleComplex\Database\Exception\DbQueryArgumentException::class);
+        $result = $query_smpl->setValidateParams(DbQuery::VALIDATE_PREPARE)->parameters($types, $args)->execute();
+        static::assertInstanceOf(MariaDbResult::class, $result);
+    }
+
+    /**
      * Test that this abstraction always check for non-stringable object
      * parameter.
      *

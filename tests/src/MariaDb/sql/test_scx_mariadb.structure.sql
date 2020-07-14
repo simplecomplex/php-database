@@ -69,21 +69,23 @@ CREATE TABLE typish (
     PRIMARY KEY (id)
 );
 
+DROP TABLE IF EXISTS typish_null;
+CREATE TABLE typish_null (
+    id int(11) NOT NULL AUTO_INCREMENT,
+    _0_int INT,
+    _1_float FLOAT(24),
+    _2_decimal DECIMAL(14,2),
+    _3_varchar VARCHAR(255),
+    _4_blob BLOB,
+    _5_date DATE,
+    _6_datetime DATETIME(6),
+    _7_text TEXT,
+    PRIMARY KEY (id)
+);
+
 DROP TABLE IF EXISTS emptyish;
 CREATE TABLE emptyish (
     id INT(11) NOT NULL AUTO_INCREMENT,
     whatever VARCHAR(255) NOT NULL,
-    PRIMARY KEY (id)
-);
-
-DROP TABLE IF EXISTS rubbish;
-CREATE TABLE rubbish (
-    id INT(11) NOT NULL AUTO_INCREMENT,
-    PRIMARY KEY (id)
-);
-
-DROP TABLE IF EXISTS trash;
-CREATE TABLE trash (
-    id INT(11) NOT NULL AUTO_INCREMENT,
     PRIMARY KEY (id)
 );

@@ -10,7 +10,6 @@ declare(strict_types=1);
 namespace SimpleComplex\Tests\Database\MsSql;
 
 use PHPUnit\Framework\TestCase;
-use SimpleComplex\Tests\Database\TestHelper;
 
 use SimpleComplex\Time\Time;
 

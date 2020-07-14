@@ -40,7 +40,13 @@ class ConfigurationTest extends TestCase
             'pass' => '1234',
         ],
         'mssql' => [
-            'host' => 'localhost',
+            /*
+docker run -e "ACCEPT_EULA=Y" -e "SA_PASSWORD=1234*Sql" \
+   -p 1433:1433 --name docker-sqlsrv \
+   -v /data/data/docker-container/mssqlsrv-0/data:/var/opt/mssql/data \
+   -d mcr.microsoft.com/mssql/server:2017-latest
+             */
+            'host' => '172.17.0.1',
             // Zero: use default port.
             //'port' => 0,
             'database' => 'test_scx_mssql',

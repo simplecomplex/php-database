@@ -10,7 +10,6 @@ declare(strict_types=1);
 namespace SimpleComplex\Tests\Database\MsSql;
 
 use PHPUnit\Framework\TestCase;
-use SimpleComplex\Tests\Database\TestHelper;
 
 use SimpleComplex\Database\Interfaces\DbClientInterface;
 use SimpleComplex\Database\MsSqlClient;
@@ -20,7 +19,7 @@ use SimpleComplex\Database\MsSqlResult;
 /**
  * @code
  * // CLI, in document root:
- * backend/vendor/bin/phpunit backend/vendor/simplecomplex/database/tests/src/MsSql/ResetTest.php
+ * backend/vendor/bin/phpunit --do-not-cache-result backend/vendor/simplecomplex/database/tests/src/MsSql/ResetTest.php
  * @endcode
  *
  * @package SimpleComplex\Tests\Database
@@ -31,8 +30,6 @@ class ResetTest extends TestCase
      * Throw DbQueryException: can't truncate due to foreign key constraint.
      *
      * @see ClientTest::testInstantiation
-     *
-     * @expectedException \SimpleComplex\Database\Exception\DbQueryException
      */
     public function testMalTruncateForeignKeys()
     {
@@ -52,6 +49,7 @@ class ResetTest extends TestCase
          * @throws \SimpleComplex\Database\Exception\DbQueryException
          *      Due to foreign key constraint.
          */
+        static::expectException(\SimpleComplex\Database\Exception\DbQueryException::class);
         while($result->nextSet() !== null) {}
     }
 
@@ -108,7 +106,7 @@ REFERENCES parent(id)
         $result = $query->execute();
         static::assertInstanceOf(MsSqlResult::class, $result);
         // Traversing all result sets is obsolete when using MsSql, but anyway.
-        TestHelper::logOnError('traverse all result sets', $result, 'depleteSets');
+        $result->depleteSets();
     }
 
     /**
@@ -124,7 +122,7 @@ REFERENCES parent(id)
         $client = (new ClientTest())->testInstantiation();
 
         // Get .sql file containing inserts.
-        $file_path = TestHelper::fileFind('MsSql/sql/test_scx_mssql.structure.sql', 'tests');
+        $file_path = dirname(__FILE__) . '/sql/test_scx_mssql.structure.sql';
         static::assertIsString($file_path);
         static::assertNotEmpty($file_path);
 
@@ -143,7 +141,7 @@ REFERENCES parent(id)
         $result = $query->execute();
         static::assertInstanceOf(MsSqlResult::class, $result);
         // Traversing all result sets is obsolete when using MsSql, but anyway.
-        TestHelper::logOnError('traverse all result sets', $result, 'depleteSets');
+        $result->depleteSets();
 
         return $client;
     }
@@ -161,7 +159,7 @@ REFERENCES parent(id)
         $client = (new ClientTest())->testInstantiation();
 
         // Get .sql file containing inserts.
-        $file_path = TestHelper::fileFind('MsSql/sql/test_scx_mssql.data.sql', 'tests');
+        $file_path = dirname(__FILE__) . '/sql/test_scx_mssql.data.sql';
         static::assertIsString($file_path);
         static::assertNotEmpty($file_path);
 
@@ -180,7 +178,7 @@ REFERENCES parent(id)
         $result = $query->execute();
         static::assertInstanceOf(MsSqlResult::class, $result);
         // Traversing all result sets is obsolete when using MsSql, but anyway.
-        TestHelper::logOnError('traverse all result sets', $result, 'depleteSets');
+        $result->depleteSets();
 
         return $client;
     }

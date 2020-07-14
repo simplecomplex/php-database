@@ -916,35 +916,38 @@ abstract class DbQuery extends Explorable implements DbQueryInterface
         $sql_with_args = '';
         for ($i = 0; $i < $n_params; ++$i) {
             $value = $args[$i];
-            // Validate always; could be hazardous on invalid value.
-            if (!is_scalar($value) || is_bool($value)) {
-                if (!is_object($value) || !method_exists($value, '__toString')) {
-                    throw new DbQueryArgumentException(
-                        $this->messagePrefix() . ' - arg $arguments index[' . $i . '] type[' . Utils::getType($value)
-                        . '] is not integer, float, string or object having __toString() method.'
-                    );
-                }
+            if ($value === null) {
+                $value = 'NULL';
             }
-            // @todo: what about null?
-            // @todo: really shouldn't check when validateParams:0.
-
-            switch ($tps{$i}) {
-                case 's':
-                case 'b':
-                    $value = "'" . $this->escapeString('' . $value) . "'";
-                    break;
-                case 'i':
-                case 'd':
-                    break;
-                default:
-                    if (in_array($tps{$i}, static::PARAMETER_TYPE_CHARS)) {
-                        // Unlikely if previous validateArguments().
+            else {
+                if (($this->validateParams & DbQuery::VALIDATE_PREPARE)
+                    && (!is_scalar($value) || is_bool($value))
+                ) {
+                    if (!is_object($value) || !method_exists($value, '__toString')) {
                         throw new DbQueryArgumentException(
-                            $this->messagePrefix()
-                            . ' - arg $types[' . $types . '] index[' . $i . '] char[' . $tps{$i} . '] is not '
-                            . join('|', static::PARAMETER_TYPE_CHARS) . '.'
+                            $this->messagePrefix() . ' - arg $arguments index[' . $i . '] type[' . Utils::getType($value)
+                            . '] is not integer, float, string or object having __toString() method.'
                         );
                     }
+                }
+                switch ($tps{$i}) {
+                    case 's':
+                    case 'b':
+                        $value = "'" . $this->escapeString('' . $value) . "'";
+                        break;
+                    case 'i':
+                    case 'd':
+                        break;
+                    default:
+                        if (in_array($tps{$i}, static::PARAMETER_TYPE_CHARS)) {
+                            // Unlikely if previous validateArguments().
+                            throw new DbQueryArgumentException(
+                                $this->messagePrefix()
+                                . ' - arg $types[' . $types . '] index[' . $i . '] char[' . $tps{$i} . '] is not '
+                                . join('|', static::PARAMETER_TYPE_CHARS) . '.'
+                            );
+                        }
+                }
             }
             $sql_with_args .= $sqlFragments[$i] . $value;
         }

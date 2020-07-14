@@ -10,7 +10,6 @@ declare(strict_types=1);
 namespace SimpleComplex\Tests\Database\MsSql;
 
 use PHPUnit\Framework\TestCase;
-use SimpleComplex\Tests\Database\TestHelper;
 use SimpleComplex\Tests\Database\Stringable;
 
 use SimpleComplex\Database\MsSqlClient;
@@ -22,7 +21,7 @@ use SimpleComplex\Time\Time;
 /**
  * @code
  * // CLI, in document root:
- * backend/vendor/bin/phpunit backend/vendor/simplecomplex/database/tests/src/MsSql/QueryArgumentTest.php
+ * backend/vendor/bin/phpunit --do-not-cache-result backend/vendor/simplecomplex/database/tests/src/MsSql/QueryArgumentTest.php
  * @endcode
  *
  * @package SimpleComplex\Tests\Database
